@@ -1,13 +1,11 @@
 package com.mindmate.mindmate_server.user.domain;
 
+import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -17,8 +15,7 @@ import java.util.Set;
 @Table(name = "listener_profiles")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
-public class ListenerProfile {
+public class ListenerProfile extends BaseTimeEntity {
     /**
      * 향후 추가 사항
      * 1. 경력 인증 관련 필드
@@ -44,12 +41,6 @@ public class ListenerProfile {
     private LocalDateTime available_time;
     private final Integer counselingCount = 0;
     private final Integer avgResponseTime = 0;
-
-    @CreatedDate
-    private LocalDateTime createdAt;
-
-    @LastModifiedDate
-    private LocalDateTime modifiedAt;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

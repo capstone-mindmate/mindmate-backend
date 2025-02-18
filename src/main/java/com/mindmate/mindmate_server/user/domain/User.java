@@ -1,10 +1,8 @@
 package com.mindmate.mindmate_server.user.domain;
 
+import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -12,9 +10,8 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
 @ToString(exclude = {"listenerProfile", "speakerProfile"})
-public class User {
+public class User extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -33,15 +30,6 @@ public class User {
 
     private boolean isEmailVerified = false;
     private boolean agreedToTerms = false;
-
-    /**
-     * BaseEntity 관리 생각
-     */
-    @CreatedDate
-    private LocalDateTime createdAt;
-
-    @LastModifiedDate
-    private LocalDateTime modifiedAt;
 
     private LocalDateTime lastLoginAt;
     private LocalDateTime deletedAt;
