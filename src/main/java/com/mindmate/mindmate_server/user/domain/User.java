@@ -74,4 +74,8 @@ public class User {
         this.agreedToTerms = true;
     }
 
+    public void updateRole(RoleType type) {
+        this.currentRole = type;
+    }
+
 }

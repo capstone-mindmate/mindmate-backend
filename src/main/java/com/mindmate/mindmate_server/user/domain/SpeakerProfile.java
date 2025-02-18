@@ -10,21 +10,13 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity
-@Table(name = "listener_profiles")
+@Table(name = "speaker_profiles")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
-public class ListenerProfile {
-    /**
-     * 향후 추가 사항
-     * 1. 경력 인증 관련 필드
-     * 2. available_time 관리 어떻게 할지
-     */
-
+public class SpeakerProfile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -34,16 +26,11 @@ public class ListenerProfile {
 
     private String profileImage;
 
-    @OneToMany(mappedBy = "listenerProfile", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<ListenerCounselingField> counselingFields = new HashSet<>();
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private CounselingStyle counselingStyle;
+    private CounselingStyle preferredCounselingStyle;
 
-    private LocalDateTime available_time;
     private final Integer counselingCount = 0;
-    private final Integer avgResponseTime = 0;
 
     @CreatedDate
     private LocalDateTime createdAt;
@@ -56,20 +43,8 @@ public class ListenerProfile {
     private User user;
 
     @Builder
-    public ListenerProfile(User user, String nickname) {
+    public SpeakerProfile(User user, String nickname) {
         this.user = user;
         this.nickname = nickname;
-    }
-
-    public void addCounselingField(CounselingField field) {
-        ListenerCounselingField counselingField = ListenerCounselingField.builder()
-                .listenerProfile(this)
-                .field(field)
-                .build();
-        this.counselingFields.add(counselingField);
-    }
-
-    public void removeCounselingField(CounselingField field) {
-        this.counselingFields.removeIf(cf -> cf.getField() == field);
     }
 }
