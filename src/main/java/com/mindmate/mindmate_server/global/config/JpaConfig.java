@@ -1,4 +1,4 @@
-package com.mindmate.mindmate_server.config;
+package com.mindmate.mindmate_server.global.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
