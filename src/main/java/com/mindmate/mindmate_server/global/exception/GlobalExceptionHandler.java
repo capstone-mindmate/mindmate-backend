@@ -19,7 +19,8 @@ public class GlobalExceptionHandler {
         log.error("CustomException: {}", e.getMessage());
         ErrorResponse response = ErrorResponse.of(
                 e.getErrorCode(),
-                request.getRequestURI()
+                request.getRequestURI(),
+                e.getDetails()
         );
         return ResponseEntity
                 .status(e.getErrorCode().getStatus())
