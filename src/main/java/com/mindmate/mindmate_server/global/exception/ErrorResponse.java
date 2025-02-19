@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.global.exception;
 
 import lombok.Builder;
 import lombok.Getter;
+import org.springframework.http.HttpStatus;
 
 import java.time.LocalDateTime;
 
@@ -9,7 +10,7 @@ import java.time.LocalDateTime;
 @Builder
 public class ErrorResponse {
     private final LocalDateTime timestamp = LocalDateTime.now();
-    private final int status;
+    private final HttpStatus status;
     private final String error;
     private final String message;
     private final String path;

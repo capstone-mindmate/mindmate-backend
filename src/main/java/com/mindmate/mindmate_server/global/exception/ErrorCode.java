@@ -1,7 +1,9 @@
 package com.mindmate.mindmate_server.global.exception;
 
+import org.springframework.http.HttpStatus;
+
 public interface ErrorCode {
     String name();
-    int getStatus();
+    HttpStatus getStatus();
     String getMessage();
 }

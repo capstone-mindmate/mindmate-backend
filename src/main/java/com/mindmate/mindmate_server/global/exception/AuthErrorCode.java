@@ -6,10 +6,12 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum CommonErrorCode implements ErrorCode {
-    INVALID_INPUT(HttpStatus.BAD_REQUEST, "잘못된 입력입니다"),
-    INTERNAL_SERVER_ERROR(HttpStatus.BAD_GATEWAY, "서버 내부 오류가 발생했습니다");
+public enum AuthErrorCode implements ErrorCode {
+    TOKEN_SAVE_FAILED(HttpStatus.BAD_REQUEST, "토큰 저장을 실패하였습니다"),
+    TOKEN_GET_FAILED(HttpStatus.NOT_FOUND, "해당 토큰이 존재하지 않습니다");
 
     private final HttpStatus status;
     private final String message;
+
+
 }
