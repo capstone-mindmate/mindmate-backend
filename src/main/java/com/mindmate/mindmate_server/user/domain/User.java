@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users")
@@ -35,7 +36,7 @@ public class User extends BaseTimeEntity {
     private LocalDateTime deletedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
     private RoleType currentRole;
 
     @OneToOne(mappedBy = "user")
@@ -45,9 +46,10 @@ public class User extends BaseTimeEntity {
     private SpeakerProfile speakerProfile;
 
     @Builder
-    public User(String email, String password) {
+    public User(String email, String password, RoleType role) {
         this.email = email;
         this.password = password;
+        this.currentRole = role;
     }
 
     public void updateLastLoginAt() {
@@ -66,4 +68,12 @@ public class User extends BaseTimeEntity {
         this.currentRole = type;
     }
 
+    public void generateVerificationToken() {
+        this.verificationToken = UUID.randomUUID().toString();
+        this.verificationTokenExpiry = LocalDateTime.now().plusHours(24);
+    }
+
+    public boolean isTokenExpired() {
+        return this.getVerificationTokenExpiry().isBefore(LocalDateTime.now());
+    }
 }
