@@ -38,7 +38,7 @@ public class ListenerProfile extends BaseTimeEntity {
     @Column(nullable = false)
     private CounselingStyle counselingStyle;
 
-    private LocalDateTime available_time;
+    private LocalDateTime availableTime;
     private final Integer counselingCount = 0;
     private final Integer avgResponseTime = 0;
 
@@ -47,9 +47,11 @@ public class ListenerProfile extends BaseTimeEntity {
     private User user;
 
     @Builder
-    public ListenerProfile(User user, String nickname) {
+    public ListenerProfile(User user, String nickname, CounselingStyle counselingStyle, LocalDateTime availableTime) {
         this.user = user;
         this.nickname = nickname;
+        this.counselingStyle = counselingStyle;
+        this.availableTime = availableTime;
     }
 
     public void addCounselingField(CounselingField field) {

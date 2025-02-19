@@ -32,8 +32,9 @@ public class SpeakerProfile extends BaseTimeEntity {
     private User user;
 
     @Builder
-    public SpeakerProfile(User user, String nickname) {
+    public SpeakerProfile(User user, String nickname, CounselingStyle preferredCounselingStyle) {
         this.user = user;
         this.nickname = nickname;
+        this.preferredCounselingStyle = preferredCounselingStyle;
     }
 }
