@@ -26,6 +26,7 @@ public enum AuthErrorCode implements ErrorCode {
     EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이메일 전송을 실패하였습니다"),
     EMAIL_ALREADY_VERIFIED(HttpStatus.BAD_REQUEST, "이미 인증된 이메일입니다"),
     EMAIL_NOT_VERIFIED(HttpStatus.FORBIDDEN, "이메일 인증이 필요합니다"),
+    RESEND_TOO_FREQUENTLY(HttpStatus.TOO_MANY_REQUESTS, "이메일 재전송 요청이 너무 많습니다. 5분 뒤에 시도해주세요" ),
 
     // 로그인
     ACCOUNT_LOCKED(HttpStatus.TOO_MANY_REQUESTS, "계정이 잠겼습니다. 잠금 해제까지 남은 시간: %s분"),

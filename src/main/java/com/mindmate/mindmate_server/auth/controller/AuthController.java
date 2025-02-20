@@ -7,6 +7,7 @@ import com.mindmate.mindmate_server.auth.dto.TokenResponse;
 import com.mindmate.mindmate_server.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,12 +24,11 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
-    // 굳이 필요한가 그리고 필요하다면 어떻게 활용할 것인가
-//    @PostMapping("/email/resend")
-//    public ResponseEntity<Void> resendVerificationEmail(@RequestParam String email) {
-//        authService.resendVerificationEmail(email);
-//        return ResponseEntity.ok().build();
-//    }
+    @PostMapping("/email/resend")
+    public ResponseEntity<Void> resendVerificationEmail(@RequestParam String email) {
+        authService.resendVerificationEmail(email);
+        return ResponseEntity.ok().build();
+    }
 
     @GetMapping("/email/verify")
     public ResponseEntity<Void> verifyEmail(@RequestParam String token) {

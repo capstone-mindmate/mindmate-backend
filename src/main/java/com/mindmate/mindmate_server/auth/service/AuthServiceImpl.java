@@ -9,12 +9,16 @@ import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static com.mindmate.mindmate_server.auth.service.LoginAttemptService.MAX_ATTEMPTS;
 
@@ -29,8 +33,17 @@ public class AuthServiceImpl implements AuthService {
     private final LoginAttemptService loginAttemptService;
     private final PasswordValidator passwordValidator;
 
+    private final RedisTemplate<String, String> redisTemplate;
+    private static final long RESEND_LIMIT_MINUTES = 5;
+
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * 회원가입
+     * 1. 이미 등록된 이메일인지 확인
+     * 2. 비밀번호 암호화 및 1차 - 2차 비밀번호 동일한지 확인
+     * 3. 사용자 저장 및 이메일 보내기
+     */
     @Override
     public void registerUser(SignUpRequest request) {
         if (userService.existsByEmail(request.getEmail())) {
@@ -49,24 +62,55 @@ public class AuthServiceImpl implements AuthService {
         user.generateVerificationToken();
 
         userService.save(user);
-        emailService.sendVerificationEmail(user, user.getVerificationToken(), "init");
+        emailService.sendVerificationEmail(user, user.getVerificationToken());
     }
 
-//    public void resendVerificationEmail(String email) {
-//        User user = userService.findByEmail(email);
-//
-//        if (user.isEmailVerified()) {
-//            throw new CustomException(AuthErrorCode.EMAIL_ALREADY_VERIFIED);
-//        }
-//
-//        user.generateVerificationToken();
-//        userService.save(user);
-//        emailService.sendVerificationEmail(user, user.getVerificationToken(), "resend");
-//    }
+    /**
+     * 이메일 재전송
+     * 1. 해당 이메일이 등록된 상태인지
+     * 2. 해당 이메일이 이미 인증됐는지
+     * 3. redis를 이용해서 5분 이후에 재전송 가능하게 설정
+     */
+    @Override
+    public void resendVerificationEmail(String email) {
+        User user = userService.findByEmail(email);
 
+        if (user.isEmailVerified()) {
+            throw new CustomException(AuthErrorCode.EMAIL_ALREADY_VERIFIED);
+        }
+        
+        String redisKey = "email-resend" + email;
+        String lastRequestTime = redisTemplate.opsForValue().get(redisKey);
+        
+        if (lastRequestTime != null) {
+            LocalDateTime lastRequest = LocalDateTime.parse(lastRequestTime);
+            if (Duration.between(lastRequest, LocalDateTime.now()).toMinutes() < RESEND_LIMIT_MINUTES) {
+                throw new CustomException(AuthErrorCode.RESEND_TOO_FREQUENTLY);
+            }
+        }
+
+        user.generateVerificationToken();
+        userService.save(user);
+        emailService.sendVerificationEmail(user, user.getVerificationToken());
+        
+        // ttl 적용해서 자동 만료되도록 설정
+        redisTemplate.opsForValue().set(redisKey, LocalDateTime.now().toString(), RESEND_LIMIT_MINUTES, TimeUnit.MINUTES);
+    }
+
+    /**
+     * 이메일 인증
+     * 1. 사용자가 가진 이메일 토큰이 만료됐는지 확인 + 이전 토큰은 무효화(재전송 고려)
+     * 2. 정상적이면 인증 완료 처리
+     * 3. UNAUTHORIZED -> USER로 role 변환
+     * 현재 방식은 이전 토큰은 무효화하고 새로 생성된 토큰만 유효
+     */
     @Override
     public void verifyEmail(String token) {
         User user = userService.findVerificationToken(token);
+
+        if (user == null || !user.getVerificationToken().equals(token)) {
+            throw new CustomException(AuthErrorCode.INVALID_TOKEN);
+        }
 
         if (user.isTokenExpired()) {
             throw new CustomException(AuthErrorCode.VERIFICATION_TOKEN_EXPIRED);
@@ -132,6 +176,11 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    /**
+     * 로그아웃
+     * 액세스 토큰 블랙리스트 처리
+     * 리프레시 토큰 삭제
+     */
     @Override
     public void logout(String token) {
         tokenService.addToBlackList(token);
