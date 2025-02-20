@@ -1,13 +1,11 @@
 package com.mindmate.mindmate_server.user.domain;
 
+import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -17,8 +15,7 @@ import java.util.Set;
 @Table(name = "listener_profiles")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
-public class ListenerProfile {
+public class ListenerProfile extends BaseTimeEntity {
     /**
      * 향후 추가 사항
      * 1. 경력 인증 관련 필드
@@ -39,17 +36,11 @@ public class ListenerProfile {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private CounselingStyle counseling_style;
+    private CounselingStyle counselingStyle;
 
     private LocalDateTime available_time;
-    private final Integer counseling_count = 0;
-    private final Integer avg_response_time = 0;
-
-    @CreatedDate
-    private LocalDateTime createdAt;
-
-    @LastModifiedDate
-    private LocalDateTime modifiedAt;
+    private final Integer counselingCount = 0;
+    private final Integer avgResponseTime = 0;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -59,5 +50,17 @@ public class ListenerProfile {
     public ListenerProfile(User user, String nickname) {
         this.user = user;
         this.nickname = nickname;
+    }
+
+    public void addCounselingField(CounselingField field) {
+        ListenerCounselingField counselingField = ListenerCounselingField.builder()
+                .listenerProfile(this)
+                .field(field)
+                .build();
+        this.counselingFields.add(counselingField);
+    }
+
+    public void removeCounselingField(CounselingField field) {
+        this.counselingFields.removeIf(cf -> cf.getField() == field);
     }
 }
