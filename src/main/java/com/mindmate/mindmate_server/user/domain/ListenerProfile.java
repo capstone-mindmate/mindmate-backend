@@ -39,8 +39,8 @@ public class ListenerProfile extends BaseTimeEntity {
     private CounselingStyle counselingStyle;
 
     private LocalDateTime availableTime;
-    private final Integer counselingCount = 0;
-    private final Integer avgResponseTime = 0;
+    private Integer counselingCount = 0;
+    private Integer avgResponseTime = 0;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

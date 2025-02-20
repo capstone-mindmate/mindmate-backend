@@ -25,7 +25,7 @@ public class SpeakerProfile extends BaseTimeEntity {
     @Column(nullable = false)
     private CounselingStyle preferredCounselingStyle;
 
-    private final Integer counselingCount = 0;
+    private Integer counselingCount = 0;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

@@ -3,11 +3,13 @@ package com.mindmate.mindmate_server.user.domain;
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
+@Slf4j
 @Table(name = "users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -65,6 +67,7 @@ public class User extends BaseTimeEntity {
     }
 
     public void updateRole(RoleType type) {
+        log.info("Updating role from {} to {}", this.currentRole, type);
         this.currentRole = type;
     }
 

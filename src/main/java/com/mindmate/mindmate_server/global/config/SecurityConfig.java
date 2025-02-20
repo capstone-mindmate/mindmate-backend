@@ -33,7 +33,6 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
-    private final UserRepository userRepository;
     private final TokenService tokenService;
     private final UserService userService;
 
@@ -45,8 +44,15 @@ public class SecurityConfig {
                 .headers(headers -> headers // 보안 헤더 설정
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny) // 클릭재킹 방지
                         .xssProtection(Customizer.withDefaults()) // XSS 보호
-                        .contentSecurityPolicy(csp -> // 모든 리소스, js, css는 같은 출처에서만 로드
-                                csp.policyDirectives("default-src 'self'; script-src 'self 'unsafe-inline'; style-src 'self' 'unsafe-inline';"))
+                        .contentSecurityPolicy(csp ->
+                                csp.policyDirectives(
+                                        "default-src 'self'; " +
+                                                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+                                                "style-src 'self' 'unsafe-inline'; " +
+                                                "img-src 'self' data: https:; " +
+                                                "font-src 'self' data:;"
+                                )
+                        )
                         .httpStrictTransportSecurity(hsts -> // HTTPS 강제
                                 hsts.includeSubDomains(true)
                                         .maxAgeInSeconds(31536000)))
@@ -60,8 +66,11 @@ public class SecurityConfig {
                             "/api/auth/register",
                             "/api/auth/login",
                             "/api/auth/verify-email",
-                            "/api/auth/resend-verification"
-                    ).permitAll() // 향후 수정 (api 접근, role 별 접근 등)
+                            "/api/auth/resend-verification",
+                            "/swagger-ui/**",
+                            "/swagger-resources/**",
+                            "/v3/api-docs/**"
+                            ).permitAll() // 향후 수정 (api 접근, role 별 접근 등)
                     .anyRequest().authenticated())
 //                .addFilterBefore(new RequestLoggingFilter(), UsernamePasswordAuthenticationFilter.class) // 모든 요청 로깅
 //                .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class) // 초당 50개 요청 제한

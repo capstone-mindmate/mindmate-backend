@@ -120,6 +120,7 @@ public class AuthServiceImpl implements AuthService {
         String message = user.getCurrentRole() == RoleType.ROLE_USER
                 ? "프로필 작성이 필요합니다."
                 : null;
+        user.updateLastLoginAt();
 
         return LoginResponse.builder()
                 .accessToken(accessToken)

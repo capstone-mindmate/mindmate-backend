@@ -15,11 +15,13 @@ import com.mindmate.mindmate_server.user.dto.SpeakerProfileRequest;
 import com.mindmate.mindmate_server.user.repository.ListenerRepository;
 import com.mindmate.mindmate_server.user.repository.SpeakerRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
+@Slf4j
 @RequiredArgsConstructor
 public class ProfileServiceImpl implements ProfileService {
     private final UserService userService;
@@ -28,7 +30,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     public ProfileResponse createListenerProfile(ListenerProfileRequest request) {
-        User user = SecurityUtil.getCurrentUser();
+        User user = userService.findUserById(SecurityUtil.getCurrentUser().getId());
         validateUniqueNickname(request.getNickname());
 
         ListenerProfile profile = ListenerProfile.builder()
@@ -53,8 +55,8 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     public ProfileResponse createSpeakerProfile(SpeakerProfileRequest request) {
-        User user = SecurityUtil.getCurrentUser();
-                validateUniqueNickname(request.getNickname());
+        User user = userService.findUserById(SecurityUtil.getCurrentUser().getId());
+        validateUniqueNickname(request.getNickname());
 
         SpeakerProfile profile = SpeakerProfile.builder()
                 .user(user)
@@ -75,7 +77,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     public ProfileStatusResponse switchRole(RoleType targetRole) {
-        User user = SecurityUtil.getCurrentUser();
+        User user = userService.findUserById(SecurityUtil.getCurrentUser().getId());
 
         boolean hasListenerProfile = user.getListenerProfile() != null;
         boolean hasSpeakerProfile = user.getSpeakerProfile() != null;
