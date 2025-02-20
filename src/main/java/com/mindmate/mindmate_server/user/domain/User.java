@@ -3,10 +3,13 @@ package com.mindmate.mindmate_server.user.domain;
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
+@Slf4j
 @Table(name = "users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -35,7 +38,7 @@ public class User extends BaseTimeEntity {
     private LocalDateTime deletedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
     private RoleType currentRole;
 
     @OneToOne(mappedBy = "user")
@@ -45,9 +48,10 @@ public class User extends BaseTimeEntity {
     private SpeakerProfile speakerProfile;
 
     @Builder
-    public User(String email, String password) {
+    public User(String email, String password, RoleType role) {
         this.email = email;
         this.password = password;
+        this.currentRole = role;
     }
 
     public void updateLastLoginAt() {
@@ -63,7 +67,16 @@ public class User extends BaseTimeEntity {
     }
 
     public void updateRole(RoleType type) {
+        log.info("Updating role from {} to {}", this.currentRole, type);
         this.currentRole = type;
     }
 
+    public void generateVerificationToken() {
+        this.verificationToken = UUID.randomUUID().toString();
+        this.verificationTokenExpiry = LocalDateTime.now().plusHours(24);
+    }
+
+    public boolean isTokenExpired() {
+        return this.getVerificationTokenExpiry().isBefore(LocalDateTime.now());
+    }
 }

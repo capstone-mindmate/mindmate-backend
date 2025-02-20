@@ -25,15 +25,16 @@ public class SpeakerProfile extends BaseTimeEntity {
     @Column(nullable = false)
     private CounselingStyle preferredCounselingStyle;
 
-    private final Integer counselingCount = 0;
+    private Integer counselingCount = 0;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 
     @Builder
-    public SpeakerProfile(User user, String nickname) {
+    public SpeakerProfile(User user, String nickname, CounselingStyle preferredCounselingStyle) {
         this.user = user;
         this.nickname = nickname;
+        this.preferredCounselingStyle = preferredCounselingStyle;
     }
 }
