@@ -1,6 +1,5 @@
 package com.mindmate.mindmate_server.user.service;
 
-import com.mindmate.mindmate_server.auth.dto.TokenResponse;
 import com.mindmate.mindmate_server.auth.util.SecurityUtil;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
@@ -78,6 +77,7 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public ProfileStatusResponse switchRole(RoleType targetRole) {
         User user = userService.findUserById(SecurityUtil.getCurrentUser().getId());
+        validateRoleTransition(user.getCurrentRole(), targetRole);
 
         boolean hasListenerProfile = user.getListenerProfile() != null;
         boolean hasSpeakerProfile = user.getSpeakerProfile() != null;
@@ -110,6 +110,16 @@ public class ProfileServiceImpl implements ProfileService {
                 .hasListenerProfile(hasListenerProfile)
                 .hasSpeakerProfile(hasSpeakerProfile)
                 .build();
+    }
+
+    private void validateRoleTransition(RoleType currentRole, RoleType targetRole) {
+        if (currentRole == targetRole) {
+            throw new CustomException(ProfileErrorCode.SAME_ROLE_TRANSITION);
+        }
+
+        if (targetRole == RoleType.ROLE_UNVERIFIED || targetRole == RoleType.ROLE_USER || targetRole == RoleType.ROLE_ADMIN) {
+            throw new CustomException(ProfileErrorCode.INVALID_ROLE_TRANSITION);
+        }
     }
 
     private void validateUniqueNickname(String nickname) {

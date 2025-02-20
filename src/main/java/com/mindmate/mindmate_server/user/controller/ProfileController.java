@@ -1,15 +1,18 @@
 package com.mindmate.mindmate_server.user.controller;
 
+import com.mindmate.mindmate_server.user.domain.CounselingField;
+import com.mindmate.mindmate_server.user.domain.CounselingStyle;
 import com.mindmate.mindmate_server.user.domain.RoleType;
-import com.mindmate.mindmate_server.user.dto.ListenerProfileRequest;
-import com.mindmate.mindmate_server.user.dto.ProfileResponse;
-import com.mindmate.mindmate_server.user.dto.ProfileStatusResponse;
-import com.mindmate.mindmate_server.user.dto.SpeakerProfileRequest;
+import com.mindmate.mindmate_server.user.dto.*;
 import com.mindmate.mindmate_server.user.service.ProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -33,4 +36,19 @@ public class ProfileController {
         ProfileStatusResponse response = profileService.switchRole(targetRole);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/counseling-styles")
+    public ResponseEntity<List<CounselingResponse>> getCounselingStyles() {
+        return ResponseEntity.ok(Arrays.stream(CounselingStyle.values())
+                .map(style -> new CounselingResponse(style.getTitle()))
+                .collect(Collectors.toList()));
+    }
+
+    @GetMapping("/counseling-fields")
+    public ResponseEntity<List<CounselingResponse>> getCounselingField() {
+        return ResponseEntity.ok(Arrays.stream(CounselingField.values())
+                .map(field -> new CounselingResponse(field.getTitle()))
+                .collect(Collectors.toList()));
+    }
+
 }
