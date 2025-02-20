@@ -9,6 +9,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SecurityUtil {
+    /**
+     * SecurityContext로부터 현재 사용자 식별
+     */
     public static User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {

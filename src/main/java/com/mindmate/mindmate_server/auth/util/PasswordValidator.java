@@ -6,6 +6,10 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class PasswordValidator {
+    /**
+     * 길이: 8 ~ 20
+     * 대문자, 소문자, 숫자, 특수문자 반드시 포함
+     */
     public void validatePassword(String password) {
         if (password.length() < 8 || password.length() > 20) {
             throw new CustomException(AuthErrorCode.INVALID_PASSWORD_FORMAT);

@@ -19,6 +19,10 @@ public class LoginAttemptService {
     private static final String ATTEMPTS_PREFIX = "login-attempts:";
     private static final String LOCKED_PREFIX = "login-locked:";
 
+    /**
+     * 로그인 실패 처리
+     * redis로 시도 횟수 관리
+     */
     public void loginFailed(String email) {
         String attemptKey = ATTEMPTS_PREFIX + email;
         String lockedKey = LOCKED_PREFIX + email;
@@ -46,6 +50,10 @@ public class LoginAttemptService {
         log.info("Failed login attempt {} for email: {}", currentAttempts, email);
     }
 
+    /**
+     * 로그인 성공
+     * 시도 횟수, 잠금 키 제거
+     */
     public void loginSucceeded(String email) {
         String attemptsKey = ATTEMPTS_PREFIX + email;
         String lockedKey = LOCKED_PREFIX + email;
