@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 @Getter
@@ -28,5 +29,5 @@ public class ListenerProfileRequest {
 
     @NotNull(message = "상담 가능 시간을 설정해주세요")
     @Future(message = "상담 가능 시간은 현재 시간 이후여야 합니다")
-    private LocalDateTime availableTime;
+    private String availableTimes; // 클라이언트에서 json으로 전송받기
 }

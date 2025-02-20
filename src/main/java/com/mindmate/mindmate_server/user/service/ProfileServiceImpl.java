@@ -3,20 +3,22 @@ package com.mindmate.mindmate_server.user.service;
 import com.mindmate.mindmate_server.auth.util.SecurityUtil;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
-import com.mindmate.mindmate_server.user.domain.ListenerProfile;
-import com.mindmate.mindmate_server.user.domain.RoleType;
-import com.mindmate.mindmate_server.user.domain.SpeakerProfile;
-import com.mindmate.mindmate_server.user.domain.User;
-import com.mindmate.mindmate_server.user.dto.ListenerProfileRequest;
-import com.mindmate.mindmate_server.user.dto.ProfileResponse;
-import com.mindmate.mindmate_server.user.dto.ProfileStatusResponse;
-import com.mindmate.mindmate_server.user.dto.SpeakerProfileRequest;
+import com.mindmate.mindmate_server.review.domain.Review;
+import com.mindmate.mindmate_server.review.dto.ReviewResponse;
+import com.mindmate.mindmate_server.review.repository.ReviewRepository;
+import com.mindmate.mindmate_server.user.domain.*;
+import com.mindmate.mindmate_server.user.dto.*;
 import com.mindmate.mindmate_server.user.repository.ListenerRepository;
 import com.mindmate.mindmate_server.user.repository.SpeakerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -26,6 +28,73 @@ public class ProfileServiceImpl implements ProfileService {
     private final UserService userService;
     private final ListenerRepository listenerRepository;
     private final SpeakerRepository speakerRepository;
+    private final ReviewRepository reviewRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public ListenerProfileResponse getListenerProfile(Long profileId) {
+        ListenerProfile profile = listenerRepository.findById(profileId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+
+        List<Review> recentReviews = reviewRepository.findRecentReviewsByRevieweeId(profile.getUser().getId(), PageRequest.of(0, 5));
+        Double averageRating = reviewRepository.calculateAverageRatingByRevieweeId(profile.getUser().getId())
+                .orElse(0.0);
+
+        return ListenerProfileResponse.builder()
+                .id(profile.getId())
+                .nickname(profile.getNickname())
+                .profileImage(profile.getProfileImage())
+                .createdAt(profile.getCreatedAt())
+                .totalCounselingCount(profile.getCounselingCount()) // 엔티티에 추가하기
+                .averageRating(averageRating)
+                .counselingStyle(profile.getCounselingStyle())
+                .counselingFields(profile.getCounselingFields().stream()
+                        .map(ListenerCounselingField::getField)
+                        .collect(Collectors.toList()))
+                .avgResponseTime(profile.getAvgResponseTime())
+                .availableTimes(profile.getAvailableTimes())
+                .badgeStatus(profile.getBadgeStatus())
+                .reviews(recentReviews.stream()
+                        .map(review -> ReviewResponse.builder()
+                                .id(review.getId())
+                                .content(review.getContent())
+                                .rating(review.getRating())
+                                .tags(review.getTags())
+                                .createdAt(review.getCreatedAt())
+                                .build())
+                        .collect(Collectors.toList()))
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SpeakerProfileResponse getSpeakerProfile(Long profileId) {
+        SpeakerProfile profile = speakerRepository.findById(profileId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+        List<Review> recentReviews = reviewRepository.findRecentReviewsByRevieweeId(profile.getUser().getId(), PageRequest.of(0, 5));
+        Double averageRating = reviewRepository.calculateAverageRatingByRevieweeId(profile.getUser().getId())
+                .orElse(0.0);
+
+        return SpeakerProfileResponse.builder()
+                .id(profile.getId())
+                .nickname(profile.getNickname())
+                .profileImage(profile.getProfileImage())
+                .createdAt(profile.getCreatedAt())
+                .totalCounselingCount(profile.getCounselingCount())
+                .averageRating(averageRating)
+                .preferredStyle(profile.getPreferredCounselingStyle())
+                .reviews(recentReviews.stream()
+                        .map(review -> ReviewResponse.builder()
+                                .id(review.getId())
+                                .content(review.getContent())
+                                .rating(review.getRating())
+                                .tags(review.getTags())
+                                .reply(review.getReply())
+                                .createdAt(review.getCreatedAt())
+                                .build())
+                        .collect(Collectors.toList()))
+                .build();
+    }
 
     @Override
     public ProfileResponse createListenerProfile(ListenerProfileRequest request) {
@@ -36,10 +105,10 @@ public class ProfileServiceImpl implements ProfileService {
                 .user(user)
                 .nickname(request.getNickname())
                 .counselingStyle(request.getCounselingStyle())
-                .availableTime(request.getAvailableTime())
                 .build();
 
         request.getCounselingFields().forEach(profile::addCounselingField);
+        profile.addAvailableTimes(request.getAvailableTimes()); // json형태로 받았을 때
 
         ListenerProfile savedProfile = listenerRepository.save(profile);
         user.updateRole(RoleType.ROLE_LISTENER);
@@ -72,6 +141,52 @@ public class ProfileServiceImpl implements ProfileService {
                 .role(RoleType.ROLE_SPEAKER)
                 .message("스피커 프로필이 생성되었습니다")
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public ListenerProfileResponse updateListenerProfile(Long profileId, ListenerProfileUpdateRequest request) {
+        ListenerProfile profile = listenerRepository.findById(profileId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+
+        if (request.getNickname() != null) {
+            validateUniqueNickname(request.getNickname());
+            profile.updateNickname(request.getNickname());
+        }
+        if (request.getProfileImage() != null) {
+            profile.updateProfileImage(request.getProfileImage());
+        }
+        if (request.getCounselingStyle() != null) {
+            profile.updateCounselingStyle(request.getCounselingStyle());
+        }
+        if (request.getCounselingFields() != null) {
+            profile.updateCounselingFields(request.getCounselingFields());
+        }
+        if (request.getAvailableTimes() != null) {
+            profile.addAvailableTimes(request.getAvailableTimes());
+        }
+
+        return getListenerProfile(profile.getId());
+    }
+
+    @Override
+    @Transactional
+    public SpeakerProfileResponse updateSpeakerProfile(Long profileId, SpeakerProfileUpdateRequest request) {
+        SpeakerProfile profile = speakerRepository.findById(profileId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+
+        if (request.getNickname() != null) {
+            validateUniqueNickname(request.getNickname());
+            profile.updateNickname(request.getNickname());
+        }
+        if (request.getProfileImage() != null) {
+            profile.updateProfileImage(request.getProfileImage());
+        }
+        if (request.getCounselingStyle() != null) {
+            profile.updateCounselingStyle(request.getCounselingStyle());
+        }
+
+        return getSpeakerProfile(profile.getId());
     }
 
     @Override
@@ -123,6 +238,7 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     private void validateUniqueNickname(String nickname) {
+        // 수정할 때 자기 이름도 포함되나
         if (listenerRepository.existsByNickname(nickname) || speakerRepository.existsByNickname(nickname)) {
             throw new CustomException(ProfileErrorCode.DUPLICATE_NICKNAME);
         }

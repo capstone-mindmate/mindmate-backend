@@ -37,4 +37,16 @@ public class SpeakerProfile extends BaseTimeEntity {
         this.nickname = nickname;
         this.preferredCounselingStyle = preferredCounselingStyle;
     }
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    public void updateProfileImage(String profileImage) {
+        this.profileImage = profileImage;
+    }
+
+    public void updateCounselingStyle(CounselingStyle counselingStyle) {
+        this.preferredCounselingStyle = counselingStyle;
+    }
 }
