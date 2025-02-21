@@ -1,4 +1,4 @@
-package com.mindmate.mindmate_server.auth;
+package com.mindmate.mindmate_server.auth.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

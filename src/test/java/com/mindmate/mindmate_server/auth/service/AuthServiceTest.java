@@ -1,4 +1,4 @@
-package com.mindmate.mindmate_server.auth;
+package com.mindmate.mindmate_server.auth.service;
 
 import com.mindmate.mindmate_server.auth.dto.*;
 import com.mindmate.mindmate_server.auth.service.AuthServiceImpl;
