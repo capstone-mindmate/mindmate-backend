@@ -34,7 +34,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordValidator passwordValidator;
 
     private final RedisTemplate<String, String> redisTemplate;
-    private static final long RESEND_LIMIT_MINUTES = 5;
+    public static final long RESEND_LIMIT_MINUTES = 5;
 
     private final PasswordEncoder passwordEncoder;
 
