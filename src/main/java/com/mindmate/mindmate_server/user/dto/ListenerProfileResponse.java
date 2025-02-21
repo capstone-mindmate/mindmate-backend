@@ -2,14 +2,13 @@ package com.mindmate.mindmate_server.user.dto;
 
 import com.mindmate.mindmate_server.user.domain.CounselingField;
 import com.mindmate.mindmate_server.user.domain.CounselingStyle;
+import lombok.Builder;
 import lombok.Getter;
-import lombok.experimental.SuperBuilder;
 
 import java.util.List;
-import java.util.Set;
 
 @Getter
-@SuperBuilder
+@Builder
 public class ListenerProfileResponse extends BaseProfileResponse {
     private List<CounselingField> counselingFields;
     private CounselingStyle counselingStyle;

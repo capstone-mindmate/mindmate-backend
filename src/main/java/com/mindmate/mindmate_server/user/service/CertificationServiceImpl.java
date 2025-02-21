@@ -52,7 +52,7 @@ public class CertificationServiceImpl implements CertificationService {
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
 
         if (request.getIsApproved()) { // 승인
-            profile.approveCertification(request.getBadgeStatus());
+            profile.approveCertification();
             listenerRepository.save(profile);
 
             // 승인 알림 전송

@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.user.domain;
 
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
+import com.mindmate.mindmate_server.user.dto.Badge;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -41,6 +42,7 @@ public class ListenerProfile extends BaseTimeEntity {
 
     @Column(columnDefinition = "JSON")
     private String availableTimes;
+    /* todo : json parsing or 저장 로직 */
 
     private Integer counselingCount = 0;
     private Integer avgResponseTime = 0; // 분이나 시간
@@ -50,8 +52,8 @@ public class ListenerProfile extends BaseTimeEntity {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @Column(name = "badge_status")
-    private String badgeStatus;
+    @Enumerated(EnumType.ORDINAL)
+    private Badge badgeStatus;
 
     private String certificationUrl;
 
@@ -131,9 +133,15 @@ public class ListenerProfile extends BaseTimeEntity {
         }
     }
 
-    public void approveCertification(String badgeStatus) {
-        this.badgeStatus = badgeStatus;
+    public void approveCertification() {
+        this.badgeStatus = Badge.EXPERT;
         this.certificationUrl = null; // 자료 삭제
+    }
+
+    public void promoteToFamous() {
+        if (this.counselingCount >= 50 && this.averageRates >= 4.5) {
+            this.badgeStatus = Badge.CERTIFIED;
+        }
     }
 
     public void rejectCertification() {
