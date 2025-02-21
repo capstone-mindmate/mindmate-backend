@@ -39,9 +39,9 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
 
     /**
-     * 회원가입
-     * 1. 이미 등록된 이메일인지 확인
-     * 2. 비밀번호 암호화 및 1차 - 2차 비밀번호 동일한지 확인
+     * 회원가입<p>
+     * 1. 이미 등록된 이메일인지 확인<br>
+     * 2. 비밀번호 암호화 및 1차 - 2차 비밀번호 동일한지 확인<br>
      * 3. 사용자 저장 및 이메일 보내기
      */
     @Override
