@@ -90,7 +90,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         user.generateVerificationToken();
-        userService.save(user);
+//        userService.save(user);
         emailService.sendVerificationEmail(user, user.getVerificationToken());
         
         // ttl 적용해서 자동 만료되도록 설정
@@ -118,7 +118,7 @@ public class AuthServiceImpl implements AuthService {
 
         user.verifyEmail();
         user.updateRole(RoleType.ROLE_USER);
-        userService.save(user);
+//        userService.save(user);
     }
 
     /**
@@ -141,16 +141,7 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomException(AuthErrorCode.EMAIL_NOT_VERIFIED);
         }
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            loginAttemptService.loginFailed(email);
-            int remainingAttempts = MAX_ATTEMPTS - loginAttemptService.getCurrentAttempts(email);
-
-            throw new CustomException(
-                    remainingAttempts > 0
-                            ? AuthErrorCode.REMAINING_ATTEMPTS
-                            : AuthErrorCode.ACCOUNT_LOCKED,
-                    Map.of("remainingAttempts", remainingAttempts));
-        }
+        validatePassword(email, request.getPassword(), user.getPassword());
 
         loginAttemptService.loginSucceeded(email);
         String tokenFamily = UUID.randomUUID().toString();
@@ -174,6 +165,16 @@ public class AuthServiceImpl implements AuthService {
                 .hasSpeakerProfile(hasSpeakerProfile)
                 .message(message)
                 .build();
+    }
+
+    private void validatePassword(String email, String rawPassword, String encodedPassword) {
+        if (!passwordEncoder.matches(rawPassword, encodedPassword)) {
+            loginAttemptService.loginFailed(email);
+            int remainingAttempts = MAX_ATTEMPTS - loginAttemptService.getCurrentAttempts(email);
+            throw new CustomException(
+                    remainingAttempts > 0 ? AuthErrorCode.REMAINING_ATTEMPTS : AuthErrorCode.ACCOUNT_LOCKED,
+                    Map.of("remainingAttempts", remainingAttempts));
+        }
     }
 
     /**
