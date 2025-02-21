@@ -9,6 +9,4 @@ import java.util.Optional;
 @Repository
 public interface SpeakerRepository extends JpaRepository<SpeakerProfile, Long> {
     boolean existsByNickname(String nickname);
-    boolean existsByNicknameAndIdNot(String nickname, Long id);
-    Optional<SpeakerProfile> findByUserId(Long userId);
 }

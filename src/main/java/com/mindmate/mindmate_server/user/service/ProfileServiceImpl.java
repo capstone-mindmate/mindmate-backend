@@ -12,7 +12,6 @@ import com.mindmate.mindmate_server.user.repository.ListenerRepository;
 import com.mindmate.mindmate_server.user.repository.SpeakerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,8 +32,7 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional(readOnly = true)
     public ListenerProfileResponse getListenerProfile(Long profileId) {
-        ListenerProfile profile = listenerRepository.findById(profileId)
-                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+        ListenerProfile profile = findListenerProfile(profileId);
 
         List<Review> recentReviews = reviewRepository.findRecentReviewsByRevieweeId(profile.getUser().getId(), PageRequest.of(0, 5));
         Double averageRating = reviewRepository.calculateAverageRatingByRevieweeId(profile.getUser().getId())
@@ -59,7 +57,6 @@ public class ProfileServiceImpl implements ProfileService {
                                 .id(review.getId())
                                 .content(review.getContent())
                                 .rating(review.getRating())
-                                .tags(review.getTags())
                                 .createdAt(review.getCreatedAt())
                                 .build())
                         .collect(Collectors.toList()))
@@ -69,8 +66,8 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional(readOnly = true)
     public SpeakerProfileResponse getSpeakerProfile(Long profileId) {
-        SpeakerProfile profile = speakerRepository.findById(profileId)
-                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+        SpeakerProfile profile = findSpeakerProfile(profileId);
+
         List<Review> recentReviews = reviewRepository.findRecentReviewsByRevieweeId(profile.getUser().getId(), PageRequest.of(0, 5));
         Double averageRating = reviewRepository.calculateAverageRatingByRevieweeId(profile.getUser().getId())
                 .orElse(0.0);
@@ -88,7 +85,6 @@ public class ProfileServiceImpl implements ProfileService {
                                 .id(review.getId())
                                 .content(review.getContent())
                                 .rating(review.getRating())
-                                .tags(review.getTags())
                                 .reply(review.getReply())
                                 .createdAt(review.getCreatedAt())
                                 .build())
@@ -227,6 +223,32 @@ public class ProfileServiceImpl implements ProfileService {
                 .build();
     }
 
+    @Override // 리뷰 끝나고 실행
+    public void updateAverageRating(Long profileId, RoleType roleType, Float newRating) {
+        // requestbody로 값들 받아야겠죠? 수정해야겠따..
+        Long totalReviews = reviewRepository.countReviewsByRevieweeId(profileId);
+
+        if (roleType == RoleType.ROLE_LISTENER) {
+            findListenerProfile(profileId).updateAverageRating(newRating, totalReviews);
+        } else {
+            findSpeakerProfile(profileId).updateAverageRating(newRating, totalReviews);
+        }
+    }
+
+    @Override // 상담 끝나고 실행
+    public void updateCounselingCount(Long profileId, RoleType roleType) {
+        if (roleType == RoleType.ROLE_LISTENER) {
+            findListenerProfile(profileId).incrementCounselingCount();
+        } else {
+            findSpeakerProfile(profileId).incrementCounselingCount();
+        }
+    }
+
+    @Override // 상담 끝나고?
+    public void updateResponseTime(Long profileId, Integer responseTime) {
+        findListenerProfile(profileId).updateAverageResponseTime(responseTime);
+    }
+
     private void validateRoleTransition(RoleType currentRole, RoleType targetRole) {
         if (currentRole == targetRole) {
             throw new CustomException(ProfileErrorCode.SAME_ROLE_TRANSITION);
@@ -243,4 +265,15 @@ public class ProfileServiceImpl implements ProfileService {
             throw new CustomException(ProfileErrorCode.DUPLICATE_NICKNAME);
         }
     }
+
+    private ListenerProfile findListenerProfile(Long profileId) {
+        return listenerRepository.findById(profileId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+    }
+
+    private SpeakerProfile findSpeakerProfile(Long profileId) {
+        return speakerRepository.findById(profileId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+    }
+
 }

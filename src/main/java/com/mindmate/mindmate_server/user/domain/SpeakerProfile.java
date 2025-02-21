@@ -26,6 +26,7 @@ public class SpeakerProfile extends BaseTimeEntity {
     private CounselingStyle preferredCounselingStyle;
 
     private Integer counselingCount = 0;
+    private Float averageRates = 0.0f;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -49,4 +50,17 @@ public class SpeakerProfile extends BaseTimeEntity {
     public void updateCounselingStyle(CounselingStyle counselingStyle) {
         this.preferredCounselingStyle = counselingStyle;
     }
+
+    public void incrementCounselingCount() {
+        this.counselingCount++;
+    }
+
+    public void updateAverageRating(Float newRating, Long totalReviews) {
+        if (totalReviews == 1) {
+            this.averageRates = newRating;
+        } else {
+            this.averageRates = ((this.averageRates * (totalReviews - 1)) + newRating) / totalReviews;
+        }
+    }
+
 }

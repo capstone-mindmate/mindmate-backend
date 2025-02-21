@@ -53,6 +53,11 @@ public class ListenerProfile extends BaseTimeEntity {
     @Column(name = "badge_status")
     private String badgeStatus;
 
+    private String certificationUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String careerDescription;
+
     @Builder
     public ListenerProfile(User user, String nickname, CounselingStyle counselingStyle) {
         this.user = user;
@@ -105,21 +110,34 @@ public class ListenerProfile extends BaseTimeEntity {
         fields.forEach(this::addCounselingField);
     }
 
-    public void updateBadgeStatus(String badgeStatus) {
-        this.badgeStatus = badgeStatus;
-    }
-
     public void incrementCounselingCount() {
         this.counselingCount++;
     }
 
     public void updateAverageResponseTime(Integer newResponseTime) {
-        this.avgResponseTime = newResponseTime;
+        if (this.avgResponseTime == 0) {
+            this.avgResponseTime = newResponseTime;
+        } else {
+            double weight = 0.2; // 가중치 임의로 설정함
+            this.avgResponseTime = (int) ((1 - weight) * this.avgResponseTime + weight * newResponseTime);
+        }
     }
 
-    public void updateAverageRating(Float newRating) {
+    public void updateAverageRating(Float newRating, Long totalReviews) {
+        if (totalReviews == 1) {
+            this.averageRates = newRating;
+        } else {
+            this.averageRates = ((this.averageRates * (totalReviews - 1)) + newRating) / totalReviews;
+        }
+    }
 
-        this.averageRates = newRating;
-    } // 계산하는 로직 작성하기
+    public void approveCertification(String badgeStatus) {
+        this.badgeStatus = badgeStatus;
+        this.certificationUrl = null; // 자료 삭제
+    }
+
+    public void rejectCertification() {
+        this.certificationUrl = null;
+    }
 
 }

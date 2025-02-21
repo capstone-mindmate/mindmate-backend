@@ -20,5 +20,11 @@ public interface ProfileService {
 
     ProfileStatusResponse switchRole(RoleType targetRole);
 
+    void updateAverageRating(Long profileId, RoleType roleType, Float newRating);
+
+    void updateCounselingCount(Long profileId, RoleType roleType);
+
+    void updateResponseTime(Long profileId, Integer responseTime);
+
 //    void deleteProfile(Long profileId); // user 계정 삭제 시 삭제 되도록 만글기
 }

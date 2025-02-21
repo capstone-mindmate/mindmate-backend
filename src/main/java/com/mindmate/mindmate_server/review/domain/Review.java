@@ -37,23 +37,20 @@ public class Review extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @ElementCollection
-    @CollectionTable(name = "review_tags",
-            joinColumns = @JoinColumn(name = "review_id"))
-    @Column(name = "tag")
-    private List<String> tags = new ArrayList<>();
+    // tag를 어떤식으로 제공하지?
+//    private List<String> tags = new ArrayList<>();
 
     private String reply;
 
     @Builder
-    public Review(User reviewer, User reviewee, /*Matching matching,*/ Integer rating,
-                  String content, List<String> tags) {
+    public Review(User reviewer, User reviewee, Integer rating,
+                  String content ) {
         this.reviewer = reviewer;
         this.reviewee = reviewee;
 //        this.matching = matching;
         this.rating = rating;
         this.content = content;
-        this.tags = tags;
+//        this.tags = tags;
     }
 
     public void addReply(String reply) {
