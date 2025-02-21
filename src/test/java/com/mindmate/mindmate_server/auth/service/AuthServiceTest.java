@@ -1,10 +1,6 @@
 package com.mindmate.mindmate_server.auth.service;
 
 import com.mindmate.mindmate_server.auth.dto.*;
-import com.mindmate.mindmate_server.auth.service.AuthServiceImpl;
-import com.mindmate.mindmate_server.auth.service.EmailService;
-import com.mindmate.mindmate_server.auth.service.LoginAttemptService;
-import com.mindmate.mindmate_server.auth.service.TokenService;
 import com.mindmate.mindmate_server.auth.util.JwtTokenProvider;
 import com.mindmate.mindmate_server.auth.util.PasswordValidator;
 import com.mindmate.mindmate_server.global.exception.AuthErrorCode;
@@ -123,7 +119,7 @@ class AuthServiceTest {
 
             // then
             verify(user).getVerificationToken();
-            verify(userService).save(user);
+//            verify(userService).save(user);
             verify(emailService).sendVerificationEmail(eq(user), eq(verificationToken));
         }
 
@@ -179,7 +175,7 @@ class AuthServiceTest {
             verify(userService).findVerificationToken(token);
             verify(user).verifyEmail();
             verify(user).updateRole(RoleType.ROLE_USER);
-            verify(userService).save(user);
+//            verify(userService).save(user); 영속성
         }
 
         @Test

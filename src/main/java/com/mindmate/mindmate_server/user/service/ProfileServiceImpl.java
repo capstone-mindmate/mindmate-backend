@@ -26,6 +26,7 @@ public class ProfileServiceImpl implements ProfileService {
     private final UserService userService;
     private final ListenerRepository listenerRepository;
     private final SpeakerRepository speakerRepository;
+    private final SecurityUtil securityUtil;
 
     /**
      * 리스너 프로필 제작
@@ -35,18 +36,7 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public ProfileResponse createListenerProfile(ListenerProfileRequest request) {
         User user = getCurrentUser();
-        validateUniqueNickname(request.getNickname());
-        validateProfileExistence(user, RoleType.ROLE_LISTENER);
-
-        ListenerProfile profile = ListenerProfile.builder()
-                .user(user)
-                .nickname(request.getNickname())
-                .counselingStyle(request.getCounselingStyle())
-                .availableTime(request.getAvailableTime())
-                .build();
-
-        request.getCounselingFields().forEach(profile::addCounselingField);
-
+        ListenerProfile profile = createListenerProfileFromRequest(user, request);
         return saveProfileAndUpdateRole(profile, RoleType.ROLE_LISTENER);
     }
 
@@ -58,14 +48,7 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public ProfileResponse createSpeakerProfile(SpeakerProfileRequest request) {
         User user = getCurrentUser();
-        validateUniqueNickname(request.getNickname());
-        validateProfileExistence(user, RoleType.ROLE_SPEAKER);
-
-        SpeakerProfile profile = SpeakerProfile.builder()
-                .user(user)
-                .nickname(request.getNickname())
-                .preferredCounselingStyle(request.getPreferredCounselingStyle())
-                .build();
+        SpeakerProfile profile = createSpeakerProfileFromRequest(user, request);
 
         return saveProfileAndUpdateRole(profile, RoleType.ROLE_LISTENER);
     }
@@ -96,7 +79,7 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     private User getCurrentUser() {
-        return userService.findUserById(SecurityUtil.getCurrentUser().getId());
+        return userService.findUserById(securityUtil.getCurrentUser().getId());
     }
 
 
@@ -138,6 +121,34 @@ public class ProfileServiceImpl implements ProfileService {
         }
 
         throw new CustomException(ProfileErrorCode.INVALID_ROLE_TYPE);
+    }
+
+    private ListenerProfile createListenerProfileFromRequest(User user, ListenerProfileRequest request) {
+        validateUniqueNickname(request.getNickname());
+        validateProfileExistence(user, RoleType.ROLE_LISTENER);
+
+        ListenerProfile profile = ListenerProfile.builder()
+                .user(user)
+                .nickname(request.getNickname())
+                .profileImage(request.getProfileImage())
+                .counselingStyle(request.getCounselingStyle())
+                .availableTime(request.getAvailableTime())
+                .build();
+
+        request.getCounselingFields().forEach(profile::addCounselingField);
+        return profile;
+    }
+
+    private SpeakerProfile createSpeakerProfileFromRequest(User user, SpeakerProfileRequest request) {
+        validateUniqueNickname(request.getNickname());
+        validateProfileExistence(user, RoleType.ROLE_SPEAKER);
+
+        return SpeakerProfile.builder()
+                .user(user)
+                .nickname(request.getNickname())
+                .profileImage(request.getProfileImage())
+                .preferredCounselingStyle(request.getPreferredCounselingStyle())
+                .build();
     }
 
 }
