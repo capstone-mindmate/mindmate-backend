@@ -50,7 +50,7 @@ public class ProfileServiceImpl implements ProfileService {
         User user = getCurrentUser();
         SpeakerProfile profile = createSpeakerProfileFromRequest(user, request);
 
-        return saveProfileAndUpdateRole(profile, RoleType.ROLE_LISTENER);
+        return saveProfileAndUpdateRole(profile, RoleType.ROLE_SPEAKER);
     }
 
     /**
