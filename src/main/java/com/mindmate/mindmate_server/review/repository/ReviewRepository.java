@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.review.repository;
 
 import com.mindmate.mindmate_server.review.domain.Review;
+import com.mindmate.mindmate_server.user.domain.RoleType;
 import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,4 +21,14 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     @Query("SELECT COUNT(r) FROM Review r WHERE r.reviewee.id = :revieweeId")
     Long countReviewsByRevieweeId(@Param("revieweeId") Long revieweeId);
+
+    @Query("SELECT r FROM Review r " +
+            "WHERE r.reviewee.id = :userId " +
+            "AND r.revieweeRole = :roleType " +
+            "ORDER BY r.createdAt DESC")
+    List<Review> findRecentReviewsByUserIdAndRole(
+            @Param("userId") Long userId,
+            @Param("roleType") RoleType roleType,
+            Pageable pageable
+    );
 }
