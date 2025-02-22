@@ -136,6 +136,67 @@ class ProfileServiceTest {
             assertTrue(response.isHasListenerProfile());
             assertFalse(response.isHasSpeakerProfile());
         }
+
+        @Test
+        @DisplayName("스피커 역할 전환 성공")
+        void switchRole_ToSpeaker_Success() {
+            // given
+            SpeakerProfile mockSpeakerProfile = mock(SpeakerProfile.class);
+            mockUser.setSpeakerProfileForTest(mockSpeakerProfile);;
+
+            // when
+            ProfileStatusResponse response = profileService.switchRole(RoleType.ROLE_SPEAKER);
+
+            // then
+            assertEquals("SUCCESS", response.getStatus());
+            assertEquals(RoleType.ROLE_SPEAKER, response.getCurrentRole());
+            assertFalse(response.isHasListenerProfile());
+            assertTrue(response.isHasSpeakerProfile());
+        }
+
+        @Test
+        @DisplayName("리스너 프로필 없이 역할 전환 시도 실패")
+        void switchRole_ToListenerWithoutProfile_Fail() {
+            // when
+            ProfileStatusResponse response = profileService.switchRole(RoleType.ROLE_LISTENER);
+
+            // then
+            assertEquals("PROFILE_REQUIRED", response.getStatus());
+            assertEquals(RoleType.ROLE_USER, response.getCurrentRole());
+            assertFalse(response.isHasListenerProfile());
+        }
+
+        @Test
+        @DisplayName("스피커 프로필 없이 역할 전환 시도 실패")
+        void switchRole_ToSpeakerWithoutProfile_Fail() {
+            // when
+            ProfileStatusResponse response = profileService.switchRole(RoleType.ROLE_SPEAKER);
+
+            // then
+            assertEquals("PROFILE_REQUIRED", response.getStatus());
+            assertEquals(RoleType.ROLE_USER, response.getCurrentRole());
+            assertFalse(response.isHasSpeakerProfile());
+        }
+
+        @Test
+        @DisplayName("동일한 역할로 전환 시도 실패")
+        void switchRole_SameRole_Fail() {
+            // given
+            mockUser.updateRole(RoleType.ROLE_LISTENER);
+            ListenerProfile mockListenerProfile = mock(ListenerProfile.class);
+            mockUser.setListenerProfileForTest(mockListenerProfile);
+
+            // when & then
+            assertThrows(CustomException.class, () -> profileService.switchRole(RoleType.ROLE_LISTENER));
+        }
+
+        @Test
+        @DisplayName("잘못된 역할로 전환 시도 실패")
+        void switchRole_InvalidRole_Fail() {
+            // when & then
+            assertThrows(CustomException.class, () -> profileService.switchRole(RoleType.ROLE_ADMIN));
+        }
+
     }
 
     private User createDefaultUser() {
