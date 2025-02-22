@@ -12,4 +12,15 @@ public class ProfileStatusResponse {
     private RoleType currentRole;
     private boolean hasListenerProfile;
     private boolean hasSpeakerProfile;
+
+    public static ProfileStatusResponse of(String status, String message, RoleType currentRole,
+                                           boolean hasListenerProfile, boolean hasSpeakerProfile) {
+        return ProfileStatusResponse.builder()
+                .status(status)
+                .message(message)
+                .currentRole(currentRole)
+                .hasListenerProfile(hasListenerProfile)
+                .hasSpeakerProfile(hasSpeakerProfile)
+                .build();
+    }
 }

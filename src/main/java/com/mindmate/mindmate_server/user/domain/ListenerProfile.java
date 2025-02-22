@@ -47,9 +47,10 @@ public class ListenerProfile extends BaseTimeEntity {
     private User user;
 
     @Builder
-    public ListenerProfile(User user, String nickname, CounselingStyle counselingStyle, LocalDateTime availableTime) {
+    public ListenerProfile(User user, String nickname, String profileImage, CounselingStyle counselingStyle, LocalDateTime availableTime) {
         this.user = user;
         this.nickname = nickname;
+        this.profileImage = profileImage;
         this.counselingStyle = counselingStyle;
         this.availableTime = availableTime;
     }

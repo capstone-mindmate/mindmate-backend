@@ -16,12 +16,15 @@ import org.springframework.stereotype.Service;
 public class EmailService {
     private final JavaMailSender mailSender;
 
-    private static final long RESEND_DELAY_MINUTES = 5;
+    /**
+     * 인증 이메일 보내기
+     * 비동기로 처리하여 실제로 바로 메일을 확인 못하더라도 사용자 경험 향상
+     */
 
     @Async
-    public void sendVerificationEmail(User user, String token, String type) {
+    public void sendVerificationEmail(User user, String token) {
         String subject = "이메일 인증을 완료해주세요";
-        String content = getString(token, type);
+        String content = getString(token);
         MimeMessage message = mailSender.createMimeMessage();
 
         try {
@@ -35,18 +38,15 @@ public class EmailService {
         }
     }
 
-    private static String getString(String token, String type) {
+    private static String getString(String token) {
         String verificationLink = "http://localhost:8080/api/auth/email/verify?token=" + token;
-//        String verificationLink = type.equals("init") ? "http://localhost:8080/api/auth/email/verify?token=" + token
-//                : "http://localhost:8080/api/auth/email-verification/resend?token=" + token;
 
-        String content = String.format(
+        return String.format(
                     "아래 링크를 클릭하여 이메일 인증을 완료해주세요:<br>"
                     + "<a href='%s'>이메일 인증하기</a><br>"
                     + "이 링크는 24시간 동안 유효합니다.",
                 verificationLink
         );
-        return content;
     }
 
     /**

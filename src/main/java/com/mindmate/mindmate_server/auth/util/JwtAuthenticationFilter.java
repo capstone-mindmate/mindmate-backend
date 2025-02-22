@@ -30,6 +30,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserService userService;
     private final TokenService tokenService;
 
+    /**
+     * 모든 요청에 대해 JWT 토큰 검증
+     * - 토큰 유효성, 블랙리스트 확인
+     * - SecurityContext에 인증 정보 설정 -> SecurityUtil로 사용자 정보 얻어내기
+     */
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,

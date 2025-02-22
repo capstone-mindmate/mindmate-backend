@@ -49,9 +49,9 @@ public class TokenService {
         }
     }
 
-    public void invalidateTokenFamily(String tokenFamily) {
-        redisTemplate.delete(TOKEN_FAMILY_PREFIX + tokenFamily);
-    }
+//    public void invalidateTokenFamily(String tokenFamily) {
+//        redisTemplate.delete(TOKEN_FAMILY_PREFIX + tokenFamily);
+//    }
 
     public void invalidateRefreshToken(Long userId) {
         redisTemplate.delete(REFRESH_TOKEN_PREFIX + userId);

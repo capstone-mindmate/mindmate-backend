@@ -48,14 +48,12 @@ public class JwtTokenProvider {
 
     /**
      * 액세스 토큰 생성
-     * (id, roles, username, tokenType)
-     *
-     * admin일 때 username 어떻게 처리할 지 해결못함
+     * (id, role, username, tokenType)
+     * 이후 요청마다 헤어(Authorization: Bearer <token>에 JWT 포함하여 전달
      */
     public String generateToken(User user) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
-
 
         String username = switch (user.getCurrentRole()) {
             case ROLE_UNVERIFIED, ROLE_USER -> user.getEmail();
@@ -68,7 +66,6 @@ public class JwtTokenProvider {
                 .subject(String.valueOf(user.getId()))
                 .claim("role", user.getCurrentRole().name())
                 .claim("username", username)
-//                .claim("isProfileComplete", isProfileComplete(user))
                 .claim("tokenType", "ACCESS")
                 .issuedAt(now)
                 .expiration(expiryDate)
@@ -80,6 +77,9 @@ public class JwtTokenProvider {
         return user.getCurrentRole() != RoleType.ROLE_UNVERIFIED && user.getCurrentRole() != RoleType.ROLE_USER;
     }
 
+    /**
+     * 변조 방지
+     */
     private SecretKey getSigningKey() {
         byte[] keyBytes = Base64.getDecoder().decode(jwtSecret);
         return Keys.hmacShaKeyFor(keyBytes);

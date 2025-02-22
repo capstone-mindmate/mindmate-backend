@@ -17,4 +17,6 @@ public interface AuthService {
     void logout(String bearer);
 
     TokenResponse refresh(String bearer, String bearer1);
+
+    void resendVerificationEmail(String email);
 }

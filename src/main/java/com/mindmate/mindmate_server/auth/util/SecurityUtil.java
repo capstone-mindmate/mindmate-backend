@@ -9,7 +9,10 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SecurityUtil {
-    public static User getCurrentUser() {
+    /**
+     * SecurityContext로부터 현재 사용자 식별
+     */
+    public User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new CustomException(AuthErrorCode.UNAUTHORIZED);

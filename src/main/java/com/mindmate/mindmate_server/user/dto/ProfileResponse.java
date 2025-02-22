@@ -11,4 +11,13 @@ public class ProfileResponse {
     private String nickname;
     private RoleType role;
     private String message;
+
+    public static ProfileResponse of(Long id, String nickname, RoleType role, String message) {
+        return ProfileResponse.builder()
+                .id(id)
+                .nickname(nickname)
+                .role(role)
+                .message(message)
+                .build();
+    }
 }
