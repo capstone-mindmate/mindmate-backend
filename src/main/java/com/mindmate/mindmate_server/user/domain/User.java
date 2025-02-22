@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.user.domain;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -78,5 +79,16 @@ public class User extends BaseTimeEntity {
 
     public boolean isTokenExpired() {
         return this.getVerificationTokenExpiry().isBefore(LocalDateTime.now());
+    }
+
+
+    @VisibleForTesting
+    public void setListenerProfileForTest(ListenerProfile profile) {
+        this.listenerProfile = profile;
+    }
+
+    @VisibleForTesting
+    public void setSpeakerProfileForTest(SpeakerProfile profile) {
+        this.speakerProfile = profile;
     }
 }
