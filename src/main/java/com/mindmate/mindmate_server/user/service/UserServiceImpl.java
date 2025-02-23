@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.user.service;
 
+import com.mindmate.mindmate_server.auth.util.SecurityUtil;
 import com.mindmate.mindmate_server.global.exception.AuthErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.UserErrorCode;
@@ -12,6 +13,11 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
+
+    @Override
+    public User getCurrentUser() {
+        return SecurityUtil.getCurrentUser();
+    }
 
     @Override
     public User findUserById(Long userId) {
