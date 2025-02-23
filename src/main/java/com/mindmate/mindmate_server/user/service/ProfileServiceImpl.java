@@ -35,7 +35,11 @@ public class ProfileServiceImpl implements ProfileService {
     public ListenerProfileResponse getListenerProfile(Long profileId) {
         ListenerProfile profile = findListenerProfile(profileId);
 
-        List<Review> recentReviews = reviewRepository.findRecentReviewsByRevieweeId(profile.getUser().getId(), PageRequest.of(0, 5));
+        List<Review> recentReviews = reviewRepository.findRecentReviewsByUserIdAndRole(
+                profile.getUser().getId(),
+                RoleType.ROLE_LISTENER,
+                PageRequest.of(0, 5)
+        );
         Double averageRating = reviewRepository.calculateAverageRatingByRevieweeId(profile.getUser().getId())
                 .orElse(0.0);
 
@@ -53,14 +57,7 @@ public class ProfileServiceImpl implements ProfileService {
                 .avgResponseTime(profile.getAvgResponseTime())
                 .availableTimes(profile.getAvailableTime())
                 .badgeStatus(profile.getBadgeStatus())
-                .reviews(recentReviews.stream()
-                        .map(review -> ReviewResponse.builder()
-                                .id(review.getId())
-                                .content(review.getContent())
-                                .rating(review.getRating())
-                                .createdAt(review.getCreatedAt())
-                                .build())
-                        .collect(Collectors.toList()))
+                .reviews(mapListenerReviews(recentReviews))
                 .build();
     }
 
@@ -69,7 +66,11 @@ public class ProfileServiceImpl implements ProfileService {
     public SpeakerProfileResponse getSpeakerProfile(Long profileId) {
         SpeakerProfile profile = findSpeakerProfile(profileId);
 
-        List<Review> recentReviews = reviewRepository.findRecentReviewsByRevieweeId(profile.getUser().getId(), PageRequest.of(0, 5));
+        List<Review> recentReviews = reviewRepository.findRecentReviewsByUserIdAndRole(
+                profile.getUser().getId(),
+                RoleType.ROLE_SPEAKER,
+                PageRequest.of(0, 5)
+        );
         Double averageRating = reviewRepository.calculateAverageRatingByRevieweeId(profile.getUser().getId())
                 .orElse(0.0);
 
@@ -81,15 +82,7 @@ public class ProfileServiceImpl implements ProfileService {
                 .totalCounselingCount(profile.getCounselingCount())
                 .averageRating(averageRating)
                 .preferredStyle(profile.getPreferredCounselingStyle())
-                .reviews(recentReviews.stream()
-                        .map(review -> ReviewResponse.builder()
-                                .id(review.getId())
-                                .content(review.getContent())
-                                .rating(review.getRating())
-                                .reply(review.getReply())
-                                .createdAt(review.getCreatedAt())
-                                .build())
-                        .collect(Collectors.toList()))
+                .reviews(mapSpeakerReviews(recentReviews))
                 .build();
     }
 
@@ -305,6 +298,29 @@ public class ProfileServiceImpl implements ProfileService {
     private SpeakerProfile findSpeakerProfile(Long profileId) {
         return speakerRepository.findById(profileId)
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+    }
+
+    private List<ReviewResponse> mapListenerReviews(List<Review> reviews) {
+        return reviews.stream()
+                .map(review -> ReviewResponse.builder()
+                        .id(review.getId())
+                        .content(review.getContent())
+                        .rating(review.getRating())
+                        .createdAt(review.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private List<ReviewResponse> mapSpeakerReviews(List<Review> reviews) {
+        return reviews.stream()
+                .map(review -> ReviewResponse.builder()
+                        .id(review.getId())
+                        .content(review.getContent())
+                        .rating(review.getRating())
+                        .reply(review.getReply())
+                        .createdAt(review.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
     }
 
 

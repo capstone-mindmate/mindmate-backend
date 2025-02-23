@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.review.domain;
 
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
+import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -24,13 +25,15 @@ public class Review extends BaseTimeEntity {
     @JoinColumn(name = "reviewer_id")
     private User reviewer;
 
+    @Enumerated(EnumType.STRING)
+    private RoleType reviewerRole;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reviewee_id")
     private User reviewee;
 
-    /*
-    * 역할 필드 추가 or mapping
-    */
+    @Enumerated(EnumType.STRING)
+    private RoleType revieweeRole;
 
 //    @ManyToOne(fetch = FetchType.LAZY)
 //    @JoinColumn(name = "matching_id")

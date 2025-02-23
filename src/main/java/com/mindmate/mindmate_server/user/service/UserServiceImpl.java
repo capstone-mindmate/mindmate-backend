@@ -13,10 +13,11 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
+    private final SecurityUtil securityUtil;
 
     @Override
     public User getCurrentUser() {
-        return SecurityUtil.getCurrentUser();
+        return securityUtil.getCurrentUser();
     }
 
     @Override
