@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.chat.domain;
 
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
+import com.mindmate.mindmate_server.matching.domain.Matching;
 import com.mindmate.mindmate_server.user.domain.ListenerProfile;
 import com.mindmate.mindmate_server.user.domain.SpeakerProfile;
 import jakarta.persistence.*;
@@ -23,7 +24,10 @@ public class ChatRoom extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // todo : matching 매핑
+    // todo : matching 매핑 + cascade 설정? 매칭이 사라지더라도 해당 데이터는 남길것인가
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "matching_id")
+    private Matching matching;
 
     @Enumerated(EnumType.STRING)
     private ChatRoomStatus chatRoomStatus;
@@ -53,7 +57,8 @@ public class ChatRoom extends BaseTimeEntity {
     private int speakerUnreadCount = 0;
 
     @Builder
-    public ChatRoom(ListenerProfile listener, SpeakerProfile speaker) {
+    public ChatRoom(Matching matching, ListenerProfile listener, SpeakerProfile speaker) {
+        this.matching = matching;
         this.chatRoomStatus = ChatRoomStatus.ACTIVE;
         this.listener = listener;
         this.speaker = speaker;

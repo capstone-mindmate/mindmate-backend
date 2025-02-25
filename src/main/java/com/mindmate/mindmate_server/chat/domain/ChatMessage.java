@@ -43,10 +43,10 @@ public class ChatMessage extends BaseTimeEntity {
 //    private LocalDateTime expiryTime;
 
     @Builder
-    public ChatMessage(ChatRoom chatRoom, User sender, String content, MessageType type) {
+    public ChatMessage(ChatRoom chatRoom, User sender, RoleType senderRole, String content, MessageType type) {
         this.chatRoom = chatRoom;
         this.sender = sender;
-        this.senderRole = sender.getCurrentRole();
+        this.senderRole = senderRole;
         this.content = content;
         this.type = type;
         this.isRead = false;
