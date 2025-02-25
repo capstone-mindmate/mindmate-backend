@@ -20,6 +20,8 @@ public class SignUpRequest {
     @NotBlank(message = "확인 비밀번호를 입력해주세요.")
     private String confirmPassword;
 
+    // todo : agreement 추가
+
     @Builder
     public SignUpRequest(String email, String password, String confirmPassword) {
         this.email = email;
