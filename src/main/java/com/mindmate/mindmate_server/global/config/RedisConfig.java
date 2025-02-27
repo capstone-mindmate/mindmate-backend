@@ -69,7 +69,7 @@ public class RedisConfig {
         container.setConnectionFactory(connectionFactory);
 
         container.addMessageListener(chatMessageListener, new PatternTopic("chat:room:*"));
-        container.addMessageListener(chatMessageListener, new PatternTopic("user:Status:*"));
+        container.addMessageListener(chatMessageListener, new PatternTopic("user:status:*"));
         return container;
     }
 

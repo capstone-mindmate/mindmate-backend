@@ -50,7 +50,8 @@ public class SecurityConfig {
                                                 "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
                                                 "style-src 'self' 'unsafe-inline'; " +
                                                 "img-src 'self' data: https:; " +
-                                                "font-src 'self' data:;"
+                                                "font-src 'self' data:;" +
+                                                "connect-src 'self' ws: wss:;" // WebSocket 연결 허용
                                 )
                         )
                         .httpStrictTransportSecurity(hsts -> // HTTPS 강제
@@ -62,6 +63,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(customAccessDeniedHandler())) // 권한 부족시
                 .authorizeHttpRequests(auth -> auth
                     .requestMatchers(
+                            "/ws/**",
                             "/api/**",
 //                            "/api/auth/register",
 //                            "/api/auth/login",
@@ -87,7 +89,9 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:8080",
-                "ws://localhost:8080"
+                "http://localhost:49170",
+                "ws://localhost:8080",
+                "wss://localhost:8080"
         ));
         configuration.setAllowedMethods(Arrays.asList(
                 "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
@@ -99,7 +103,10 @@ public class SecurityConfig {
                 "Accept",
                 "Origin",
                 "Access-Control-Request-Method",
-                "Access-Control-Request-Headers"
+                "Access-Control-Request-Headers",
+                "Sec-WebSocket-Protocol",
+                "Sec-WebSocket-Version",
+                "Sec-WebSocket-Key"
         ));
         configuration.setExposedHeaders(Arrays.asList("Authorization"));
         configuration.setAllowCredentials(true);

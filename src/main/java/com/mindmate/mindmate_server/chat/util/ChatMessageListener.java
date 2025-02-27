@@ -16,6 +16,10 @@ public class ChatMessageListener implements MessageListener {
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Redis 채널에서 메시지 수신
+     * 채널 유형에 따라 적절한 처리
+     */
     @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
@@ -34,6 +38,9 @@ public class ChatMessageListener implements MessageListener {
         }
     }
 
+    /**
+     * 채팅방 메시지: WebSocket을 통해 클라이언트에게 전달
+     */
     private void handleChatRoomMessage(String channel, String payload) throws JsonProcessingException {
         String roomId = channel.split(":")[2];
 
@@ -41,6 +48,9 @@ public class ChatMessageListener implements MessageListener {
         messagingTemplate.convertAndSend("/topic/chat/room/" + roomId, payload);
     }
 
+    /**
+     * 사용자 상태 메시지: 상태 변경 알림 전송
+     */
     private void handleUserStatusMessage(String channel, String payload) throws JsonProcessingException {
         String userId = channel.split(":")[2];
 
