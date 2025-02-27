@@ -1,12 +1,13 @@
 package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
+import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 
 public interface ChatService {
-    void sendMessage(Long userId, ChatMessageRequest request);
+    ChatMessageResponse sendMessage(Long userId, ChatMessageRequest request);
 
-    void markAsRead(Long userId, Long roomId);
+    int markAsRead(Long userId, Long roomId);
 
-    void updateUserStatus(Long userId, boolean isOnline, Long activeRoomId);
+//    void updateUserStatus(Long userId, boolean isOnline, Long activeRoomId);
 
 }

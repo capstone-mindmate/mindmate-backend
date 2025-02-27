@@ -17,7 +17,7 @@ import java.util.UUID;
 @Table(name = "users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@ToString(exclude = {"listenerProfile", "speakerProfile"})
+@ToString(exclude = {"listenerProfile", "speakerProfile", "sentMessages"})
 public class User extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
