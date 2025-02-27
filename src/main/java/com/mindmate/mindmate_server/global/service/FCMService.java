@@ -10,27 +10,27 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
-@Service
-@Slf4j
-@RequiredArgsConstructor
-public class FCMService {
-    private final FirebaseMessaging firebaseMessaging;
-
-    public void sendNotification(String token, String title, String body, Map<String, String> data) {
-        try {
-            Message message = Message.builder()
-                    .setToken(token)
-                    .setNotification(Notification.builder()
-                            .setTitle(title)
-                            .setBody(body)
-                            .build())
-                    .putAllData(data)
-                    .build();
-
-            String response = firebaseMessaging.send(message);
-            log.info("FCM notification sent successfully: {}", response);
-        } catch (FirebaseMessagingException e) {
-            log.error("Failed to send FCM notification", e);
-        }
-    }
-}
+//@Service
+//@Slf4j
+//@RequiredArgsConstructor
+//public class FCMService {
+//    private final FirebaseMessaging firebaseMessaging;
+//
+//    public void sendNotification(String token, String title, String body, Map<String, String> data) {
+//        try {
+//            Message message = Message.builder()
+//                    .setToken(token)
+//                    .setNotification(Notification.builder()
+//                            .setTitle(title)
+//                            .setBody(body)
+//                            .build())
+//                    .putAllData(data)
+//                    .build();
+//
+//            String response = firebaseMessaging.send(message);
+//            log.info("FCM notification sent successfully: {}", response);
+//        } catch (FirebaseMessagingException e) {
+//            log.error("Failed to send FCM notification", e);
+//        }
+//    }
+//}
