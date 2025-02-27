@@ -45,7 +45,7 @@ public class UnreadCountConsumer {
 
             // 오프라인 + 다른 곳을 보고 있는 경우
             if (isOnline == null || !isOnline || activeRoomId == null || !activeRoomId.equals(event.getRoomId())) {
-                String unreadKey = "chat:room:" + event.getRoomId() + ":unread" + recipientId;
+                String unreadKey = "chat:room:" + event.getRoomId() + ":unread:" + recipientId;
                 redisTemplate.opsForValue().increment(unreadKey);
 
                 if (event.getSenderRole() == RoleType.ROLE_LISTENER) {
