@@ -10,6 +10,7 @@ import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
 import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
+import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -31,11 +32,13 @@ public class ChatServiceImpl implements ChatService {
     private final KafkaTemplate<String, ChatMessageEvent> kafkaTemplate;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final RedisKeyManager redisKeyManager;
 
     private final ChatRoomService chatRoomService;
     private final UserService userService;
-//    private final ChatMessageService chatMessageService;
     private final ChatMessageRepository chatMessageRepository;
+    private final ChatPresenceService chatPresenceService;
+
 
     @Override
     public ChatMessageResponse sendMessage(Long userId, ChatMessageRequest request) {
@@ -52,7 +55,7 @@ public class ChatServiceImpl implements ChatService {
                 .build();
 
         // todo : redis 채널에 메시지 발행?
-        String channel = "chat:room:" + chatRoom.getId();
+        String channel = redisKeyManager.getChatRoomChannel(chatRoom.getId());
         ChatMessageResponse chatMessageResponse = ChatMessageResponse.builder()
                 .senderId(userId)
                 .senderRole(user.getCurrentRole())
@@ -90,12 +93,8 @@ public class ChatServiceImpl implements ChatService {
             chatRoom.markAsReadForSpeaker(lastMessageId);
         }
 
-        String unreadKey = "chat:room:" + roomId + ":unread:" + userId;
-        redisTemplate.delete(unreadKey);
-
-
-        String key = "chat:room:" + roomId + ":read:" + userId;
-        redisTemplate.opsForValue().set(key, LocalDateTime.now().toString());
+        chatPresenceService.resetUnreadCount(roomId, userId);
+        String key = redisKeyManager.getReadStatusKey(roomId, userId);
 
         Map<String, Object> readEvent = new HashMap<>();
         readEvent.put("type", "READ_STATUS");
@@ -103,7 +102,7 @@ public class ChatServiceImpl implements ChatService {
         readEvent.put("userId", userId);
         readEvent.put("timestamp", LocalDateTime.now());
 
-        String channel = "chat:room:" + roomId;
+        String channel = redisKeyManager.getChatRoomChannel(roomId);
         try {
             redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(readEvent));
         } catch (JsonProcessingException e) {
@@ -124,22 +123,4 @@ public class ChatServiceImpl implements ChatService {
     private boolean isUserListener(ChatRoom chatRoom, User user) {
         return chatRoom.getListener().getUser().equals(user);
     }
-
-//    @Override
-//    public void updateUserStatus(Long userId, boolean isOnline, Long activeRoomId) {
-//        String statusKey = "user:status:" + userId;
-//        Map<String, Object> status = new HashMap<>();
-//        status.put("online", isOnline);
-//        status.put("activeRoomId", activeRoomId);
-//        status.put("lastActive", LocalDateTime.now());
-//
-//        redisTemplate.opsForHash().putAll(statusKey, status);
-//
-//        if (isOnline) {
-//            redisTemplate.expire(statusKey, 30, TimeUnit.MINUTES);
-//        }
-//
-//        String channel = "user:status:" + userId;
-//        redisTemplate.convertAndSend(channel, status);
-//    }
 }

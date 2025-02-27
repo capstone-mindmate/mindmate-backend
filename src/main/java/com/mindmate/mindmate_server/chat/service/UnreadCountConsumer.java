@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
+import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class UnreadCountConsumer {
     private final ChatRoomService chatRoomService;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisKeyManager redisKeyManager;
+    private final ChatPresenceService chatPresenceService;
 
     @KafkaListener(
             topics = "chat-message-topic",
@@ -38,15 +41,9 @@ public class UnreadCountConsumer {
                 recipientId = chatRoom.getListener().getUser().getId();
             }
 
-            // 상태 확인
-            String statusKey = "user:status:" + recipientId;
-            Boolean isOnline = (Boolean) redisTemplate.opsForHash().get(statusKey, "online");
-            Long activeRoomId = (Long) redisTemplate.opsForHash().get(statusKey, "activeRoomId");
-
             // 오프라인 + 다른 곳을 보고 있는 경우
-            if (isOnline == null || !isOnline || activeRoomId == null || !activeRoomId.equals(event.getRoomId())) {
-                String unreadKey = "chat:room:" + event.getRoomId() + ":unread:" + recipientId;
-                redisTemplate.opsForValue().increment(unreadKey);
+            if (chatPresenceService.shouldIncrementUnreadCount(recipientId, event.getRoomId())) {
+                chatPresenceService.incrementUnreadCount(event.getRoomId(), recipientId);
 
                 if (event.getSenderRole() == RoleType.ROLE_LISTENER) {
                     chatRoom.increaseUnreadCountForSpeaker();
