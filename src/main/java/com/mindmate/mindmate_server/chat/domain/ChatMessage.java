@@ -35,6 +35,8 @@ public class ChatMessage extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    private String filteredContent;
+
     @Enumerated(EnumType.STRING)
     private MessageType type;
 
@@ -52,5 +54,9 @@ public class ChatMessage extends BaseTimeEntity {
         this.isRead = false;
 
         // todo : 메시지 생성 시 상대방의 읽은 않은 메시지 수 증가? -> 온라인/오프라인 여부 확인해야함
+    }
+
+    public void setFilteredContent(String filteredContent) {
+        this.filteredContent = filteredContent;
     }
 }

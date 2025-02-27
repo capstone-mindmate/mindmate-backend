@@ -34,7 +34,7 @@ public class ChatMessageResponse {
                         ? message.getChatRoom().getListener().getNickname()
                         : message.getChatRoom().getSpeaker().getNickname())
                 .senderRole(message.getSenderRole())
-                .content(message.getContent())
+                .content(message.getFilteredContent() != null ? message.getFilteredContent() : message.getContent())
                 .type(message.getType())
                 .createdAt(message.getCreatedAt())
                 .build();

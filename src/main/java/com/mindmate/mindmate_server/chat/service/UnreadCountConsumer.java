@@ -34,22 +34,19 @@ public class UnreadCountConsumer {
         try {
             ChatRoom chatRoom = chatRoomService.findChatRoomById(event.getRoomId());
 
-            Long recipientId;
-            if (event.getSenderRole() == RoleType.ROLE_LISTENER) {
-                recipientId = chatRoom.getSpeaker().getUser().getId();
-            } else {
-                recipientId = chatRoom.getListener().getUser().getId();
-            }
+            Long recipientId = (event.getSenderRole() == RoleType.ROLE_LISTENER)
+                    ? chatRoom.getSpeaker().getUser().getId()
+                    : chatRoom.getListener().getUser().getId();
+
 
             // 오프라인 + 다른 곳을 보고 있는 경우
             if (chatPresenceService.shouldIncrementUnreadCount(recipientId, event.getRoomId())) {
-                chatPresenceService.incrementUnreadCount(event.getRoomId(), recipientId);
-
-                if (event.getSenderRole() == RoleType.ROLE_LISTENER) {
-                    chatRoom.increaseUnreadCountForSpeaker();
-                } else {
-                    chatRoom.increaseUnreadCountForListener();
-                }
+                chatPresenceService.incrementUnreadCount(
+                        event.getRoomId(),
+                        recipientId,
+                        chatRoom,
+                        event.getSenderRole()
+                );
             }
         } catch (Exception e) {
             log.error("Error updating unread count", e);

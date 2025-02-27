@@ -1,11 +1,14 @@
 package com.mindmate.mindmate_server.chat.service;
 
+import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
+import com.mindmate.mindmate_server.user.domain.RoleType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -19,6 +22,16 @@ public class ChatPresenceService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final SimpMessagingTemplate messagingTemplate;
     private final RedisKeyManager redisKeyManager;
+
+    /**
+     * todo
+     * 1. read status 활용
+     * 2. read/unread 관리
+     * 3. 다른곳에 redis 활용하는곳 manager 관리
+     * 4. securityUtil 동작 확인
+     * 5. consumer에서 chatevent id 관리
+     * 6.
+     */
 
     public void updateUserStatus(Long userId, boolean isOnline, Long activeRoomId) {
         String statusKey = redisKeyManager.getUserStatusKey(userId);
@@ -52,11 +65,21 @@ public class ChatPresenceService {
         return (Long) redisTemplate.opsForHash().get(statusKey, "activeRoomId");
     }
 
-    public void incrementUnreadCount(Long roomId, Long userId) {
+    @Transactional
+    public void incrementUnreadCount(Long roomId, Long userId, ChatRoom chatRoom, RoleType senderRole) {
+        // Redis 업데이트
         String unreadKey = redisKeyManager.getUnreadCountKey(roomId, userId);
         Long count = redisTemplate.opsForValue().increment(unreadKey);
 
+        // WebSocket 알림
         notifyUnreadCount(roomId, userId, count);
+
+        // DB 업데이트 (트랜잭션 내에서)
+        if (senderRole == RoleType.ROLE_LISTENER) {
+            chatRoom.increaseUnreadCountForSpeaker();
+        } else {
+            chatRoom.increaseUnreadCountForListener();
+        }
     }
 
     public void resetUnreadCount(Long roomId, Long userId) {

@@ -26,12 +26,15 @@ public class WebSocketChatController {
      * websocket을 통한 메시지 전송
      */
     @MessageMapping("/chat.send")
-    @SendTo("/topic/chat.room.{roomId}")
     public ChatMessageResponse sendMessage(
             @Payload ChatMessageRequest request,
             Principal principal) {
         Long userId = Long.parseLong(principal.getName());
         log.info("Received WebSocket message from user {}: {}", userId, request);
+
+        String destination = "/topic/chat.room." + request.getRoomId();
+        messagingTemplate.convertAndSend(destination, request);
+
         return chatService.sendMessage(userId, request);
     }
 
