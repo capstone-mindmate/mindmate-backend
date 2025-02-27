@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
@@ -45,18 +46,28 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getRoomId());
         User user = userService.findUserById(userId);
 
+        ChatMessage chatMessage = ChatMessage.builder()
+                .chatRoom(chatRoom)
+                .sender(user)
+                .senderRole(user.getCurrentRole())
+                .content(request.getContent())
+                .type(request.getType())
+                .build();
+        ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
+
         ChatMessageEvent event = ChatMessageEvent.builder()
+                .messageId(savedMessage.getId())
                 .roomId(chatRoom.getId())
                 .senderId(userId)
                 .senderRole(user.getCurrentRole())
                 .content(request.getContent())
                 .type(request.getType())
-                .timestamp(LocalDateTime.now())
+                .timestamp(savedMessage.getCreatedAt())
                 .build();
 
         // todo : redis 채널에 메시지 발행?
-        String channel = redisKeyManager.getChatRoomChannel(chatRoom.getId());
         ChatMessageResponse chatMessageResponse = ChatMessageResponse.builder()
+                .id(savedMessage.getId())
                 .senderId(userId)
                 .senderRole(user.getCurrentRole())
                 .content(request.getContent())
@@ -64,6 +75,7 @@ public class ChatServiceImpl implements ChatService {
                 .createdAt(LocalDateTime.now())
                 .roomId(chatRoom.getId())
                 .build();
+        String channel = redisKeyManager.getChatRoomChannel(chatRoom.getId());
         try {
             redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(event));
         } catch (JsonProcessingException e) {
@@ -95,6 +107,8 @@ public class ChatServiceImpl implements ChatService {
 
         chatPresenceService.resetUnreadCount(roomId, userId);
         String key = redisKeyManager.getReadStatusKey(roomId, userId);
+        redisTemplate.opsForValue().set(key, LocalDateTime.now().toString());
+        redisTemplate.expire(key, 1, TimeUnit.DAYS);
 
         Map<String, Object> readEvent = new HashMap<>();
         readEvent.put("type", "READ_STATUS");
