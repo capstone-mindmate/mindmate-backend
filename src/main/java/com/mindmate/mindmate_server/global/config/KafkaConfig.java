@@ -10,9 +10,11 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.*;
+import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
@@ -20,12 +22,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
+@EnableKafka
 public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
     /**
-     * Producer 설정
+     * Chat Message Producer 설정
      */
     @Bean
     public ProducerFactory<String, ChatMessageEvent> chatMessageProducerFactory() {
@@ -39,7 +42,7 @@ public class KafkaConfig {
     }
 
     /**
-     * Consumer 설정
+     * Chat Message Consumer 설정
      */
     @Bean
     public ConsumerFactory<String, ChatMessageEvent> chatMessageConsumerFactory() {
@@ -55,8 +58,7 @@ public class KafkaConfig {
     }
 
     /**
-     * Kafka Template
-     * Message Producer의 편리한 사용을 위한 템플릿
+     * Chat Message Kafka Template
      */
     @Bean
     public KafkaTemplate<String, ChatMessageEvent> chatMessageKafkaTemplate() {
@@ -64,9 +66,7 @@ public class KafkaConfig {
     }
 
     /**
-     * Listener Container Factory
-     * @KafkaListener 어노테이션이 사용할 컨테이너 팩토리
-     * 메시지 리스너의 동시 처리 설정
+     * Chat Message Listener Container Factory
      */
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, ChatMessageEvent> chatMessageListenerContainerFactory() {
@@ -76,7 +76,51 @@ public class KafkaConfig {
     }
 
     /**
-     * Kafka 토픽 설정
+     * Matching Producer 설정
+     */
+    @Bean
+    public ProducerFactory<String, String> matchingProducerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        return new DefaultKafkaProducerFactory<>(props);
+    }
+
+    /**
+     * Matching Consumer 설정
+     */
+    @Bean
+    public ConsumerFactory<String, String> matchingConsumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "mindmate-matching");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        return new DefaultKafkaConsumerFactory<>(props);
+    }
+
+    /**
+     * Matching Kafka Template
+     */
+    @Bean
+    public KafkaTemplate<String, String> matchingKafkaTemplate() {
+        return new KafkaTemplate<>(matchingProducerFactory());
+    }
+
+    /**
+     * Matching Listener Container Factory
+     */
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> matchingListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(matchingConsumerFactory());
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+        return factory;
+    }
+
+    /**
+     * Kafka 토픽 설정 - 채팅
      */
     @Bean
     public NewTopic chatMessageTopic() {
@@ -87,6 +131,29 @@ public class KafkaConfig {
                         TopicConfig.RETENTION_MS_CONFIG, "604800000",
                         TopicConfig.CLEANUP_POLICY_CONFIG, "delete"
                 ))
+                .build();
+    }
+
+    /**
+     * Kafka 토픽 설정 - 매칭 이벤트
+     */
+    @Bean
+    public NewTopic matchingEventsTopic() {
+        return TopicBuilder.name("matching-events")
+                .partitions(3)
+                .replicas(1)
+                .compact()
+                .build();
+    }
+
+    /**
+     * Kafka 토픽 설정 - 매칭 큐
+     */
+    @Bean
+    public NewTopic matchingQueueTopic() {
+        return TopicBuilder.name("matching-queue")
+                .partitions(3)
+                .replicas(1)
                 .build();
     }
 }
