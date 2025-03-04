@@ -6,6 +6,7 @@ import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
 import com.mindmate.mindmate_server.matching.domain.*;
 import com.mindmate.mindmate_server.matching.dto.ListenerStatus;
 import com.mindmate.mindmate_server.matching.dto.MatchingResponse;
+import com.mindmate.mindmate_server.matching.dto.WaitingProfile;
 import com.mindmate.mindmate_server.matching.repository.MatchingRepository;
 import com.mindmate.mindmate_server.user.domain.*;
 import com.mindmate.mindmate_server.user.repository.ListenerRepository;
@@ -490,6 +491,14 @@ public class MatchingServiceImpl implements MatchingService {
 
         kafkaTemplate.send("matching-events", message);
         log.info("Published matching event: {}", message);
+    }
+
+    public List<WaitingProfile> getWaitingListenersForMatching() {
+        return waitingService.getWaitingListeners();
+    }
+
+    public List<WaitingProfile> getWaitingSpeakersForMatching() {
+        return waitingService.getWaitingSpeakers();
     }
 
 }
