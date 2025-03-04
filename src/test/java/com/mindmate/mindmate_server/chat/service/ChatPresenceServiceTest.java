@@ -143,7 +143,7 @@ class ChatPresenceServiceTest {
 
     @Nested
     @DisplayName("읽지 않은 메시지 수 증가 테스트")
-    class incrementUnreadCountTest {
+    class IncrementUnreadCountTest {
         @Test
         @DisplayName("리스너 읽지 않음 메시지 수 증가")
         void incrementUnreadCountListener() {
