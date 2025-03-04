@@ -493,10 +493,12 @@ public class MatchingServiceImpl implements MatchingService {
         log.info("Published matching event: {}", message);
     }
 
+    @Override
     public List<WaitingProfile> getWaitingListenersForMatching() {
         return waitingService.getWaitingListeners();
     }
 
+    @Override
     public List<WaitingProfile> getWaitingSpeakersForMatching() {
         return waitingService.getWaitingSpeakers();
     }
