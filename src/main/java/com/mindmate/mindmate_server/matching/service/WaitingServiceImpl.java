@@ -109,36 +109,59 @@ public class WaitingServiceImpl implements WaitingService { // 대기상태 관�
     @Transactional(readOnly = true)
     @Override
     public List<WaitingProfile> getWaitingUsers(InitiatorType userType) {
-        List<WaitingQueue> waitingUsers = waitingQueueRepository
-                .findByWaitingTypeAndActiveOrderByCreatedAtAsc(userType, true);
+        if (userType == InitiatorType.LISTENER) {
+            return getWaitingListeners();
+        } else {
+            return getWaitingSpeakers();
+        }
+    }
 
-        return waitingUsers.stream()
+    @Transactional(readOnly = true)
+    @Override
+    public List<WaitingProfile> getWaitingListeners() {
+        List<WaitingQueue> waitingListeners = waitingQueueRepository.findByWaitingTypeAndActiveOrderByCreatedAtAsc(
+                InitiatorType.LISTENER, true);
+
+        return waitingListeners.stream()
                 .map(wq -> {
-                    if (userType == InitiatorType.SPEAKER) {
-                        SpeakerProfile speaker = wq.getSpeakerProfile();
-                        return WaitingProfile.builder()
-                                .profileId(speaker.getId())
-                                .nickname(speaker.getNickname())
-                                .profileImage(speaker.getProfileImage())
-                                .requestedFields(wq.getPreferredFields().stream()
-                                        .map(CounselingField::getTitle)
-                                        .collect(Collectors.toSet()))
-                                .preferredStyle(wq.getPreferredStyle() != null ? wq.getPreferredStyle().getTitle() : null)
-                                .waitingSince(wq.getCreatedAt())
-                                .build();
-                    } else {
-                        ListenerProfile listener = wq.getListenerProfile();
-                        return WaitingProfile.builder()
-                                .profileId(listener.getId())
-                                .nickname(listener.getNickname())
-                                .profileImage(listener.getProfileImage())
-                                .requestedFields(wq.getPreferredFields().stream()
-                                        .map(CounselingField::getTitle)
-                                        .collect(Collectors.toSet()))
-                                .preferredStyle(wq.getPreferredStyle() != null ? wq.getPreferredStyle().getTitle() : null)
-                                .waitingSince(wq.getCreatedAt())
-                                .build();
-                    }
+                    ListenerProfile listener = wq.getListenerProfile();
+
+                    return WaitingProfile.builder()
+                            .profileId(listener.getId())
+                            .nickname(listener.getNickname())
+                            .profileImage(listener.getProfileImage())
+                            .requestedFields(listener.getCounselingFields().stream()
+                                    .map(field -> field.getField().getTitle())
+                                    .collect(Collectors.toSet()))
+                            .preferredStyle(listener.getCounselingStyle().getTitle())
+                            .waitingSince(wq.getCreatedAt())
+                            .userType("LISTENER")
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<WaitingProfile> getWaitingSpeakers() {
+        List<WaitingQueue> waitingSpeakers = waitingQueueRepository.findByWaitingTypeAndActiveOrderByCreatedAtAsc(
+                InitiatorType.SPEAKER, true);
+
+        return waitingSpeakers.stream()
+                .map(wq -> {
+                    SpeakerProfile speaker = wq.getSpeakerProfile();
+
+                    return WaitingProfile.builder()
+                            .profileId(speaker.getId())
+                            .nickname(speaker.getNickname())
+                            .profileImage(speaker.getProfileImage())
+                            .requestedFields(wq.getPreferredFields().stream()
+                                    .map(CounselingField::getTitle)
+                                    .collect(Collectors.toSet()))
+                            .preferredStyle(wq.getPreferredStyle() != null ? wq.getPreferredStyle().getTitle() : null)
+                            .waitingSince(wq.getCreatedAt())
+                            .userType("SPEAKER")
+                            .build();
                 })
                 .collect(Collectors.toList());
     }

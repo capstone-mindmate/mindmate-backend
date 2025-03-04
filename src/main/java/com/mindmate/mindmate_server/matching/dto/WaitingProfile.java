@@ -19,4 +19,5 @@ public class WaitingProfile {
     private Set<String> requestedFields;
     private String preferredStyle;
     private LocalDateTime waitingSince;
+    private String userType;
 }
