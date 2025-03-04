@@ -27,7 +27,7 @@ public class ProfileServiceImpl implements ProfileService {
     private final UserService userService;
     private final ListenerRepository listenerRepository;
     private final SpeakerRepository speakerRepository;
-    private final SecurityUtil securityUtil;
+//    private final SecurityUtil securityUtil;
     private final ReviewRepository reviewRepository;
 
     @Override
@@ -217,9 +217,9 @@ public class ProfileServiceImpl implements ProfileService {
         findListenerProfile(profileId).updateAverageResponseTime(responseTime);
     }
 
-    private User getCurrentUser() {
-        return userService.findUserById(securityUtil.getCurrentUser().getId());
-    }
+//    private User getCurrentUser() {
+//        return userService.findUserById(securityUtil.getCurrentUser().getId());
+//    }
 
 
     private void validateRoleTransition(RoleType currentRole, RoleType targetRole) {

@@ -49,7 +49,7 @@ class ProfileServiceTest {
         @BeforeEach
         void setup() {
             mockUser = createDefaultUser();
-            when(securityUtil.getCurrentUser()).thenReturn(mockUser);
+//            when(securityUtil.getCurrentUser()).thenReturn(mockUser);
             when(userService.findUserById(any())).thenReturn(mockUser);
         }
         @Test
@@ -63,7 +63,7 @@ class ProfileServiceTest {
             when(listenerRepository.existsByNickname(anyString())).thenReturn(false);
 
             // when
-            ProfileResponse response = profileService.createListenerProfile(request);
+            ProfileResponse response = profileService.createListenerProfile(mockUser.getId(), request);
 
             // then
             assertNotNull(response);
@@ -80,7 +80,7 @@ class ProfileServiceTest {
             when(listenerRepository.existsByNickname(anyString())).thenReturn(true);
 
             // when & then
-            assertThrows(CustomException.class, () -> profileService.createListenerProfile(request));
+            assertThrows(CustomException.class, () -> profileService.createListenerProfile(mockUser.getId(), request));
         }
 
         @Test
@@ -92,7 +92,7 @@ class ProfileServiceTest {
             ListenerProfileRequest request = createListenerRequest();
 
             // when & then
-            assertThrows(CustomException.class, () -> profileService.createListenerProfile(request));
+            assertThrows(CustomException.class, () -> profileService.createListenerProfile(mockUser.getId(), request));
             assertNotNull(mockUser.getListenerProfile());
         }
     }
@@ -105,7 +105,7 @@ class ProfileServiceTest {
         @BeforeEach
         void setup() {
             mockUser = createDefaultUser();
-            when(securityUtil.getCurrentUser()).thenReturn(mockUser);
+//            when(securityUtil.getCurrentUser()).thenReturn(mockUser);
             when(userService.findUserById(any())).thenReturn(mockUser);
         }
 
@@ -118,7 +118,7 @@ class ProfileServiceTest {
             when(listenerRepository.existsByNickname(any())).thenReturn(false);
 
             // when
-            ProfileResponse response = profileService.createSpeakerProfile(request);
+            ProfileResponse response = profileService.createSpeakerProfile(mockUser.getId(), request);
 
             // then
             assertNotNull(response);
@@ -136,7 +136,7 @@ class ProfileServiceTest {
         @BeforeEach
         void setup() {
             mockUser = createDefaultUser();
-            when(securityUtil.getCurrentUser()).thenReturn(mockUser);
+//            when(securityUtil.getCurrentUser()).thenReturn(mockUser);
             when(userService.findUserById(any())).thenReturn(mockUser);
         }
         @Test
@@ -147,7 +147,7 @@ class ProfileServiceTest {
             mockUser.setListenerProfileForTest(mockListenerProfile);;
 
             // when
-            ProfileStatusResponse response = profileService.switchRole(RoleType.ROLE_LISTENER);
+            ProfileStatusResponse response = profileService.switchRole(mockUser.getId(), RoleType.ROLE_LISTENER);
 
             // then
             assertEquals("SUCCESS", response.getStatus());
@@ -164,7 +164,7 @@ class ProfileServiceTest {
             mockUser.setSpeakerProfileForTest(mockSpeakerProfile);;
 
             // when
-            ProfileStatusResponse response = profileService.switchRole(RoleType.ROLE_SPEAKER);
+            ProfileStatusResponse response = profileService.switchRole(mockUser.getId(), RoleType.ROLE_SPEAKER);
 
             // then
             assertEquals("SUCCESS", response.getStatus());
@@ -177,7 +177,7 @@ class ProfileServiceTest {
         @DisplayName("리스너 프로필 없이 역할 전환 시도 실패")
         void switchRole_ToListenerWithoutProfile_Fail() {
             // when
-            ProfileStatusResponse response = profileService.switchRole(RoleType.ROLE_LISTENER);
+            ProfileStatusResponse response = profileService.switchRole(mockUser.getId(), RoleType.ROLE_LISTENER);
 
             // then
             assertEquals("PROFILE_REQUIRED", response.getStatus());
@@ -189,7 +189,7 @@ class ProfileServiceTest {
         @DisplayName("스피커 프로필 없이 역할 전환 시도 실패")
         void switchRole_ToSpeakerWithoutProfile_Fail() {
             // when
-            ProfileStatusResponse response = profileService.switchRole(RoleType.ROLE_SPEAKER);
+            ProfileStatusResponse response = profileService.switchRole(mockUser.getId(), RoleType.ROLE_SPEAKER);
 
             // then
             assertEquals("PROFILE_REQUIRED", response.getStatus());
@@ -206,14 +206,14 @@ class ProfileServiceTest {
             mockUser.setListenerProfileForTest(mockListenerProfile);
 
             // when & then
-            assertThrows(CustomException.class, () -> profileService.switchRole(RoleType.ROLE_LISTENER));
+            assertThrows(CustomException.class, () -> profileService.switchRole(mockUser.getId(), RoleType.ROLE_LISTENER));
         }
 
         @Test
         @DisplayName("잘못된 역할로 전환 시도 실패")
         void switchRole_InvalidRole_Fail() {
             // when & then
-            assertThrows(CustomException.class, () -> profileService.switchRole(RoleType.ROLE_ADMIN));
+            assertThrows(CustomException.class, () -> profileService.switchRole(mockUser.getId(), RoleType.ROLE_ADMIN));
         }
 
     }
