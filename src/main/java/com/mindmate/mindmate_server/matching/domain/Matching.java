@@ -87,4 +87,8 @@ public class Matching extends BaseTimeEntity {
     public void cancel() {
         this.status = MatchingStatus.CANCELED;
     }
+
+    public void setChatRoomId(String chatRoomId) {
+        this.chatRoomId = chatRoomId;
+    }
 }
