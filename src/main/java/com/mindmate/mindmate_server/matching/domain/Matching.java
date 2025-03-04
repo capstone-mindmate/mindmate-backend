@@ -68,4 +68,23 @@ public class Matching extends BaseTimeEntity {
         this.requestedFields = requestedFields != null ? requestedFields : new HashSet<>();
         this.initiator = initiator;
     }
+
+    public void accept() {
+        this.status = MatchingStatus.ACCEPTED;
+        this.matchedAt = LocalDateTime.now();
+    }
+
+    public void reject(String reason) {
+        this.status = MatchingStatus.REJECTED;
+        this.rejectionReason = reason;
+    }
+
+    public void complete() {
+        this.status = MatchingStatus.COMPLETED;
+        this.completedAt = LocalDateTime.now();
+    }
+
+    public void cancel() {
+        this.status = MatchingStatus.CANCELED;
+    }
 }

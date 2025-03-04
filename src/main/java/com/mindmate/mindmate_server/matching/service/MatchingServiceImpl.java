@@ -283,7 +283,7 @@ public class MatchingServiceImpl implements MatchingService {
         //권한 확인
         validateRecipientAuthorization(matching, profileId, profileType);
 
-//        matching.accept();
+        matching.accept();
 
         // 채팅방 아이디... 생성??? 연결...
 //        matching.setChatRoomId(chatRoomId);
@@ -323,7 +323,7 @@ public class MatchingServiceImpl implements MatchingService {
             throw new CustomException(MatchingErrorCode.LIMIT_EXCEED);
         }
 
-//        matching.reject(reason);
+        matching.reject(reason);
 
         publishMatchingEvent("MATCHING_REJECTED", matching);
 
@@ -354,7 +354,7 @@ public class MatchingServiceImpl implements MatchingService {
             throw new CustomException(MatchingErrorCode.LIMIT_EXCEED);
         }
 
-//        matching.cancel();
+        matching.cancel();
 
         // 수락되었을경우
         if (matching.getStatus() == MatchingStatus.ACCEPTED) {
@@ -385,7 +385,7 @@ public class MatchingServiceImpl implements MatchingService {
             throw new CustomException(MatchingErrorCode.USER_NOT_AUTHORIZED);
         }
 
-//        matching.complete();
+        matching.complete();
 
         ListenerProfile listener = matching.getListenerProfile();
         SpeakerProfile speaker = matching.getSpeakerProfile();
