@@ -59,12 +59,6 @@ public class ChatPresenceService {
         log.info("User status updated: userId={}, online={}, activeRoom={}", userId, isOnline, activeRoomId);
     }
 
-    public String getUserStatus(Long userId) {
-        String statusKey = redisKeyManager.getUserStatusKey(userId);
-        Boolean isOnline = (Boolean) redisTemplate.opsForHash().get(statusKey, "online");
-        return Boolean.TRUE.equals(isOnline) ? "ONLINE" : "OFFLINE";
-    }
-
     public Long getActiveRoom(Long userId) {
         String statusKey = redisKeyManager.getUserStatusKey(userId);
         return (Long) redisTemplate.opsForHash().get(statusKey, "activeRoomId");
@@ -113,19 +107,24 @@ public class ChatPresenceService {
         notifyUnreadCount(roomId, userId, 0L);
     }
 
-    public void sendNotification(Long userId, Object notification) {
-        messagingTemplate.convertAndSendToUser(
-                userId.toString(),
-                "/queue/notification",
-                notification
-        );
-    }
 
-    public boolean shouldIncrementUnreadCount(Long userId, Long roomId) {
-        return !isUserActiveInRoom(userId, roomId);
-    }
+//    public String getUserStatus(Long userId) {
+//        String statusKey = redisKeyManager.getUserStatusKey(userId);
+//        Boolean isOnline = (Boolean) redisTemplate.opsForHash().get(statusKey, "online");
+//        return Boolean.TRUE.equals(isOnline) ? "ONLINE" : "OFFLINE";
+//    }
 
-
+//        public void sendNotification(Long userId, Object notification) {
+//        messagingTemplate.convertAndSendToUser(
+//                userId.toString(),
+//                "/queue/notification",
+//                notification
+//        );
+//    }
+//
+//    public boolean shouldIncrementUnreadCount(Long userId, Long roomId) {
+//        return !isUserActiveInRoom(userId, roomId);
+//    }
     private void notifyUnreadCount(Long roomId, Long userId, Long count) {
         Map<String, Object> unreadData = new HashMap<>();
         unreadData.put("roomId", roomId);
