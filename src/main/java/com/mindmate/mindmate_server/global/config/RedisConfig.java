@@ -68,8 +68,8 @@ public class RedisConfig {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
 
-        container.addMessageListener(chatMessageListener, new PatternTopic("chat:room:*"));
-        container.addMessageListener(chatMessageListener, new PatternTopic("user:status:*"));
+        container.addMessageListener(chatMessageListener, new PatternTopic("chat:room:*")); // 채팅방 관련 이벤트 구독
+        container.addMessageListener(chatMessageListener, new PatternTopic("user:status:*")); // 사용자 상태 관련 이벤트 구독
         return container;
     }
 

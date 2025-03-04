@@ -82,9 +82,7 @@ public class ChatServiceImpl implements ChatService {
             log.error("Error serializing message", e);
         }
 
-        // 채팅 메시지의 저장이 비동기로 처리되므로 해당 id를 알 수가 없음 -> roomid를 파티션 키로 사용하여 동일한 채팅방의 메시지는 항상 같은 파티션으로 전달
         kafkaTemplate.send("chat-message-topic", event.getRoomId().toString(), event);
-        log.info("Chat message sent to Kafka: {}", event);
         return chatMessageResponse;
     }
 
@@ -92,6 +90,10 @@ public class ChatServiceImpl implements ChatService {
     public int markAsRead(Long userId, Long roomId) {
         ChatRoom chatRoom = chatRoomService.findChatRoomById(roomId);
         User user = userService.findUserById(userId);
+
+        log.info("Sender user {}", user);
+        log.info("ChatRoom Listener info {}", chatRoom.getListener().getUser());
+        log.info("ChatRoom Speaker info {}", chatRoom.getSpeaker().getUser());
 
         validateChatRoomAccess(chatRoom, user);
         boolean isListener = isUserListener(chatRoom, user);

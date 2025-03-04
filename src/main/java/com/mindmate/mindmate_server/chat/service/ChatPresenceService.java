@@ -29,8 +29,12 @@ public class ChatPresenceService {
      * 2. read/unread 관리
      * 3. 다른곳에 redis 활용하는곳 manager 관리
      * 4. securityUtil 동작 확인
-     * 5. consumer에서 chatevent id 관리
-     * 6.
+     * 6. 채팅방 온라인/오프라인 여부 확인
+     * 7. 타이핑 입력 중 알릴건지
+     * 8. 채팅방 종료 처리 -> 접속 못하고 알림까지? 고려
+     * 9. 채팅 메시지, 방 조회 캐시?
+     *
+     * 10. 사용자 online, away, offline에 따라 정상 작동 x
      */
 
     public void updateUserStatus(Long userId, boolean isOnline, Long activeRoomId) {
@@ -39,13 +43,14 @@ public class ChatPresenceService {
         status.put("online", isOnline);
         status.put("activeRoomId", activeRoomId);
         status.put("lastActive", LocalDateTime.now().toString());
+        status.put("status", isOnline ? "ONLINE" : "OFFLINE");  // ONLINE, AWAY 등
 
         redisTemplate.opsForHash().putAll(statusKey, status);
 
         if (isOnline) {
-            redisTemplate.expire(statusKey, 30, TimeUnit.MINUTES);
+            redisTemplate.expire(statusKey, 5, TimeUnit.MINUTES);
         } else {
-            redisTemplate.expire(statusKey, 1, TimeUnit.HOURS);
+            redisTemplate.expire(statusKey, 30, TimeUnit.MINUTES);
         }
 
         String channel = redisKeyManager.getUserStatusChannel(userId);
@@ -65,6 +70,24 @@ public class ChatPresenceService {
         return (Long) redisTemplate.opsForHash().get(statusKey, "activeRoomId");
     }
 
+    public boolean isUserActiveInRoom(Long userId, Long roomId) {
+        String statusKey = redisKeyManager.getUserStatusKey(userId);
+        Boolean isOnline = (Boolean) redisTemplate.opsForHash().get(statusKey, "online");
+        Object activeRoomObj = redisTemplate.opsForHash().get(statusKey, "activeRoomId");
+
+        if (!Boolean.TRUE.equals(isOnline) || activeRoomObj == null) {
+            return false;
+        }
+
+        Long activeRoomId;
+        if (activeRoomObj instanceof Integer) {
+            activeRoomId = ((Integer) activeRoomObj).longValue();
+        } else {
+            activeRoomId = (long) activeRoomObj;
+        }
+        return activeRoomId.equals(roomId);
+    }
+
     @Transactional
     public void incrementUnreadCount(Long roomId, Long userId, ChatRoom chatRoom, RoleType senderRole) {
         // Redis 업데이트
@@ -80,6 +103,7 @@ public class ChatPresenceService {
         } else {
             chatRoom.increaseUnreadCountForListener();
         }
+        log.info("Incremented unread count for user {} in room {} to {}", userId, roomId, count);
     }
 
     public void resetUnreadCount(Long roomId, Long userId) {
@@ -98,12 +122,7 @@ public class ChatPresenceService {
     }
 
     public boolean shouldIncrementUnreadCount(Long userId, Long roomId) {
-        String statusKey = redisKeyManager.getUserStatusKey(userId);
-        Boolean isOnline = (Boolean) redisTemplate.opsForHash().get(statusKey, "online");
-        Long activeRoomId = (Long) redisTemplate.opsForHash().get(statusKey, "activeRoomId");
-
-        // 오프라인이거나 다른 채팅방을 보고 있는 경우 true 반환
-        return isOnline == null || !isOnline || activeRoomId == null || !activeRoomId.equals(roomId);
+        return !isUserActiveInRoom(userId, roomId);
     }
 
 
