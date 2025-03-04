@@ -20,6 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/chat")
 @RequiredArgsConstructor
@@ -62,25 +64,37 @@ public class ChatController {
     }
 
     /**
-     * 메시지 조회
+     * 채팅방 입장 시 메시지 조회
      */
     @GetMapping("/rooms/{roomId}/messages")
     public ResponseEntity<ChatRoomDetailResponse> getChatRoomWithMessages(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long roomId,
-            @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        ChatRoomDetailResponse response = chatRoomService.getChatRoomWithMessages(
-                principal.getUserId(),
-                roomId,
-                PageRequest.of(page, size, Sort.by("createdAt").descending())
-        );
+        ChatRoomDetailResponse response = chatRoomService.getInitialMessages(
+                principal.getUserId(), roomId, size);
 
         chatPresenceService.updateUserStatus(principal.getUserId(), true, roomId);
         chatService.markAsRead(principal.getUserId(), roomId);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 이전 메시지 로드
+     */
+    @GetMapping("/rooms/{roomId}/messages/before/{messageId}")
+    public ResponseEntity<List<ChatMessageResponse>> getPreviousMessages(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long roomId,
+            @PathVariable Long messageId,
+            @RequestParam(defaultValue = "20") int size) {
+
+        List<ChatMessageResponse> messages = chatRoomService.getPreviousMessages(
+                roomId, messageId, size);
+
+        return ResponseEntity.ok(messages);
     }
 
     /**
