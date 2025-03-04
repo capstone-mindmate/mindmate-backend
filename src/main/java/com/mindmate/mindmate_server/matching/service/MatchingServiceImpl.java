@@ -279,7 +279,7 @@ public class MatchingServiceImpl implements MatchingService {
 
         if (matching.getStatus() != MatchingStatus.REQUESTED) {
             throw new CustomException(MatchingErrorCode.INVALID_MATCHING_STATUS);
-        }
+        } // 엔티티 안에 넣을까..?
 
         //권한 확인
         validateRecipientAuthorization(matching, profileId, profileType);
