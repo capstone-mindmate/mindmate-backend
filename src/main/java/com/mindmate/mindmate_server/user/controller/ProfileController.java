@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.user.controller;
 
+import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import com.mindmate.mindmate_server.user.domain.CounselingField;
 import com.mindmate.mindmate_server.user.domain.CounselingStyle;
 import com.mindmate.mindmate_server.user.domain.RoleType;
@@ -12,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
@@ -40,47 +42,56 @@ public class ProfileController {
 
     @Operation(summary = "리스너 프로필 생성", description = "리스너 프로필을 생성합니다.")
     @PostMapping("/listener")
-    public ResponseEntity<ProfileResponse> createListenerProfile(@Valid @RequestBody ListenerProfileRequest request) {
-        ProfileResponse response = profileService.createListenerProfile(request);
+    public ResponseEntity<ProfileResponse> createListenerProfile(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody ListenerProfileRequest request) {
+        ProfileResponse response = profileService.createListenerProfile(principal.getUserId(), request);
         return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "스피커 프로필 생성", description = "스피커 프로필을 생성합니다.")
     @PostMapping("/speaker")
-    public ResponseEntity<ProfileResponse> createSpeakerProfile(@Valid @RequestBody SpeakerProfileRequest request) {
-        ProfileResponse response = profileService.createSpeakerProfile(request);
+    public ResponseEntity<ProfileResponse> createSpeakerProfile(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody SpeakerProfileRequest request) {
+        ProfileResponse response = profileService.createSpeakerProfile(principal.getUserId(), request);
         return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "리스너 프로필 수정", description = "리스너의 프로필을 수정합니다.")
     @PutMapping("/listener")
     public ResponseEntity<ListenerProfileResponse> updateListenerProfile(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody ListenerProfileUpdateRequest request) {
-        User currentUser = userService.getCurrentUser();
-        return ResponseEntity.ok(profileService.updateListenerProfile(currentUser.getListenerProfile().getId(), request));
+        User user = userService.findUserById(principal.getUserId());
+        return ResponseEntity.ok(profileService.updateListenerProfile(user.getListenerProfile().getId(), request));
     }
 
     @Operation(summary = "스피커 프로필 수정", description = "스피커 프로필을 수정합니다.")
     @PutMapping("/speaker")
     public ResponseEntity<SpeakerProfileResponse> updateSpeakerProfile(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody SpeakerProfileUpdateRequest request) {
-        User currentUser = userService.getCurrentUser();
-        return ResponseEntity.ok(profileService.updateSpeakerProfile(currentUser.getSpeakerProfile().getId(), request));
+        User user = userService.findUserById(principal.getUserId());
+        return ResponseEntity.ok(profileService.updateSpeakerProfile(user.getSpeakerProfile().getId(), request));
     }
 
     /* 이후에 여러 자격을 가질 때를 고려해야함*/
     @Operation(summary = "리스너 자격 수정", description = "리스너의 자격을 수정합니다.")
     @PutMapping("/listener/certification")
     public ResponseEntity<ListenerProfileResponse> updateListenerCertification(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody CertificationUpdateRequest request) {
-        User currentUser = userService.getCurrentUser();
-        return ResponseEntity.ok(profileService.updateListenerCertification(currentUser.getListenerProfile().getId(), request));
+        User user = userService.findUserById(principal.getUserId());
+        return ResponseEntity.ok(profileService.updateListenerCertification(user.getListenerProfile().getId(), request));
     }
 
     @Operation(summary = "역할 전환", description = "리스너/스피커 역할을 전환합니다.")
     @PostMapping("/switch-role")
-    public ResponseEntity<?> switchRole(@RequestParam RoleType targetRole) {
-        ProfileStatusResponse response = profileService.switchRole(targetRole);
+    public ResponseEntity<?> switchRole(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam RoleType targetRole) {
+        ProfileStatusResponse response = profileService.switchRole(principal.getUserId(), targetRole);
         return ResponseEntity.ok(response);
     }
 

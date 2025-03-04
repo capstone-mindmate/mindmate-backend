@@ -9,9 +9,9 @@ public interface ProfileService {
     ListenerProfileResponse getListenerProfile(Long profileId);
     SpeakerProfileResponse getSpeakerProfile(Long profileId);
 
-    ProfileResponse createListenerProfile(ListenerProfileRequest request);
+    ProfileResponse createListenerProfile(Long userId, ListenerProfileRequest request);
 
-    ProfileResponse createSpeakerProfile(SpeakerProfileRequest request);
+    ProfileResponse createSpeakerProfile(Long userId, SpeakerProfileRequest request);
 
     ListenerProfileResponse updateListenerProfile(Long profileId, ListenerProfileUpdateRequest request);
 
@@ -19,7 +19,7 @@ public interface ProfileService {
 
     ListenerProfileResponse updateListenerCertification(Long profileId, CertificationUpdateRequest request);
 
-    ProfileStatusResponse switchRole(RoleType targetRole);
+    ProfileStatusResponse switchRole(Long userId, RoleType targetRole);
 
     void updateAverageRating(Long profileId, RoleType roleType, Float newRating);
 

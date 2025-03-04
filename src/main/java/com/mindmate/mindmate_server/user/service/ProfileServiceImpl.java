@@ -93,8 +93,8 @@ public class ProfileServiceImpl implements ProfileService {
      * 프로필 저장 + 사용자 currentRole 수정
      */
     @Override
-    public ProfileResponse createListenerProfile(ListenerProfileRequest request) {
-        User user = getCurrentUser();
+    public ProfileResponse createListenerProfile(Long userId, ListenerProfileRequest request) {
+        User user = userService.findUserById(userId);
         ListenerProfile profile = createListenerProfileFromRequest(user, request);
         return saveProfileAndUpdateRole(profile, RoleType.ROLE_LISTENER);
     }
@@ -105,8 +105,8 @@ public class ProfileServiceImpl implements ProfileService {
      * 프로필 저장 + 사용자 currentRole 수정
      */
     @Override
-    public ProfileResponse createSpeakerProfile(SpeakerProfileRequest request) {
-        User user = getCurrentUser();
+    public ProfileResponse createSpeakerProfile(Long userId, SpeakerProfileRequest request) {
+        User user = userService.findUserById(userId);
         SpeakerProfile profile = createSpeakerProfileFromRequest(user, request);
 
         return saveProfileAndUpdateRole(profile, RoleType.ROLE_SPEAKER);
@@ -118,8 +118,8 @@ public class ProfileServiceImpl implements ProfileService {
      * user currentRole 업데이트
      */
     @Override
-    public ProfileStatusResponse switchRole(RoleType targetRole) {
-        User user = getCurrentUser();
+    public ProfileStatusResponse switchRole(Long userId, RoleType targetRole) {
+        User user = userService.findUserById(userId);
         validateRoleTransition(user.getCurrentRole(), targetRole);
 
         boolean hasListenerProfile = user.getListenerProfile() != null;

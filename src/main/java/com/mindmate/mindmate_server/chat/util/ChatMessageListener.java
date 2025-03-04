@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.chat.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +13,10 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 @RequiredArgsConstructor
+/**
+ * Redis 채널 구독 -> Pub/Sub 채널을 구독하여 메시지를 수신
+ * Redis 채널에 발행된 이벤트를 수신하여 WebSocket으로 전달
+ */
 public class ChatMessageListener implements MessageListener {
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
@@ -44,9 +49,25 @@ public class ChatMessageListener implements MessageListener {
     private void handleChatRoomMessage(String channel, String payload) throws JsonProcessingException {
         String roomId = channel.split(":")[2];
 
-        // WebSocket으로 메시지 전달
-        messagingTemplate.convertAndSend("/topic/chat/room/" + roomId, payload);
+        // 이벤트 타입 확인
+        JsonNode eventNode = objectMapper.readTree(payload);
+        if (eventNode.has("type")) {
+            String eventType = eventNode.get("type").asText();
+
+            if ("TYPING_STATUS".equals(eventType)) {
+                // 타이핑 상태 이벤트 처리
+                messagingTemplate.convertAndSend("/topic/chat.room." + roomId + ".typing",
+                        eventNode.get("data").toString());
+            } else {
+                // 일반 채팅 메시지 처리
+                messagingTemplate.convertAndSend("/topic/chat.room." + roomId, payload);
+            }
+        } else {
+            // 기존 메시지 처리 방식 유지
+            messagingTemplate.convertAndSend("/topic/chat.room." + roomId, payload);
+        }
     }
+
 
     /**
      * 사용자 상태 메시지: 상태 변경 알림 전송

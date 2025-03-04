@@ -3,7 +3,7 @@ package com.mindmate.mindmate_server.user.service;
 import com.mindmate.mindmate_server.user.domain.User;
 
 public interface UserService {
-    User getCurrentUser();
+//    User getCurrentUser();
 
     User findUserById(Long userId);
 
