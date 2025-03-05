@@ -6,7 +6,7 @@ import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
 import com.mindmate.mindmate_server.matching.domain.*;
 import com.mindmate.mindmate_server.matching.dto.ListenerStatus;
 import com.mindmate.mindmate_server.matching.dto.MatchingResponse;
-import com.mindmate.mindmate_server.matching.dto.WaitingProfile;
+import com.mindmate.mindmate_server.matching.dto.WaitingProfileResponse;
 import com.mindmate.mindmate_server.matching.repository.MatchingRepository;
 import com.mindmate.mindmate_server.user.domain.*;
 import com.mindmate.mindmate_server.user.repository.ListenerRepository;
@@ -494,12 +494,12 @@ public class MatchingServiceImpl implements MatchingService {
     }
 
     @Override
-    public List<WaitingProfile> getWaitingListenersForMatching() {
+    public List<WaitingProfileResponse> getWaitingListenersForMatching() {
         return waitingService.getWaitingListeners();
     }
 
     @Override
-    public List<WaitingProfile> getWaitingSpeakersForMatching() {
+    public List<WaitingProfileResponse> getWaitingSpeakersForMatching() {
         return waitingService.getWaitingSpeakers();
     }
 

@@ -4,7 +4,7 @@ import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import com.mindmate.mindmate_server.matching.dto.ListenerStatus;
 import com.mindmate.mindmate_server.matching.dto.ListenerStatusUpdateRequest;
 import com.mindmate.mindmate_server.matching.dto.SpeakerStatusUpdateRequest;
-import com.mindmate.mindmate_server.matching.dto.WaitingProfile;
+import com.mindmate.mindmate_server.matching.dto.WaitingProfileResponse;
 import com.mindmate.mindmate_server.matching.service.WaitingService;
 import com.mindmate.mindmate_server.user.domain.CounselingField;
 import com.mindmate.mindmate_server.user.domain.CounselingStyle;
@@ -52,15 +52,15 @@ public class WaitingController {
     }
     @GetMapping("/listeners")
     @Operation(summary = "대기 중인 리스너 목록 조회", description = "상담 가능한 리스너 목록을 조회합니다.")
-    public ResponseEntity<List<WaitingProfile>> getWaitingListeners() {
-        List<WaitingProfile> listeners = waitingService.getWaitingListeners();
+    public ResponseEntity<List<WaitingProfileResponse>> getWaitingListeners() {
+        List<WaitingProfileResponse> listeners = waitingService.getWaitingListeners();
         return ResponseEntity.ok(listeners);
     }
 
     @GetMapping("/speakers")
     @Operation(summary = "대기 중인 스피커 목록 조회", description = "매칭 대기 중인 스피커 목록을 조회합니다.")
-    public ResponseEntity<List<WaitingProfile>> getWaitingSpeakers() {
-        List<WaitingProfile> speakers = waitingService.getWaitingSpeakers();
+    public ResponseEntity<List<WaitingProfileResponse>> getWaitingSpeakers() {
+        List<WaitingProfileResponse> speakers = waitingService.getWaitingSpeakers();
         return ResponseEntity.ok(speakers);
     }
 

@@ -1,18 +1,15 @@
 package com.mindmate.mindmate_server.matching.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.Set;
 
-@Data
+//@Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class WaitingProfile {
+public class WaitingProfileResponse {
     private Long profileId;
     private String nickname;
     private String profileImage;

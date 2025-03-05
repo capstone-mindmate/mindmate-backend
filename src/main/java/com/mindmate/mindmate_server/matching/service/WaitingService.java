@@ -3,7 +3,7 @@ package com.mindmate.mindmate_server.matching.service;
 import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import com.mindmate.mindmate_server.matching.domain.WaitingQueue;
 import com.mindmate.mindmate_server.matching.dto.ListenerStatus;
-import com.mindmate.mindmate_server.matching.dto.WaitingProfile;
+import com.mindmate.mindmate_server.matching.dto.WaitingProfileResponse;
 import com.mindmate.mindmate_server.user.domain.CounselingField;
 import com.mindmate.mindmate_server.user.domain.CounselingStyle;
 import org.springframework.stereotype.Service;
@@ -18,11 +18,11 @@ public interface WaitingService {
 
     void cancelWaiting(Long profileId, InitiatorType userType);
 
-    List<WaitingProfile> getWaitingUsers(InitiatorType userType);
+    List<WaitingProfileResponse> getWaitingUsers(InitiatorType userType);
 
-    List<WaitingProfile> getWaitingListeners();
+    List<WaitingProfileResponse> getWaitingListeners();
 
-    List<WaitingProfile> getWaitingSpeakers();
+    List<WaitingProfileResponse> getWaitingSpeakers();
 
     void updateListenerStatus(Long listenerId, ListenerStatus status);
 
