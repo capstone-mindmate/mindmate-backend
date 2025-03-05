@@ -65,7 +65,6 @@ public class ChatServiceImpl implements ChatService {
                 .timestamp(savedMessage.getCreatedAt())
                 .build();
 
-        // todo : redis 채널에 메시지 발행?
         ChatMessageResponse chatMessageResponse = ChatMessageResponse.builder()
                 .id(savedMessage.getId())
                 .senderId(userId)
@@ -77,6 +76,7 @@ public class ChatServiceImpl implements ChatService {
                 .build();
         String channel = redisKeyManager.getChatRoomChannel(chatRoom.getId());
         try {
+            // Redis의 Pub/Sub 기능을 사용하여 지정한 채널에 메시지를 publish
             redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(event));
         } catch (JsonProcessingException e) {
             log.error("Error serializing message", e);
@@ -90,10 +90,6 @@ public class ChatServiceImpl implements ChatService {
     public int markAsRead(Long userId, Long roomId) {
         ChatRoom chatRoom = chatRoomService.findChatRoomById(roomId);
         User user = userService.findUserById(userId);
-
-        log.info("Sender user {}", user);
-        log.info("ChatRoom Listener info {}", chatRoom.getListener().getUser());
-        log.info("ChatRoom Speaker info {}", chatRoom.getSpeaker().getUser());
 
         validateChatRoomAccess(chatRoom, user);
         boolean isListener = isUserListener(chatRoom, user);

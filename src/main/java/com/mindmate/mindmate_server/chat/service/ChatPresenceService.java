@@ -23,20 +23,6 @@ public class ChatPresenceService {
     private final SimpMessagingTemplate messagingTemplate;
     private final RedisKeyManager redisKeyManager;
 
-    /**
-     * todo
-     * 1. read status 활용
-     * 2. read/unread 관리
-     * 3. 다른곳에 redis 활용하는곳 manager 관리
-     * 4. securityUtil 동작 확인
-     * 6. 채팅방 온라인/오프라인 여부 확인
-     * 7. 타이핑 입력 중 알릴건지
-     * 8. 채팅방 종료 처리 -> 접속 못하고 알림까지? 고려
-     * 9. 채팅 메시지, 방 조회 캐시?
-     *
-     * 10. 사용자 online, away, offline에 따라 정상 작동 x
-     */
-
     public void updateUserStatus(Long userId, boolean isOnline, Long activeRoomId) {
         String statusKey = redisKeyManager.getUserStatusKey(userId);
         Map<String, Object> status = new HashMap<>();
@@ -46,8 +32,6 @@ public class ChatPresenceService {
         status.put("status", isOnline ? "ONLINE" : "OFFLINE");  // ONLINE, AWAY 등
 
         redisTemplate.opsForHash().putAll(statusKey, status);
-        log.info("User status updated in Redis: userId={}, online={}, activeRoom={}, status={}",
-                userId, isOnline, activeRoomId, isOnline ? "ONLINE" : "OFFLINE");
 
         if (isOnline) {
             redisTemplate.expire(statusKey, 5, TimeUnit.MINUTES);
@@ -68,9 +52,6 @@ public class ChatPresenceService {
         String statusKey = redisKeyManager.getUserStatusKey(userId);
         Boolean isOnline = (Boolean) redisTemplate.opsForHash().get(statusKey, "online");
         Object activeRoomObj = redisTemplate.opsForHash().get(statusKey, "activeRoomId");
-
-        log.debug("Checking if user {} is active in room {}: online={}, activeRoom={}",
-                userId, roomId, isOnline, activeRoomObj);
 
         if (!Boolean.TRUE.equals(isOnline) || activeRoomObj == null) {
             return false;
@@ -120,6 +101,17 @@ public class ChatPresenceService {
         notifyUnreadCount(roomId, userId, 0L);
     }
 
+    private void notifyUnreadCount(Long roomId, Long userId, Long count) {
+        Map<String, Object> unreadData = new HashMap<>();
+        unreadData.put("roomId", roomId);
+        unreadData.put("unreadCount", count);
+
+        messagingTemplate.convertAndSendToUser(
+                userId.toString(),
+                "/queue/unread",
+                unreadData
+        );
+    }
 
 //    public String getUserStatus(Long userId) {
 //        String statusKey = redisKeyManager.getUserStatusKey(userId);
@@ -138,15 +130,4 @@ public class ChatPresenceService {
 //    public boolean shouldIncrementUnreadCount(Long userId, Long roomId) {
 //        return !isUserActiveInRoom(userId, roomId);
 //    }
-    private void notifyUnreadCount(Long roomId, Long userId, Long count) {
-        Map<String, Object> unreadData = new HashMap<>();
-        unreadData.put("roomId", roomId);
-        unreadData.put("unreadCount", count);
-
-        messagingTemplate.convertAndSendToUser(
-                userId.toString(),
-                "/queue/unread",
-                unreadData
-        );
-    }
 }

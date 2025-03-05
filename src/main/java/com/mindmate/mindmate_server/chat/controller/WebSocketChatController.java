@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
@@ -43,10 +42,6 @@ public class WebSocketChatController {
             @Payload ChatMessageRequest request,
             Principal principal) {
         Long userId = Long.parseLong(principal.getName());
-        log.info("Received WebSocket message from user {}: {}", userId, request);
-
-//        String destination = "/topic/chat.room." + request.getRoomId();
-//        messagingTemplate.convertAndSend(destination, request); // 해당 채팅방의 토픽으로 메시지 전달
 
         return chatService.sendMessage(userId, request);
     }
@@ -59,9 +54,6 @@ public class WebSocketChatController {
             @Payload PresenceRequest presenceRequest,
             Principal principal) {
         Long userId = Long.parseLong(principal.getName());
-        log.info("Updating user presence: userId={}, status={}",
-                userId, presenceRequest.getStatus());
-
         boolean isOnline = "ONLINE".equals(presenceRequest.getStatus());
         chatPresenceService.updateUserStatus(
                 userId,
@@ -71,8 +63,6 @@ public class WebSocketChatController {
 
         if (isOnline && presenceRequest.getActiveRoomId() != null) {
             chatService.markAsRead(userId, presenceRequest.getActiveRoomId());
-            log.info("Auto-marked messages as read for user {} in room {} on presence update",
-                    userId, presenceRequest.getActiveRoomId());
         }
     }
 
@@ -97,12 +87,13 @@ public class WebSocketChatController {
             Map<String, Object> typingEvent = new HashMap<>();
             typingEvent.put("type", "TYPING_STATUS");
             typingEvent.put("data", notification);
+
+            // Spring 메시징 기능을 사용하여 Websocket을 통해 클라이언트에게 메시지 전송
+            // 전송 객체를 websocket 메시지 형식으로 변환 + destination으로 전송 + 지정 주제를 구독하고 있는 모든 클라이언트에게 메시지 브로드캐스트
             redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(typingEvent));
         } catch (JsonProcessingException e) {
             log.error("Error serializing typing event", e);
         }
-
-//        messagingTemplate.convertAndSend("/topic/chat.room." + request.getRoomId() + ".typing", notification);
     }
 
     /**
