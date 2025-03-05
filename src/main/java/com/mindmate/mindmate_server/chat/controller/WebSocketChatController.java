@@ -69,11 +69,11 @@ public class WebSocketChatController {
                 presenceRequest.getActiveRoomId()
         );
 
-//        if (isOnline && presenceRequest.getActiveRoomId() != null) {
-//            chatService.markAsRead(userId, presenceRequest.getActiveRoomId());
-//            log.info("Auto-marked messages as read for user {} in room {} on presence update",
-//                    userId, presenceRequest.getActiveRoomId());
-//        }
+        if (isOnline && presenceRequest.getActiveRoomId() != null) {
+            chatService.markAsRead(userId, presenceRequest.getActiveRoomId());
+            log.info("Auto-marked messages as read for user {} in room {} on presence update",
+                    userId, presenceRequest.getActiveRoomId());
+        }
     }
 
     /**

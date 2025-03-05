@@ -46,6 +46,8 @@ public class ChatPresenceService {
         status.put("status", isOnline ? "ONLINE" : "OFFLINE");  // ONLINE, AWAY 등
 
         redisTemplate.opsForHash().putAll(statusKey, status);
+        log.info("User status updated in Redis: userId={}, online={}, activeRoom={}, status={}",
+                userId, isOnline, activeRoomId, isOnline ? "ONLINE" : "OFFLINE");
 
         if (isOnline) {
             redisTemplate.expire(statusKey, 5, TimeUnit.MINUTES);
@@ -55,8 +57,6 @@ public class ChatPresenceService {
 
         String channel = redisKeyManager.getUserStatusChannel(userId);
         redisTemplate.convertAndSend(channel, status);
-
-        log.info("User status updated: userId={}, online={}, activeRoom={}", userId, isOnline, activeRoomId);
     }
 
     public Long getActiveRoom(Long userId) {
@@ -69,17 +69,30 @@ public class ChatPresenceService {
         Boolean isOnline = (Boolean) redisTemplate.opsForHash().get(statusKey, "online");
         Object activeRoomObj = redisTemplate.opsForHash().get(statusKey, "activeRoomId");
 
+        log.debug("Checking if user {} is active in room {}: online={}, activeRoom={}",
+                userId, roomId, isOnline, activeRoomObj);
+
         if (!Boolean.TRUE.equals(isOnline) || activeRoomObj == null) {
             return false;
         }
 
         Long activeRoomId;
-        if (activeRoomObj instanceof Integer) {
-            activeRoomId = ((Integer) activeRoomObj).longValue();
-        } else {
-            activeRoomId = (long) activeRoomObj;
+        try {
+            if (activeRoomObj instanceof Integer) {
+                activeRoomId = ((Integer) activeRoomObj).longValue();
+            } else if (activeRoomObj instanceof Long) {
+                activeRoomId = (Long) activeRoomObj;
+            } else if (activeRoomObj instanceof String) {
+                activeRoomId = Long.parseLong((String) activeRoomObj);
+            } else {
+                log.warn("Unexpected activeRoomId type: {}", activeRoomObj.getClass().getName());
+                return false;
+            }
+            return activeRoomId.equals(roomId);
+        } catch (Exception e) {
+            log.error("Error converting activeRoomId: {}", e.getMessage());
+            return false;
         }
-        return activeRoomId.equals(roomId);
     }
 
     @Transactional

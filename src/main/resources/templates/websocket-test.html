@@ -58,6 +58,8 @@
                 <button onclick="sendMessage()">전송</button>
             </div>
             
+            <div id="typingIndicator" style="display:none; font-style:italic; color:#666; margin-top:5px;"></div>
+            
             <div class="form-group">
                 <button onclick="markAsRead()">읽음 처리</button>
                 <button onclick="fetchMessages()">메시지 조회 (REST)</button>
@@ -93,8 +95,9 @@
     let messages = [];
     let participants = {};
     let baseUrl = 'http://localhost:8080';
-    
-    // 1. 연결 및 기본 설정
+    let typingTimeout = null;
+    let heartbeatInterval;
+
     function connect() {
         const token = document.getElementById('token').value;
         if (!token) {
@@ -102,21 +105,16 @@
             return;
         }
 
-        // SockJS 연결 생성
         const socket = new SockJS(baseUrl + '/ws');
         stompClient = Stomp.over(socket);
-        
-        // 디버그 로그 비활성화 (필요시 활성화)
         stompClient.debug = null;
         
-        // 연결 시도
         logMessage("연결 시도 중...", "info");
         stompClient.connect(
             { 'Authorization': 'Bearer ' + token },
             function(frame) {
                 logMessage('연결 성공: ' + frame, "success");
                 
-                // JWT 토큰에서 사용자 ID 추출 (실제로는 서버에서 처리)
                 try {
                     const base64Url = token.split('.')[1];
                     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -130,45 +128,22 @@
                     logMessage('토큰에서 사용자 ID를 추출할 수 없습니다: ' + e, "warning");
                 }
                 
-                // 개인 알림 구독
-                subscriptions['notification'] = stompClient.subscribe('/user/queue/notification', function(notification) {
-                    const notificationData = JSON.parse(notification.body);
-                    logMessage('알림 수신: ' + notification.body, "info");
-                    handleNotification(notificationData);
-                });
+                subscriptions['notification'] = stompClient.subscribe('/user/queue/notification', handleNotification);
+                subscriptions['unread'] = stompClient.subscribe('/user/queue/unread', updateUnreadCount);
                 
-                // 개인 읽지 않은 메시지 카운트 구독
-                subscriptions['unread'] = stompClient.subscribe('/user/queue/unread', function(unread) {
-                    const unreadData = JSON.parse(unread.body);
-                    logMessage('읽지 않은 메시지 업데이트: ' + unread.body, "info");
-                    updateUnreadCount(unreadData);
-                });
-                
-                // 상태 업데이트 전송
-                stompClient.send('/app/presence', {},
-                    JSON.stringify({status: 'ONLINE', activeRoomId: null})
-                );
-                logMessage("온라인 상태로 업데이트됨", "success");
+                updatePresence('ONLINE');
+                startHeartbeat();
             },
             function(error) {
                 logMessage('연결 오류: ' + error, "error");
             }
         );
     }
-    
-    // 2. 연결 해제
+
     function disconnect() {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
         if (stompClient !== null) {
-            // 연결 해제 전 상태 업데이트
-            try {
-                stompClient.send('/app/presence', {},
-                    JSON.stringify({status: 'OFFLINE', activeRoomId: null})
-                );
-            } catch (e) {
-                logMessage('상태 업데이트 실패: ' + e, "error");
-            }
-            
-            // 모든 구독 해제
+            updatePresence('OFFLINE');
             Object.values(subscriptions).forEach(sub => {
                 try {
                     sub.unsubscribe();
@@ -176,7 +151,6 @@
             });
             subscriptions = {};
             
-            // 연결 해제
             stompClient.disconnect();
             logMessage('연결이 해제되었습니다', "info");
             stompClient = null;
@@ -184,62 +158,43 @@
             updateRoomDisplay();
         }
     }
-    
-    // 3. 채팅방 구독 (입장)
+
     function subscribe() {
         if (!stompClient) {
             logMessage("먼저 연결을 해주세요", "error");
             return;
         }
         
-        currentRoomId = document.getElementById('roomId').value;
-        if (!currentRoomId) {
-            logMessage("채팅방 ID를 입력해주세요", "error");
-            return;
+        if (currentRoomId) {
+            unsubscribeRoom(currentRoomId);
         }
         
-        // 이미 구독 중인 경우 해제
-        unsubscribeRoom(currentRoomId);
+        currentRoomId = document.getElementById('roomId').value;
         
-        // 새로운 구독 생성
         logMessage(`채팅방 ${currentRoomId} 구독 중...`, "info");
         
-        // 채팅 메시지 구독
         subscriptions[`room_${currentRoomId}`] = stompClient.subscribe(
             '/topic/chat.room.' + currentRoomId,
-            function(message) {
-                const messageData = JSON.parse(message.body);
-                logMessage(`메시지 수신 [${currentRoomId}]: ${JSON.stringify(messageData)}`, "success");
-                handleIncomingMessage(messageData);
-            }
+            handleIncomingMessage
         );
-        
-        // 읽음 상태 구독
+
         subscriptions[`read_${currentRoomId}`] = stompClient.subscribe(
             '/topic/chat.room.' + currentRoomId + '.read',
-            function(readStatus) {
-                const readData = JSON.parse(readStatus.body);
-                logMessage(`읽음 상태 업데이트 [${currentRoomId}]: ${JSON.stringify(readData)}`, "info");
-                updateReadStatus(readData);
-            }
+            updateReadStatus
         );
         
-        // 상태 업데이트 (현재 활성 채팅방)
-        stompClient.send('/app/presence', {},
-            JSON.stringify({status: 'ONLINE', activeRoomId: currentRoomId})
+        subscriptions[`typing_${currentRoomId}`] = stompClient.subscribe(
+            '/topic/chat.room.' + currentRoomId + '.typing',
+            handleTypingStatus
         );
-        
-        // 읽음 처리
+
+        updatePresence('ONLINE', currentRoomId);
         markAsRead();
-        
-        // 메시지 조회 (REST API)
         fetchMessages();
-        
         updateRoomDisplay();
         logMessage(`채팅방 ${currentRoomId} 구독 완료`, "success");
     }
-    
-    // 4. 채팅방 구독 해제 (퇴장)
+
     function unsubscribe() {
         if (!currentRoomId) {
             logMessage("현재 구독 중인 채팅방이 없습니다", "warning");
@@ -247,185 +202,201 @@
         }
         
         unsubscribeRoom(currentRoomId);
-        
-        // 상태 업데이트 (활성 채팅방 없음)
-        if (stompClient) {
-            stompClient.send('/app/presence', {},
-                JSON.stringify({status: 'ONLINE', activeRoomId: null})
-            );
-        }
-        
+        updatePresence('ONLINE', null);
         currentRoomId = null;
         updateRoomDisplay();
         document.getElementById('messages').innerHTML = '';
         logMessage("채팅방에서 퇴장했습니다", "info");
     }
-    
+
     function unsubscribeRoom(roomId) {
-        // 채팅 메시지 구독 해제
-        if (subscriptions[`room_${roomId}`]) {
-            try {
-                subscriptions[`room_${roomId}`].unsubscribe();
-                delete subscriptions[`room_${roomId}`];
-            } catch (e) {
-                logMessage(`구독 해제 오류: ${e}`, "error");
+        ['room', 'read', 'typing'].forEach(type => {
+            const subKey = `${type}_${roomId}`;
+            if (subscriptions[subKey]) {
+                try {
+                    subscriptions[subKey].unsubscribe();
+                    delete subscriptions[subKey];
+                } catch (e) {
+                    logMessage(`구독 해제 오류 (${type}): ${e}`, "error");
+                }
             }
-        }
-        
-        // 읽음 상태 구독 해제
-        if (subscriptions[`read_${roomId}`]) {
-            try {
-                subscriptions[`read_${roomId}`].unsubscribe();
-                delete subscriptions[`read_${roomId}`];
-            } catch (e) {
-                logMessage(`읽음 상태 구독 해제 오류: ${e}`, "error");
-            }
-        }
+        });
+    }
+
+function sendMessage() {
+    if (!stompClient || !currentRoomId) {
+        logMessage("먼저 채팅방에 입장해주세요", "error");
+        return;
     }
     
-    // 5. 메시지 전송
-    function sendMessage() {
-        if (!stompClient) {
-            logMessage("먼저 연결을 해주세요", "error");
-            return;
-        }
-        
-        if (!currentRoomId) {
-            logMessage("먼저 채팅방을 구독해주세요", "error");
-            return;
-        }
-        
-        const messageContent = document.getElementById('message').value;
-        if (!messageContent) {
-            logMessage("메시지를 입력해주세요", "error");
-            return;
-        }
-        
-        const chatMessage = {
-            roomId: currentRoomId,
-            content: messageContent,
-            type: 'TEXT'  // 메시지 타입 (TEXT, IMAGE 등)
-        };
-        
-        logMessage(`메시지 전송 중: ${JSON.stringify(chatMessage)}`, "info");
-        stompClient.send('/app/chat.send', {}, JSON.stringify(chatMessage));
-        document.getElementById('message').value = '';
+    const messageContent = document.getElementById('message').value;
+    if (!messageContent) {
+        logMessage("메시지를 입력해주세요", "error");
+        return;
     }
     
-    // 6. 읽음 처리
+    const chatMessage = {
+        roomId: currentRoomId,
+        content: messageContent,
+        type: 'TEXT'
+    };
+    
+    // 메시지 전송
+    logMessage(`메시지 전송 중: ${JSON.stringify(chatMessage)}`, "info");
+    stompClient.send('/app/chat.send', {}, JSON.stringify(chatMessage));
+    
+    // 임시 메시지를 화면에 즉시 추가
+    const tempMessage = {
+        id: 'temp-' + new Date().getTime(),
+        roomId: currentRoomId,
+        senderId: userId,
+        content: messageContent,
+        createdAt: new Date(),
+        type: 'TEXT'
+    };
+    addMessageToDisplay(tempMessage);
+    
+    document.getElementById('message').value = '';
+}
+
+
+
     function markAsRead() {
         if (!stompClient || !currentRoomId) {
             logMessage("채팅방에 입장한 상태에서만 읽음 처리가 가능합니다", "warning");
             return;
         }
         
-        const readRequest = {
-            roomId: currentRoomId
-        };
-        
+        const readRequest = { roomId: currentRoomId };
         stompClient.send('/app/chat.read', {}, JSON.stringify(readRequest));
         logMessage(`채팅방 ${currentRoomId}의 메시지를 읽음 처리했습니다`, "info");
     }
-    
-    // 7. REST API를 통한 메시지 조회
-function fetchMessages() {
-    if (!currentRoomId) {
-        logMessage("먼저 채팅방을 선택해주세요", "warning");
-        return;
-    }
-    
-    const token = document.getElementById('token').value;
-    if (!token) {
-        logMessage("토큰을 입력해주세요", "error");
-        return;
-    }
-    
-    logMessage(`채팅방 ${currentRoomId}의 메시지를 조회합니다...`, "info");
-    
-    fetch(`${baseUrl}/api/chat/rooms/${currentRoomId}/messages?page=0&size=20`, {
-        method: 'GET',
-        headers: {
-            'Authorization': 'Bearer ' + token,
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('메시지 조회 실패: ' + response.status);
-        }
-        return response.json();
-    })
-    .then(data => {
-        logMessage(`메시지 조회 성공: ${data.messages.length}개의 메시지`, "success");
-        displayMessages(data);
-        updateParticipantStatus(data);
-    })
-    .catch(error => {
-        logMessage('메시지 조회 오류: ' + error.message, "error");
-    });
-}
 
-// 8. REST API를 통한 채팅방 목록 조회
-function fetchChatRooms() {
-    const token = document.getElementById('token').value;
-    if (!token) {
-        logMessage("토큰을 입력해주세요", "error");
-        return;
+    function fetchMessages() {
+        if (!currentRoomId) {
+            logMessage("먼저 채팅방을 선택해주세요", "warning");
+            return;
+        }
+        
+        const token = document.getElementById('token').value;
+        if (!token) {
+            logMessage("토큰을 입력해주세요", "error");
+            return;
+        }
+        
+        logMessage(`채팅방 ${currentRoomId}의 메시지를 조회합니다...`, "info");
+        
+        fetch(`${baseUrl}/api/chat/rooms/${currentRoomId}/messages?page=0&size=20`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('메시지 조회 실패: ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            logMessage(`메시지 조회 성공: ${data.messages.length}개의 메시지`, "success");
+            displayMessages(data);
+            updateParticipantStatus(data);
+        })
+        .catch(error => logMessage('메시지 조회 오류: ' + error.message, "error"));
     }
-    
-    logMessage("채팅방 목록을 조회합니다...", "info");
-    
-    fetch(`${baseUrl}/api/chat/rooms?page=0&size=10`, {
-        method: 'GET',
-        headers: {
-            'Authorization': 'Bearer ' + token,
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('채팅방 목록 조회 실패: ' + response.status);
-        }
-        return response.json();
-    })
-    .then(data => {
-        logMessage(`채팅방 목록 조회 성공: ${data.content.length}개의 채팅방`, "success");
-        displayChatRooms(data);
-    })
-    .catch(error => {
-        logMessage('채팅방 목록 조회 오류: ' + error.message, "error");
-    });
-}
 
-// 수신된 메시지 처리
+    function fetchChatRooms() {
+        const token = document.getElementById('token').value;
+        if (!token) {
+            logMessage("토큰을 입력해주세요", "error");
+            return;
+        }
+        
+        logMessage("채팅방 목록을 조회합니다...", "info");
+        
+        fetch(`${baseUrl}/api/chat/rooms?page=0&size=10`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('채팅방 목록 조회 실패: ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            logMessage(`채팅방 목록 조회 성공: ${data.content.length}개의 채팅방`, "success");
+            displayChatRooms(data);
+        })
+        .catch(error => logMessage('채팅방 목록 조회 오류: ' + error.message, "error"));
+    }
+
 function handleIncomingMessage(message) {
-    // 메시지 타입에 따른 처리
-    if (message.type === 'READ_STATUS') {
-        // 읽음 상태 업데이트
-        updateReadStatus(message);
-    } else if (message.type === 'CONTENT_FILTERED') {
-        // 필터링된 메시지 처리
-        logMessage(`메시지 ID ${message.messageId}가 필터링되었습니다: ${message.content}`, "warning");
-    } else {
-        // 일반 메시지 처리
-        addMessageToDisplay(message);
+    let messageData;
+    try {
+        messageData = JSON.parse(message.body);
+        
+        // 메시지 타입이 없으면 기본적으로 채팅 메시지로 간주
+        if (!messageData.type) {
+            messageData.type = 'CHAT';
+        }
+        
+        switch(messageData.type) {
+            case 'TYPING_STATUS':
+                handleTypingStatus(messageData.data);
+                break;
+            case 'CONTENT_FILTERED':
+                logMessage(`메시지 ID ${messageData.messageId}가 필터링되었습니다: ${messageData.content}`, "warning");
+                break;
+            case 'CHAT':
+                if (!messageData.senderId || !messageData.content) {
+                    logMessage("유효하지 않은 메시지 형식", "error");
+                    console.error("Invalid message format:", messageData);
+                    return;
+                }
+                addMessageToDisplay(messageData);
+                break;
+            default:
+                // READ_STATUS는 별도의 채널로 처리되므로 여기서는 무시
+                console.log("Message received on main channel:", messageData);
+        }
+    } catch (e) {
+        console.error("Error processing message:", e, message.body);
     }
 }
 
-// 알림 처리
-function handleNotification(notification) {
-    // 알림 타입에 따른 처리
-    if (notification.type === 'NEW_MESSAGE') {
-        // 새 메시지 알림
-        logMessage(`새 메시지 알림: 채팅방 ${notification.roomId}에 새 메시지가 있습니다`, "info");
-    } else if (notification.type === 'ROOM_STATUS') {
-        // 채팅방 상태 변경 알림
-        logMessage(`채팅방 상태 변경: 채팅방 ${notification.roomId}의 상태가 ${notification.status}로 변경되었습니다`, "info");
+
+
+
+    // 알림 처리
+    function handleNotification(notification) {
+        // 알림 타입에 따른 처리
+        if (notification.type === 'NEW_MESSAGE') {
+            // 새 메시지 알림
+            logMessage(`새 메시지 알림: 채팅방 ${notification.roomId}에 새 메시지가 있습니다`, "info");
+        } else if (notification.type === 'ROOM_STATUS') {
+            // 채팅방 상태 변경 알림
+            logMessage(`채팅방 상태 변경: 채팅방 ${notification.roomId}의 상태가 ${notification.status}로 변경되었습니다`, "info");
+        }
+    }
+    
+function updatePresence(status, activeRoomId = currentRoomId) {
+    if (stompClient && stompClient.connected) {
+        stompClient.send('/app/presence', {},
+            JSON.stringify({
+                status: status,
+                activeRoomId: activeRoomId
+            })
+        );
+        logMessage(`사용자 상태가 ${status}로 변경되었습니다.`, "info");
     }
 }
 
-// 읽지 않은 메시지 수 업데이트
-function updateUnreadCount(unreadData) {
+    
+
+function updateUnreadCount(message) {
+    const unreadData = JSON.parse(message.body);
     const roomId = unreadData.roomId;
     const count = unreadData.unreadCount;
     
@@ -436,18 +407,34 @@ function updateUnreadCount(unreadData) {
     logMessage(`채팅방 ${roomId}의 읽지 않은 메시지: ${count}개`, "info");
 }
 
-// 읽음 상태 업데이트
-function updateReadStatus(readData) {
-    const messageElements = document.querySelectorAll('.message-container');
-    messageElements.forEach(element => {
-        const readStatusElement = element.querySelector('.read-status');
-        if (readStatusElement) {
-            readStatusElement.textContent = '읽음';
+function updateReadStatus(message) {
+    try {
+        const readData = JSON.parse(message.body);
+        console.log("Read status received:", readData);
+        
+        // 읽음 상태 UI 업데이트
+        const messageElements = document.querySelectorAll('.message-container');
+        messageElements.forEach(element => {
+            const readStatusElement = element.querySelector('.read-status');
+            if (readStatusElement) {
+                readStatusElement.textContent = '읽음';
+            }
+        });
+        
+        // 읽지 않은 메시지 카운트 리셋
+        if (readData.roomId === currentRoomId) {
+            document.getElementById('unreadCount').textContent = '0';
         }
-    });
-    
-    logMessage(`사용자 ${readData.userId}가 메시지를 읽었습니다`, "info");
+        
+        logMessage(`사용자 ${readData.userId}가 채팅방 ${readData.roomId}의 메시지를 읽었습니다`, "info");
+    } catch (e) {
+        console.error("Error processing read status:", e, message.body);
+    }
 }
+
+
+
+
 
 // 메시지 화면에 표시
 function displayMessages(data) {
@@ -467,8 +454,47 @@ function displayMessages(data) {
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// 단일 메시지 화면에 추가
+// 타이핑 상태 처리 함수
+function handleTypingStatus(typingData) {
+    // 자신의 타이핑 상태는 무시
+    if (typingData.userId == userId) return;
+    
+    const typingIndicator = document.getElementById('typingIndicator');
+    
+    // 데이터가 중첩되어 있는 경우 처리
+    const userData = typingData.data || typingData;
+    
+    if (userData.typing) {
+        // 타이핑 중 표시
+        typingIndicator.textContent = `사용자 ${userData.userId}가 입력 중...`;
+        typingIndicator.style.display = 'block';
+    } else {
+        // 타이핑 종료 표시
+        typingIndicator.style.display = 'none';
+    }
+}
+
+
+
+// 타이핑 상태 전송 함수
+function sendTypingStatus(isTyping) {
+    if (!stompClient || !currentRoomId) return;
+    
+    const typingRequest = {
+        roomId: currentRoomId,
+        isTyping: isTyping
+    };
+    
+    stompClient.send('/app/chat.typing', {}, JSON.stringify(typingRequest));
+}
+
 function addMessageToDisplay(message) {
+    // 유효하지 않은 메시지 무시
+    if (!message || !message.senderId || !message.content) {
+        logMessage("유효하지 않은 메시지 형식", "error");
+        return;
+    }
+    
     const messagesDiv = document.getElementById('messages');
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message-container';
@@ -482,12 +508,16 @@ function addMessageToDisplay(message) {
     
     const senderDiv = document.createElement('div');
     senderDiv.className = 'message-sender';
-    senderDiv.textContent = isMine ? '나' : `사용자 ${message.senderId} (${message.senderRole})`;
+    senderDiv.textContent = isMine ? '나' : `사용자 ${message.senderId} (${message.senderRole || '알 수 없음'})`;
     
     const timeDiv = document.createElement('div');
     timeDiv.className = 'message-time';
-    const messageTime = new Date(message.createdAt);
-    timeDiv.textContent = messageTime.toLocaleString();
+    try {
+        const messageTime = new Date(message.createdAt);
+        timeDiv.textContent = messageTime.toLocaleString();
+    } catch (e) {
+        timeDiv.textContent = '시간 정보 없음';
+    }
     
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
@@ -535,6 +565,23 @@ function displayChatRooms(data) {
     
     logDiv.scrollTop = logDiv.scrollHeight;
 }
+
+function startHeartbeat() {
+    if (heartbeatInterval) clearInterval(heartbeatInterval);
+    
+    heartbeatInterval = setInterval(() => {
+        if (stompClient && stompClient.connected) {
+            stompClient.send('/app/presence', {},
+                JSON.stringify({
+                    status: 'ONLINE',
+                    activeRoomId: currentRoomId,
+                    timestamp: new Date().getTime()
+                })
+            );
+        }
+    }, 30000);
+}
+
 
 // 참가자 상태 업데이트
 function updateParticipantStatus(data) {
@@ -585,6 +632,70 @@ function logMessage(message, type) {
     logDiv.appendChild(p);
     logDiv.scrollTop = logDiv.scrollHeight;
 }
+
+    // 페이지 로드 후 메시지 입력 필드에 이벤트 리스너 추가
+document.addEventListener('DOMContentLoaded', function() {
+    const messageInput = document.getElementById('message');
+    
+    messageInput.addEventListener('input', function() {
+        // 타이핑 시작 이벤트 전송
+        if (!typingTimeout) {
+            sendTypingStatus(true);
+        }
+        
+        // 타이핑 종료 타이머 설정 (2초 후 타이핑 종료)
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            sendTypingStatus(false);
+            typingTimeout = null;
+        }, 2000);
+    });
+});
+    
+    // HTML 파일에 추가
+window.addEventListener('beforeunload', function(e) {
+    if (stompClient && stompClient.connected) {
+        stompClient.send('/app/presence', {},
+            JSON.stringify({status: 'OFFLINE', activeRoomId: null})
+        );
+    }
+});
+
+
+// 페이지 가시성 변경 감지
+document.addEventListener('visibilitychange', function() {
+    const status = document.hidden ? 'AWAY' : 'ONLINE';
+    updatePresence(status);
+    if (status === 'ONLINE' && currentRoomId) {
+        markAsRead();
+    }
+});
+
+window.addEventListener('focus', function() {
+    updatePresence('ONLINE');
+});
+
+window.addEventListener('blur', function() {
+    updatePresence('AWAY');
+});
+
+<!--window.addEventListener('focus', function() {-->
+<!--    if (stompClient && stompClient.connected) {-->
+<!--        stompClient.send('/app/presence', {},-->
+<!--            JSON.stringify({status: 'ONLINE', activeRoomId: currentRoomId})-->
+<!--        );-->
+<!--        logMessage("사용자 상태가 ONLINE으로 변경되었습니다.", "info");-->
+<!--    }-->
+<!--});-->
+
+<!--window.addEventListener('blur', function() {-->
+<!--    if (stompClient && stompClient.connected) {-->
+<!--        stompClient.send('/app/presence', {},-->
+<!--            JSON.stringify({status: 'AWAY', activeRoomId: currentRoomId})-->
+<!--        );-->
+<!--        logMessage("사용자 상태가 AWAY로 변경되었습니다.", "info");-->
+<!--    }-->
+<!--});-->
 
 </script> </body> </html> ```
 
