@@ -40,8 +40,9 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
     List<WaitingQueue> findActiveListenersByField(@Param("field") CounselingField field);
 
     // 여러 상담 분야 중 하나
-    @Query("SELECT wq FROM WaitingQueue wq WHERE wq.waitingType = 'SPEAKER' AND wq.active = true " +
-            "AND wq.preferredFields IN :fields ORDER BY wq.createdAt ASC")
+    @Query("SELECT DISTINCT wq FROM WaitingQueue wq JOIN wq.preferredFields pf " +
+            "WHERE wq.waitingType = 'SPEAKER' AND wq.active = true " +
+            "AND pf IN :fields ORDER BY wq.createdAt ASC")
     List<WaitingQueue> findActiveSpeakersByPreferredFields(@Param("fields") Set<CounselingField> fields);
 
     @Query("SELECT DISTINCT wq FROM WaitingQueue wq JOIN wq.listenerProfile lp JOIN lp.counselingFields cf " +
@@ -51,8 +52,9 @@ public interface WaitingQueueRepository extends JpaRepository<WaitingQueue, Long
 
 
     // 상담 분야 + 스타일
-    @Query("SELECT wq FROM WaitingQueue wq WHERE wq.waitingType = 'SPEAKER' AND wq.active = true " +
-            "AND wq.preferredFields IN :fields AND wq.preferredStyle = :style ORDER BY wq.createdAt ASC")
+    @Query("SELECT DISTINCT wq FROM WaitingQueue wq JOIN wq.preferredFields pf " +
+            "WHERE wq.waitingType = 'SPEAKER' AND wq.active = true " +
+            "AND pf IN :fields AND wq.preferredStyle = :style ORDER BY wq.createdAt ASC")
     List<WaitingQueue> findActiveSpeakersByFieldsAndStyle(
             @Param("fields") Set<CounselingField> fields,
             @Param("style") CounselingStyle style);
