@@ -2,7 +2,7 @@ package com.mindmate.mindmate_server.matching.service;
 
 import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import com.mindmate.mindmate_server.matching.dto.MatchingResponse;
-import com.mindmate.mindmate_server.matching.dto.WaitingProfile;
+import com.mindmate.mindmate_server.matching.dto.WaitingProfileResponse;
 import com.mindmate.mindmate_server.user.domain.CounselingField;
 import com.mindmate.mindmate_server.user.domain.CounselingStyle;
 import org.springframework.stereotype.Service;
@@ -31,7 +31,7 @@ public interface MatchingService {
 
     MatchingResponse completeMatching(Long matchingId, Long profileId, InitiatorType profileType);
 
-    List<WaitingProfile> getWaitingListenersForMatching();
+    List<WaitingProfileResponse> getWaitingListenersForMatching();
 
-    List<WaitingProfile> getWaitingSpeakersForMatching();
+    List<WaitingProfileResponse> getWaitingSpeakersForMatching();
 }

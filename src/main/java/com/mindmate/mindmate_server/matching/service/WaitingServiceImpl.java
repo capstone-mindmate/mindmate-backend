@@ -5,7 +5,7 @@ import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
 import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import com.mindmate.mindmate_server.matching.domain.WaitingQueue;
 import com.mindmate.mindmate_server.matching.dto.ListenerStatus;
-import com.mindmate.mindmate_server.matching.dto.WaitingProfile;
+import com.mindmate.mindmate_server.matching.dto.WaitingProfileResponse;
 import com.mindmate.mindmate_server.matching.repository.WaitingQueueRepository;
 import com.mindmate.mindmate_server.user.domain.CounselingField;
 import com.mindmate.mindmate_server.user.domain.CounselingStyle;
@@ -108,7 +108,7 @@ public class WaitingServiceImpl implements WaitingService { // 대기상태 관�
     // 대기중인 유저
     @Transactional(readOnly = true)
     @Override
-    public List<WaitingProfile> getWaitingUsers(InitiatorType userType) {
+    public List<WaitingProfileResponse> getWaitingUsers(InitiatorType userType) {
         if (userType == InitiatorType.LISTENER) {
             return getWaitingListeners();
         } else {
@@ -118,7 +118,7 @@ public class WaitingServiceImpl implements WaitingService { // 대기상태 관�
 
     @Transactional(readOnly = true)
     @Override
-    public List<WaitingProfile> getWaitingListeners() {
+    public List<WaitingProfileResponse> getWaitingListeners() {
         List<WaitingQueue> waitingListeners = waitingQueueRepository.findByWaitingTypeAndActiveOrderByCreatedAtAsc(
                 InitiatorType.LISTENER, true);
 
@@ -126,7 +126,7 @@ public class WaitingServiceImpl implements WaitingService { // 대기상태 관�
                 .map(wq -> {
                     ListenerProfile listener = wq.getListenerProfile();
 
-                    return WaitingProfile.builder()
+                    return WaitingProfileResponse.builder()
                             .profileId(listener.getId())
                             .nickname(listener.getNickname())
                             .profileImage(listener.getProfileImage())
@@ -143,7 +143,7 @@ public class WaitingServiceImpl implements WaitingService { // 대기상태 관�
 
     @Transactional(readOnly = true)
     @Override
-    public List<WaitingProfile> getWaitingSpeakers() {
+    public List<WaitingProfileResponse> getWaitingSpeakers() {
         List<WaitingQueue> waitingSpeakers = waitingQueueRepository.findByWaitingTypeAndActiveOrderByCreatedAtAsc(
                 InitiatorType.SPEAKER, true);
 
@@ -151,7 +151,7 @@ public class WaitingServiceImpl implements WaitingService { // 대기상태 관�
                 .map(wq -> {
                     SpeakerProfile speaker = wq.getSpeakerProfile();
 
-                    return WaitingProfile.builder()
+                    return WaitingProfileResponse.builder()
                             .profileId(speaker.getId())
                             .nickname(speaker.getNickname())
                             .profileImage(speaker.getProfileImage())

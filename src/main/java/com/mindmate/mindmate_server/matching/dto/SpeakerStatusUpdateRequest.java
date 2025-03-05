@@ -5,11 +5,12 @@ import com.mindmate.mindmate_server.user.domain.CounselingStyle;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.Set;
 
-@Data
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
 public class SpeakerStatusUpdateRequest {

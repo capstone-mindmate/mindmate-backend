@@ -4,9 +4,10 @@ import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Data
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
 public class MatchingActionRequest { // 수락, 취소, 완료

@@ -19,7 +19,7 @@ public class MatchingEventConsumer {
     private final MatchingRepository matchingRepository;
     private final WaitingService waitingService;
 
-    @KafkaListener(topics = "matching-events", groupId = "mindmate-matching")
+    @KafkaListener(topics = "matching-events", groupId = "mindmate-group")
     @Transactional
     public void consumeMatchingEvent(String message) {
         log.info("받은 메시지: {}", message);

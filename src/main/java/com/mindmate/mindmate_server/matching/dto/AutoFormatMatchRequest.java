@@ -3,14 +3,11 @@ package com.mindmate.mindmate_server.matching.dto;
 import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import com.mindmate.mindmate_server.user.domain.CounselingField;
 import com.mindmate.mindmate_server.user.domain.CounselingStyle;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.Set;
 
-@Data
+@Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
