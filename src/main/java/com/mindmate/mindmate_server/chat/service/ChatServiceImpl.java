@@ -19,6 +19,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -65,15 +67,15 @@ public class ChatServiceImpl implements ChatService {
                 .timestamp(savedMessage.getCreatedAt())
                 .build();
 
-        ChatMessageResponse chatMessageResponse = ChatMessageResponse.builder()
-                .id(savedMessage.getId())
-                .senderId(userId)
-                .senderRole(user.getCurrentRole())
-                .content(request.getContent())
-                .type(request.getType())
-                .createdAt(LocalDateTime.now())
-                .roomId(chatRoom.getId())
-                .build();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                kafkaTemplate.send("chat-message-topic", event.getRoomId().toString(), event);
+            }
+        });
+
+        ChatMessageResponse chatMessageResponse = ChatMessageResponse.from(savedMessage);
+
         String channel = redisKeyManager.getChatRoomChannel(chatRoom.getId());
         try {
             // Redis의 Pub/Sub 기능을 사용하여 지정한 채널에 메시지를 publish
@@ -82,7 +84,6 @@ public class ChatServiceImpl implements ChatService {
             log.error("Error serializing message", e);
         }
 
-        kafkaTemplate.send("chat-message-topic", event.getRoomId().toString(), event);
         return chatMessageResponse;
     }
 

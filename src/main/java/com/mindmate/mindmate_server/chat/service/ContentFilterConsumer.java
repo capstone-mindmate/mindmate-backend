@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.FilteringWordCategory;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
+import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -24,6 +25,7 @@ import java.util.Optional;
 public class ContentFilterConsumer {
     private final ContentFilterService contentFilterService;
     private final ChatMessageService chatMessageService;
+    private final ChatMessageRepository chatMessageRepository;
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
@@ -45,12 +47,11 @@ public class ContentFilterConsumer {
                 log.warn("Banned word detected in message: {}, category: {}",
                         event.getMessageId(), filteringCategory.get().getDescription());
 
-                // todo : 왜 여기서만 메시지 id 조회가 안될떄가 있을까??
                 String filteredContent = String.format(
                         "[%s 관련 부적절한 내용이 감지되었습니다]",
                         filteringCategory.get().getDescription());
                 message.setFilteredContent(filteredContent);
-                // save
+                chatMessageRepository.save(message); // 명시적 저장 추가
 
                 String channel = "chat:room:" + message.getChatRoom().getId();
                 try {
@@ -59,6 +60,7 @@ public class ContentFilterConsumer {
                     filterEvent.put("messageId", message.getId());
                     filterEvent.put("content", filteredContent);
 
+                    // Pub/Sub으로 필터링 이벤트 발행 -> 클라이언트에서 처리
                     redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(filterEvent));
                 } catch (JsonProcessingException e) {
                     log.error("Error serializing filter event", e);

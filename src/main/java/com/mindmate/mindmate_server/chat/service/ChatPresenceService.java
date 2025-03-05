@@ -23,6 +23,27 @@ public class ChatPresenceService {
     private final SimpMessagingTemplate messagingTemplate;
     private final RedisKeyManager redisKeyManager;
 
+    /**
+     * Redis 값 관리 정리
+     * [사용자 상태]
+     * - 키: user:status:{userId}
+     * - 값: Hash 형태로 저장 (온라인 상태, 활성 채팅방 ID, 마지막 활동 시간, status - 향후 away 고려?)
+     * - 변경 시점: websocket 연결/해제 시 + 사용자가 채팅방에 입장/퇴장할 때
+     * - 만료 시간: 온라인이면 5분, 오프라인이면 30분
+     *
+     * [읽음 상태]
+     * - 키: chat:room:{roomId}:user:{userId}:read
+     * - 값: 마지막으로 읽은 시간
+     * - 변경 시점: 사용자가 메시지를 읽을 때
+     * - 만료 시간: 1일
+     *
+     * [미읽음 상태]
+     * - 키: chat:room:{roomId}:user:{userId}:unread
+     * - 값: 미읽음 메시지 수
+     * - 변경 시점: 새 메시지 도착 시 증가 + 사용자가 메시지 읽을 때 리셋
+     * - 만료 시간: 설정 x
+     */
+
     public void updateUserStatus(Long userId, boolean isOnline, Long activeRoomId) {
         String statusKey = redisKeyManager.getUserStatusKey(userId);
         Map<String, Object> status = new HashMap<>();

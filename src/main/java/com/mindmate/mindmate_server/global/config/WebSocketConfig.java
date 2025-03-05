@@ -27,6 +27,13 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final JwtTokenProvider jwtTokenProvider;
+    /**
+     * WebSocket 연결 관리 정리
+     * 1. 연결 시점: 클라이언트가 /ws 엔드포인트로 연결 요청 시
+     * 2. 인증: 'Authorization' 헤더의 JWT 토큰으로 인증
+     * 3. 연결 이벤트 처리 -> WebSocketEventListener에서 처리 -> 사용자 상태 업데이트
+     * 4. 하트비트: 10초 간격으로 서버-클라이언트 간 연결 상태 확인
+     */
 
     /**
      * 메시지 브로커 설정
