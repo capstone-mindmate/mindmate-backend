@@ -33,7 +33,8 @@ public class ProfileServiceImpl implements ProfileService {
     @Transactional(readOnly = true)
     public ProfileDetailResponse getProfileDetail(Long userId) {
         User user = userService.findUserById(userId);
-        Profile profile = getOrCreateProfile(user);
+        Profile profile = profileRepository.findByUserId(userId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
 
         List<Review> recentReviews = reviewRepository.findRecentReviewsByRevieweeId(
                 userId,
@@ -97,7 +98,8 @@ public class ProfileServiceImpl implements ProfileService {
     @Transactional(readOnly = true)
     public ProfileSimpleResponse getProfileSimple(Long userId) {
         User user = userService.findUserById(userId);
-        Profile profile = getOrCreateProfile(user);
+        Profile profile = profileRepository.findByUserId(userId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
 
         Double averageRating = reviewRepository.calculateAverageRatingByRevieweeId(userId)
                 .orElse(0.0);

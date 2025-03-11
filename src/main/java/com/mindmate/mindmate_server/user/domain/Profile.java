@@ -58,4 +58,5 @@ public class Profile extends BaseTimeEntity {
     public void addEvaluationTag(String tag) {
         this.evaluationTags.add(tag);
     }
+
 }

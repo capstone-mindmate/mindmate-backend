@@ -15,9 +15,4 @@ import java.util.Optional;
 public interface ProfileRepository extends JpaRepository<Profile, Long> {
 
     Optional<Profile> findByUserId(Long userId);
-
-    @Query("SELECT p FROM Profile p JOIN p.user u WHERE u.nickname LIKE %:keyword% " +
-            "OR u.department LIKE %:keyword%")
-    Page<Profile> searchProfiles(@Param("keyword") String keyword, Pageable pageable);
-
 }
