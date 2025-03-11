@@ -1,7 +1,7 @@
 package com.mindmate.mindmate_server.user.domain;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
+import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -17,7 +17,7 @@ import java.util.UUID;
 @Table(name = "users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@ToString(exclude = {"listenerProfile", "speakerProfile", "sentMessages"})
+@ToString(exclude = {"sentMessages"})
 public class User extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,6 +28,11 @@ public class User extends BaseTimeEntity {
 
     @Column(nullable = false)
     private String password;
+
+    @Column(unique = true, nullable = false)
+    private String nickname;
+
+
 
     @Column(name = "verification_token")
     private String verificationToken;
@@ -45,14 +50,14 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, columnDefinition = "VARCHAR(20)")
     private RoleType currentRole;
 
-    @OneToOne(mappedBy = "user")
-    private ListenerProfile listenerProfile;
-
-    @OneToOne(mappedBy = "user")
-    private SpeakerProfile speakerProfile;
-
     @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL)
     private List<ChatMessage> sentMessages = new ArrayList<>();
+
+    @OneToMany(mappedBy = "listener")
+    private List<ChatRoom> listenerRooms = new ArrayList<>();
+
+    @OneToMany(mappedBy = "speaker")
+    private List<ChatRoom> speakerRooms = new ArrayList<>();
 
     @Builder
     public User(String email, String password, RoleType role) {
@@ -88,13 +93,4 @@ public class User extends BaseTimeEntity {
     }
 
 
-    @VisibleForTesting
-    public void setListenerProfileForTest(ListenerProfile profile) {
-        this.listenerProfile = profile;
-    }
-
-    @VisibleForTesting
-    public void setSpeakerProfileForTest(SpeakerProfile profile) {
-        this.speakerProfile = profile;
-    }
 }

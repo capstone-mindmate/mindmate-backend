@@ -49,17 +49,17 @@ public class ChatController {
 
     /**
      * 특정 역할로 참여 중인 채팅방 목록 조회
+     * todo: 리스너, 스피커 분리해서 받기 roletype 이ㅛㅇ안하고
      */
     @GetMapping("/rooms/role/{roleType}")
     public ResponseEntity<Page<ChatRoomResponse>> getChatRoomsByRole(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @PathVariable RoleType roleType) {
+            String role) {
         Page<ChatRoomResponse> rooms = chatRoomService.getChatRoomsByUserRole(
                 principal.getUserId(),
-                PageRequest.of(page, size, Sort.by("lastMessageTime").descending()),
-                roleType);
+                PageRequest.of(page, size, Sort.by("lastMessageTime").descending()), role);
         return ResponseEntity.ok(rooms);
     }
 

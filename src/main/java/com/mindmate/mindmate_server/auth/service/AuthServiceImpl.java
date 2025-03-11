@@ -150,20 +150,12 @@ public class AuthServiceImpl implements AuthService {
 
         tokenService.saveRefreshToken(user.getId(), refreshToken, tokenFamily);
 
-        boolean hasListenerProfile = user.getListenerProfile() != null;
-        boolean hasSpeakerProfile = user.getSpeakerProfile() != null;
-        String message = user.getCurrentRole() == RoleType.ROLE_USER
-                ? "프로필 작성이 필요합니다."
-                : null;
         user.updateLastLoginAt();
 
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .currentRole(user.getCurrentRole())
-                .hasListenerProfile(hasListenerProfile)
-                .hasSpeakerProfile(hasSpeakerProfile)
-                .message(message)
                 .build();
     }
 

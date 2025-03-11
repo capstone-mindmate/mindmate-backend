@@ -46,13 +46,13 @@ public class ChatSystemRecoveryService  {
             String listenerUnreadKey = redisKeyManager.getUnreadCountKey(
                     room.getId(),
                     // todo : LazyInitializationException 발생
-                    room.getListener().getUser().getId()
+                    room.getListener().getId()
             );
             redisTemplate.opsForValue().set(listenerUnreadKey, String.valueOf(room.getListenerUnreadCount()));
 
             String speakerUnreadKey = redisKeyManager.getUnreadCountKey(
                     room.getId(),
-                    room.getSpeaker().getUser().getId()
+                    room.getSpeaker().getId()
             );
             redisTemplate.opsForValue().set(speakerUnreadKey, String.valueOf(room.getSpeakerUnreadCount()));
         }

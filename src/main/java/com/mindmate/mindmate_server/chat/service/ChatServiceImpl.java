@@ -51,7 +51,7 @@ public class ChatServiceImpl implements ChatService {
         ChatMessage chatMessage = ChatMessage.builder()
                 .chatRoom(chatRoom)
                 .sender(user)
-                .senderRole(user.getCurrentRole())
+//                .senderRole(user.getCurrentRole())
                 .content(request.getContent())
                 .type(request.getType())
                 .build();
@@ -61,7 +61,6 @@ public class ChatServiceImpl implements ChatService {
                 .messageId(savedMessage.getId())
                 .roomId(chatRoom.getId())
                 .senderId(userId)
-                .senderRole(user.getCurrentRole())
                 .content(request.getContent())
                 .type(request.getType())
                 .timestamp(savedMessage.getCreatedAt())
@@ -125,8 +124,8 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private void validateChatRoomAccess(ChatRoom chatRoom, User user) {
-        boolean hasAccess = chatRoom.getListener().getUser().getId().equals(user.getId()) ||
-                chatRoom.getSpeaker().getUser().getId().equals(user.getId());
+        boolean hasAccess = chatRoom.getListener().getId().equals(user.getId()) ||
+                chatRoom.getSpeaker().getId().equals(user.getId());
 
         if (!hasAccess) {
             throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
@@ -134,6 +133,6 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private boolean isUserListener(ChatRoom chatRoom, User user) {
-        return chatRoom.getListener().getUser().equals(user);
+        return chatRoom.getListener().equals(user);
     }
 }

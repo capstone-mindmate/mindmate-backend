@@ -28,9 +28,9 @@ public class ChatMessage extends BaseTimeEntity {
     @JoinColumn(name = "sender_id")
     private User sender;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private RoleType senderRole;
+//    @Enumerated(EnumType.STRING)
+//    @Column(nullable = false)
+//    private RoleType senderRole;
 
     @Column(columnDefinition = "TEXT")
     private String content;
@@ -45,10 +45,10 @@ public class ChatMessage extends BaseTimeEntity {
 //    private LocalDateTime expiryTime;
 
     @Builder
-    public ChatMessage(ChatRoom chatRoom, User sender, RoleType senderRole, String content, MessageType type) {
+    public ChatMessage(ChatRoom chatRoom, User sender, String content, MessageType type) {
         this.chatRoom = chatRoom;
         this.sender = sender;
-        this.senderRole = senderRole;
+//        this.senderRole = senderRole;
         this.content = content;
         this.type = type;
         this.isRead = false;

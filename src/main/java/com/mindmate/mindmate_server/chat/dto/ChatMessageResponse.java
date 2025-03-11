@@ -30,10 +30,8 @@ public class ChatMessageResponse {
                 .id(message.getId())
                 .roomId(message.getChatRoom().getId())
                 .senderId(message.getSender().getId())
-                .senderName(message.getSenderRole() == RoleType.ROLE_LISTENER
-                        ? message.getChatRoom().getListener().getNickname()
-                        : message.getChatRoom().getSpeaker().getNickname())
-                .senderRole(message.getSenderRole())
+                .senderName(message.getSender().getNickname())
+//                .senderRole(message.getSenderRole())
                 .content(message.getFilteredContent() != null ? message.getFilteredContent() : message.getContent())
                 .type(message.getType())
                 .createdAt(message.getCreatedAt())

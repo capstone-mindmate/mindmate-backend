@@ -34,7 +34,7 @@ public class UnreadCountConsumer {
             ChatRoom chatRoom = chatRoomService.findChatRoomById(event.getRoomId());
 
             // 1. 발신자의 메시지 읽음 처리
-            boolean isSenderListener = event.getSenderRole() == RoleType.ROLE_LISTENER;
+            boolean isSenderListener = event.getSenderId().equals(chatRoom.getListener().getId());
             if (isSenderListener) {
                 chatRoom.markAsReadForListener(event.getMessageId());
             } else {
@@ -43,8 +43,8 @@ public class UnreadCountConsumer {
 
             // 2. 수신자 상태 확인
             Long recipientId = isSenderListener
-                    ? chatRoom.getSpeaker().getUser().getId()
-                    : chatRoom.getListener().getUser().getId();
+                    ? chatRoom.getSpeaker().getId()
+                    : chatRoom.getListener().getId();
 
             boolean isRecipientOnline = chatPresenceService.isUserActiveInRoom(recipientId, event.getRoomId());
 
@@ -55,7 +55,7 @@ public class UnreadCountConsumer {
 
             } else {
                 // 수신자가 채팅방에 없는 경우 -> 미읽음 카운트 증가
-                chatPresenceService.incrementUnreadCount(event.getRoomId(), recipientId, chatRoom, event.getSenderRole());
+                chatPresenceService.incrementUnreadCount(event.getRoomId(), recipientId, chatRoom);
                 log.info("Incremented unread count for recipient {} in room {}", recipientId, event.getRoomId());
             }
         } catch (Exception e) {

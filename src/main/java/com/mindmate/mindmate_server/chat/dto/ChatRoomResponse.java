@@ -20,7 +20,7 @@ public class ChatRoomResponse {
     private String oppositeName;
 
     public static ChatRoomResponse from(ChatRoom chatRoom, Long userId) {
-        boolean isListener = chatRoom.getListener().getUser().getId().equals(userId);
+        boolean isListener = chatRoom.getListener().getId().equals(userId);
         int unreadCount = isListener ? chatRoom.getListenerUnreadCount() : chatRoom.getSpeakerUnreadCount();
         Long lastReadMessageId = isListener ? chatRoom.getListenerLastReadMessageId() : chatRoom.getSpeakerLastReadMessageId();
         String myName = isListener ? chatRoom.getListener().getNickname() : chatRoom.getSpeaker().getNickname();

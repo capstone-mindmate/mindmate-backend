@@ -2,14 +2,12 @@ package com.mindmate.mindmate_server.chat.domain;
 
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import com.mindmate.mindmate_server.matching.domain.Matching;
-import com.mindmate.mindmate_server.user.domain.ListenerProfile;
-import com.mindmate.mindmate_server.user.domain.SpeakerProfile;
+import com.mindmate.mindmate_server.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.cglib.core.Local;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -34,11 +32,11 @@ public class ChatRoom extends BaseTimeEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "listener_id")
-    private ListenerProfile listener;
+    private User listener;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "speaker_id")
-    private SpeakerProfile speaker;
+    private User speaker;
 
     @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatMessage> messages = new ArrayList<>();
@@ -57,7 +55,7 @@ public class ChatRoom extends BaseTimeEntity {
     private int speakerUnreadCount = 0;
 
     @Builder
-    public ChatRoom(Matching matching, ListenerProfile listener, SpeakerProfile speaker) {
+    public ChatRoom(Matching matching, User listener, User speaker) {
         this.matching = matching;
         this.chatRoomStatus = ChatRoomStatus.ACTIVE;
         this.listener = listener;

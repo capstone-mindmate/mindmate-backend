@@ -3,6 +3,8 @@ package com.mindmate.mindmate_server.chat.service;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.user.domain.RoleType;
+import com.mindmate.mindmate_server.user.domain.User;
+import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -23,6 +25,7 @@ public class ChatPresenceService {
     private final SimpMessagingTemplate messagingTemplate;
     private final RedisKeyManager redisKeyManager;
 
+    private final UserService userService;
     /**
      * Redis 값 관리 정리
      * [사용자 상태]
@@ -98,16 +101,17 @@ public class ChatPresenceService {
     }
 
     @Transactional
-    public void incrementUnreadCount(Long roomId, Long userId, ChatRoom chatRoom, RoleType senderRole) {
+    public void incrementUnreadCount(Long roomId, Long userId, ChatRoom chatRoom) {
         // Redis 업데이트
         String unreadKey = redisKeyManager.getUnreadCountKey(roomId, userId);
         Long count = redisTemplate.opsForValue().increment(unreadKey);
+        User user = userService.findUserById(userId);
 
         // WebSocket 알림
         notifyUnreadCount(roomId, userId, count);
 
         // DB 업데이트 (트랜잭션 내에서)
-        if (senderRole == RoleType.ROLE_LISTENER) {
+        if (userId.equals(chatRoom.getListener().getId())) {
             chatRoom.increaseUnreadCountForSpeaker();
         } else {
             chatRoom.increaseUnreadCountForListener();

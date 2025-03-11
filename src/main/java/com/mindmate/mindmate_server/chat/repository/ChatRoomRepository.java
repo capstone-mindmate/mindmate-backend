@@ -10,13 +10,9 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
-    @Query("SELECT cr FROM ChatRoom cr WHERE cr.listener.user.id = :user OR cr.speaker.user.id = :user")
+    @Query("SELECT cr FROM ChatRoom cr WHERE cr.listener.id = :user OR cr.speaker.id = :user")
     Page<ChatRoom> findAllByParticipant(@Param("user") Long userID, Pageable pageable);
 
-    @Query("SELECT cr FROM ChatRoom cr WHERE " +
-            "(cr.listener.user.id = :user AND :roleTypeKey = 'ROLE_LISTENER') OR " +
-            "(cr.speaker.user.id = :user AND :roleTypeKey = 'ROLE_SPEAKER')")
-    Page<ChatRoom> findAllByParticipantAndRole(@Param("user") Long userId,
-                                               @Param("roleTypeKey") String roleTypeKey,
-                                               Pageable pageable);
+    @Query("SELECT cr FROM ChatRoom cr WHERE (cr.listener.id = :userId AND cr.listener.currentRole = :roleType) OR (cr.speaker.id = :userId AND cr.speaker.currentRole = :roleType)")
+    Page<ChatRoom> findAllByParticipantAndRole(@Param("userId") Long userId, @Param("roleType") String roleType, Pageable pageable);
 }
