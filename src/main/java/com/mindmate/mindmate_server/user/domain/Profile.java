@@ -20,6 +20,8 @@ public class Profile extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
+    private String profileImage;
+
     // 활동 정보
     private int counselingCount = 0;
     private int avgResponseTime = 0;
@@ -32,8 +34,13 @@ public class Profile extends BaseTimeEntity {
     private Set<String> evaluationTags = new HashSet<>();
 
     @Builder
-    public Profile(User user) {
+    public Profile(User user, String profileImage) {
         this.user = user;
+        this.profileImage = profileImage;
+    }
+
+    public void updateProfileImage(String profileImage) {
+        this.profileImage = profileImage;
     }
 
     public void incrementCounselingCount() {

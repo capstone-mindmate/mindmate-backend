@@ -1,28 +1,28 @@
-//package com.mindmate.mindmate_server.matching.domain;
-//
-//import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
+package com.mindmate.mindmate_server.matching.domain;
+
+import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 //import com.mindmate.mindmate_server.user.domain.CounselingField;
 //import com.mindmate.mindmate_server.user.domain.ListenerProfile;
 //import com.mindmate.mindmate_server.user.domain.SpeakerProfile;
-//import jakarta.persistence.*;
-//import lombok.AccessLevel;
-//import lombok.Builder;
-//import lombok.Getter;
-//import lombok.NoArgsConstructor;
-//
-//import java.time.LocalDateTime;
-//import java.util.HashSet;
-//import java.util.Set;
-//
-//@Entity
-//@Table(name = "matchings")
-//@Getter
-//@NoArgsConstructor(access = AccessLevel.PROTECTED)
-//public class Matching extends BaseTimeEntity {
-//    @Id
-//    @GeneratedValue(strategy = GenerationType.IDENTITY)
-//    private Long id;
-//
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+
+@Entity
+@Table(name = "matchings")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Matching extends BaseTimeEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
 //    @ManyToOne(fetch = FetchType.LAZY)
 //    @JoinColumn(name = "speaker_profile_id")
 //    private SpeakerProfile speakerProfile;
@@ -91,4 +91,4 @@
 //    public void setChatRoomId(String chatRoomId) {
 //        this.chatRoomId = chatRoomId;
 //    }
-//}
+}

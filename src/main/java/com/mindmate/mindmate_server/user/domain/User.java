@@ -36,9 +36,6 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private String department;
 
-    @Column
-    private String imgUrl;
-
     @Column(nullable = false)
     private LocalDateTime entranceTime;
 
