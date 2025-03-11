@@ -1,0 +1,40 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: deploy-app
+spec:
+  workspaces:
+    - name: source
+      description: 배포 매니페스트가 있는 작업 공간
+  params:
+    - name: image-name
+      type: string
+      description: 배포할 Docker 이미지 이름
+    - name: app-namespace
+      type: string
+      description: 애플리케이션을 배포할 네임스페이스
+      default: "default"
+  steps:
+    - name: deploy-infra
+      image: bitnami/kubectl:latest
+      script: |
+        echo "Deploying infrastructure components..."
+        # MySQL, Redis, Kafka 등의 인프라 컴포넌트 배포
+        kubectl apply -f $(workspaces.source.path)/k8s/mysql.yaml -n $(params.app-namespace)
+        kubectl apply -f $(workspaces.source.path)/k8s/redis.yaml -n $(params.app-namespace)
+        kubectl apply -f $(workspaces.source.path)/k8s/kafka.yaml -n $(params.app-namespace)
+        echo "Infrastructure deployment completed."
+    - name: update-image
+      image: bitnami/kubectl:latest
+      script: |
+        echo "Updating application image to $(params.image-name)..."
+        # 애플리케이션 배포 YAML에서 이미지 업데이트
+        sed -i "s|image:.*|image: $(params.image-name)|g" $(workspaces.source.path)/k8s/mindmate-backend.yaml
+        kubectl apply -f $(workspaces.source.path)/k8s/mindmate-backend.yaml -n $(params.app-namespace)
+        echo "Application deployment completed."
+    - name: check-deployment
+      image: bitnami/kubectl:latest
+      script: |
+        echo "Checking deployment status..."
+        kubectl rollout status deployment/mindmate-backend -n $(params.app-namespace) --timeout=180s
+        echo "Deployment is ready."

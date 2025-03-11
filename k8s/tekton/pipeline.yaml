@@ -1,0 +1,59 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: mindmate-pipeline
+spec:
+  workspaces:
+    - name: shared-workspace
+      description: 파이프라인 작업 간에 공유되는 작업 공간
+  params:
+    - name: git-url
+      type: string
+      description: Git 저장소 URL
+      default: "https://github.com/2025-ajou-capstone-mindmate/mindmate-backend.git"
+    - name: git-revision
+      type: string
+      description: Git 리비전(브랜치, 태그, SHA)
+      default: "develop"
+    - name: image-name
+      type: string
+      description: 빌드할 Docker 이미지 이름
+      default: "docker.io/daehuijoe/mindmate:latest" # todo: 이건 내 계쩡인데 공용 docker hub 계쩡을 만들어야 하나?
+    - name: app-namespace
+      type: string
+      description: 애플리케이션을 배포할 네임스페이스
+      default: "default"
+  tasks:
+    - name: fetch-source
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+    - name: build-app
+      runAfter: ["fetch-source"]
+      taskRef:
+        name: build-spring-app
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: image-name
+          value: $(params.image-name)
+    - name: deploy-app
+      runAfter: ["build-app"]
+      taskRef:
+        name: deploy-app
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+      params:
+        - name: image-name
+          value: $(params.image-name)
+        - name: app-namespace
+          value: $(params.app-namespace)

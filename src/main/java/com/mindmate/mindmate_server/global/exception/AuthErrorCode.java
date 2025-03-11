@@ -21,6 +21,10 @@ public enum AuthErrorCode implements ErrorCode {
     DUPLICATE_EMAIL(HttpStatus.BAD_REQUEST, "이미 회원가입 된 이메일입니다"),
     INVALID_PASSWORD_FORMAT(HttpStatus.BAD_REQUEST, "유효하지 않은 비밀번호입니다"),
     PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "두 비밀번호가 일치하지 않습니다"),
+    INVALID_ENTRANCE_TIME(HttpStatus.BAD_REQUEST, "유효하지 않은 입학 연도 정보입니다."),
+    INVALID_NICKNAME(HttpStatus.BAD_REQUEST, "유효하지 않은 닉네임입니다"),
+    INVALID_DEPARTMENT(HttpStatus.BAD_REQUEST, "유효하지 않은 학과 정보입니다"),
+    DUPLICATE_NICKNAME(HttpStatus.BAD_REQUEST, "중복된 닉네임입니다"),
 
     // 이메일 인증
     EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이메일 전송을 실패하였습니다"),
