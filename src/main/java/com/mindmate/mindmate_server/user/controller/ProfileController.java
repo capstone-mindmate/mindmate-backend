@@ -1,15 +1,16 @@
 package com.mindmate.mindmate_server.user.controller;
 
 import com.mindmate.mindmate_server.auth.util.SecurityUtil;
+import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import com.mindmate.mindmate_server.user.dto.*;
 import com.mindmate.mindmate_server.user.service.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
 import java.util.Set;
 
 @Tag(name = "프로필", description = "스피커/리스너 프로필 관리 API")
@@ -18,7 +19,6 @@ import java.util.Set;
 @RequestMapping("/api/profile")
 public class ProfileController {
     private final ProfileService profileService;
-    private SecurityUtil securityUtil;
 
     @Operation(summary = "특정 사용자 프로필 조회", description = "특정 사용자의 프로필을 조회합니다.")
     @GetMapping("/users/{userId}")
@@ -42,15 +42,15 @@ public class ProfileController {
     }
 
     @PostMapping
-    public ResponseEntity<ProfileResponse> createProfile(@RequestBody ProfileCreateRequest request) {
-        Long userId = securityUtil.getCurrentUser().getId();
+    public ResponseEntity<ProfileResponse> createProfile(@AuthenticationPrincipal UserPrincipal principal, @RequestBody ProfileCreateRequest request) {
+        Long userId = principal.getUserId();
         ProfileResponse response = profileService.createProfile(userId, request);
         return ResponseEntity.ok(response);
     }
 
     @PutMapping
-    public ResponseEntity<ProfileResponse> updateProfile(@RequestBody ProfileUpdateRequest request) {
-        Long userId = securityUtil.getCurrentUser().getId();
+    public ResponseEntity<ProfileResponse> updateProfile(@AuthenticationPrincipal UserPrincipal principal, @RequestBody ProfileUpdateRequest request) {
+        Long userId = principal.getUserId();
         ProfileResponse response = profileService.updateProfile(userId, request);
         return ResponseEntity.ok(response);
     }
