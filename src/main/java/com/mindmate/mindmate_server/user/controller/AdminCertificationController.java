@@ -3,7 +3,6 @@ package com.mindmate.mindmate_server.user.controller;
 import com.mindmate.mindmate_server.user.dto.AdminCertificationListResponse;
 import com.mindmate.mindmate_server.user.dto.AdminCertificationResponse;
 import com.mindmate.mindmate_server.user.dto.CertificationProcessRequest;
-import com.mindmate.mindmate_server.user.service.CertificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
