@@ -13,12 +13,12 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
-    private final SecurityUtil securityUtil;
+//    private final SecurityUtil securityUtil;
 
-    @Override
-    public User getCurrentUser() {
-        return securityUtil.getCurrentUser();
-    }
+//    @Override
+//    public User getCurrentUser() {
+//        return securityUtil.getCurrentUser();
+//    }
 
     @Override
     public User findUserById(Long userId) {

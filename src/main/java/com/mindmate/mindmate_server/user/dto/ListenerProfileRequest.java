@@ -2,7 +2,6 @@ package com.mindmate.mindmate_server.user.dto;
 
 import com.mindmate.mindmate_server.user.domain.CounselingField;
 import com.mindmate.mindmate_server.user.domain.CounselingStyle;
-import com.mindmate.mindmate_server.user.domain.ListenerCounselingField;
 import jakarta.validation.constraints.*;
 import lombok.Builder;
 import lombok.Getter;

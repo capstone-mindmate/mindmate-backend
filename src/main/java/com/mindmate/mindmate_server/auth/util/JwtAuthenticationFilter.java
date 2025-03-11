@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.auth.util;
 
 import com.mindmate.mindmate_server.auth.service.TokenService;
+import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import com.mindmate.mindmate_server.global.exception.AuthErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.user.domain.User;
@@ -53,8 +54,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new SimpleGrantedAuthority(user.getCurrentRole().getKey())
                 );
 
+                UserPrincipal userPrincipal = new UserPrincipal(user.getId());
+
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(user, null, authorities);
+                        new UsernamePasswordAuthenticationToken(userPrincipal, null, authorities);
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);

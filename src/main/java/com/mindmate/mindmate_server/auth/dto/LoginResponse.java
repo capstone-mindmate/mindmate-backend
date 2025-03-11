@@ -10,7 +10,5 @@ public class LoginResponse {
     private String accessToken;
     private String refreshToken;
     private RoleType currentRole;
-    private boolean hasListenerProfile;
-    private boolean hasSpeakerProfile;
     private String message;
 }
