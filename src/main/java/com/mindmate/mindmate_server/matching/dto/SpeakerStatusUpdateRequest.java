@@ -1,10 +1,7 @@
 package com.mindmate.mindmate_server.matching.dto;
 
-import com.mindmate.mindmate_server.user.domain.CounselingField;
-import com.mindmate.mindmate_server.user.domain.CounselingStyle;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 

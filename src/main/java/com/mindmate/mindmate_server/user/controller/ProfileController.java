@@ -1,68 +1,66 @@
 package com.mindmate.mindmate_server.user.controller;
 
-import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
-import com.mindmate.mindmate_server.user.domain.CounselingField;
-import com.mindmate.mindmate_server.user.domain.CounselingStyle;
-import com.mindmate.mindmate_server.user.domain.RoleType;
-import com.mindmate.mindmate_server.user.domain.User;
+import com.mindmate.mindmate_server.auth.util.SecurityUtil;
 import com.mindmate.mindmate_server.user.dto.*;
 import com.mindmate.mindmate_server.user.service.ProfileService;
-import com.mindmate.mindmate_server.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Set;
 
-//@Tag(name = "프로필", description = "스피커/리스너 프로필 관리 API")
-//@RestController
-//@RequiredArgsConstructor
-//@RequestMapping("/api/profile")
-//public class ProfileController {
-//    private final ProfileService profileService;
-//    private final UserService userService;
-//
-//    @Operation(summary = "리스너 프로필 조회", description = "리스너의 프로필을 조회합니다.")
-//    @GetMapping("/listener/{profileId}")
-//    public ResponseEntity<ListenerProfileResponse> getListenerProfile(@PathVariable Long profileId) {
-//        return ResponseEntity.ok(profileService.getListenerProfile(profileId));
-//    }
-//
-//    @Operation(summary = "스피커 프로필 조회", description = "스피커의 프로필을 조회합니다.")
-//    @GetMapping("/speaker/{profileId}")
-//    public ResponseEntity<SpeakerProfileResponse> getSpeakerProfile(@PathVariable Long profileId) {
-//        return ResponseEntity.ok(profileService.getSpeakerProfile(profileId));
-//    }
-//
-//    /* 이후에 여러 자격을 가질 때를 고려해야함*/
-//    @Operation(summary = "리스너 자격 수정", description = "리스너의 자격을 수정합니다.")
-//    @PutMapping("/listener/certification")
-//    public ResponseEntity<ListenerProfileResponse> updateListenerCertification(
-//            @AuthenticationPrincipal UserPrincipal principal,
-//            @Valid @RequestBody CertificationUpdateRequest request) {
-//        User user = userService.findUserById(principal.getUserId());
-//        return ResponseEntity.ok(profileService.updateListenerCertification(user.getListenerProfile().getId(), request));
-//    }
-//
-//    @Operation(summary = "상담 스타일 목록 조회", description = "가능한 상담 스타일 목록을 조회합니다.")
-//    @GetMapping("/counseling-styles")
-//    public ResponseEntity<List<CounselingResponse>> getCounselingStyles() {
-//        return ResponseEntity.ok(Arrays.stream(CounselingStyle.values())
-//                .map(style -> new CounselingResponse(style.getTitle()))
-//                .collect(Collectors.toList()));
-//    }
-//
-//    @Operation(summary = "상담 분야 목록 조회", description = "가능한 상담 분야 목록을 조회합니다.")
-//    @GetMapping("/counseling-fields")
-//    public ResponseEntity<List<CounselingResponse>> getCounselingField() {
-//        return ResponseEntity.ok(Arrays.stream(CounselingField.values())
-//                .map(field -> new CounselingResponse(field.getTitle()))
-//                .collect(Collectors.toList()));
-//    }
-//}
+@Tag(name = "프로필", description = "스피커/리스너 프로필 관리 API")
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/profile")
+public class ProfileController {
+    private final ProfileService profileService;
+    private SecurityUtil securityUtil;
+
+    @Operation(summary = "특정 사용자 프로필 조회", description = "특정 사용자의 프로필을 조회합니다.")
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<ProfileDetailResponse> getUserProfile(@PathVariable Long userId) {
+        ProfileDetailResponse profile = profileService.getProfileDetail(userId);
+        return ResponseEntity.ok(profile);
+    }
+
+    @Operation(summary = "프로필 id로 프로필 상세 조회", description = "특정 프로필을 조회합니다.")
+    @GetMapping("/{profileId}")
+    public ResponseEntity<ProfileDetailResponse> getProfileById(@PathVariable Long profileId) {
+        ProfileDetailResponse profile = profileService.getProfileDetailById(profileId);
+        return ResponseEntity.ok(profile);
+    }
+
+    @Operation(summary = "간소화된 프로필 조회", description = "특정 유저의 간소화된 프로필을 조회합니다.")
+    @GetMapping("/users/{userId}/simple")
+    public ResponseEntity<ProfileSimpleResponse> getUserSimpleProfile(@PathVariable Long userId) {
+        ProfileSimpleResponse profile = profileService.getProfileSimple(userId);
+        return ResponseEntity.ok(profile);
+    }
+
+    @PostMapping
+    public ResponseEntity<ProfileResponse> createProfile(@RequestBody ProfileCreateRequest request) {
+        Long userId = securityUtil.getCurrentUser().getId();
+        ProfileResponse response = profileService.createProfile(userId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping
+    public ResponseEntity<ProfileResponse> updateProfile(@RequestBody ProfileUpdateRequest request) {
+        Long userId = securityUtil.getCurrentUser().getId();
+        ProfileResponse response = profileService.updateProfile(userId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    // 평가태그 추가
+    @PostMapping("/users/{userId}/tags")
+    public ResponseEntity<Void> addEvaluationTags(
+            @PathVariable Long userId,
+            @RequestBody Set<String> tags) {
+        profileService.addEvaluationTags(userId, tags);
+        return ResponseEntity.ok().build();
+    }
+}
