@@ -117,7 +117,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         user.verifyEmail();
-        user.updateRole(RoleType.ROLE_USER);
+//        user.updateRole(RoleType.ROLE_USER);
 //        userService.save(user);
     }
 
@@ -155,7 +155,7 @@ public class AuthServiceImpl implements AuthService {
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .currentRole(user.getCurrentRole())
+//                .currentRole(user.getCurrentRole())
                 .build();
     }
 

@@ -32,6 +32,21 @@ public class User extends BaseTimeEntity {
     @Column(unique = true, nullable = false)
     private String nickname;
 
+    @Column(nullable = false)
+    private String department;
+
+    @Column
+    private String imgUrl;
+
+    @Column(nullable = false)
+    private LocalDateTime entranceTime;
+
+    @Column(nullable = false)
+    private boolean graduation;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
+    private RoleType currentRole;
 
 
     @Column(name = "verification_token")
@@ -46,9 +61,9 @@ public class User extends BaseTimeEntity {
     private LocalDateTime lastLoginAt;
     private LocalDateTime deletedAt;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
-    private RoleType currentRole;
+//    @Enumerated(EnumType.STRING)
+//    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
+//    private RoleType currentRole;
 
     @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL)
     private List<ChatMessage> sentMessages = new ArrayList<>();
@@ -60,9 +75,14 @@ public class User extends BaseTimeEntity {
     private List<ChatRoom> speakerRooms = new ArrayList<>();
 
     @Builder
-    public User(String email, String password, RoleType role) {
+    public User(String email, String password, String nickname, String department, LocalDateTime entranceTime, boolean graduation, boolean agreedToTerms, RoleType role) {
         this.email = email;
         this.password = password;
+        this.nickname = nickname;
+        this.department = department;
+        this.entranceTime = entranceTime;
+        this.graduation = graduation;
+        this.agreedToTerms = agreedToTerms;
         this.currentRole = role;
     }
 
