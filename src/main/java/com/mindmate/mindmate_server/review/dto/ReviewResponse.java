@@ -15,7 +15,7 @@ import java.util.List;
 public class ReviewResponse {
     private Long id;
     private String content;
-    private Integer rating;
+    private double rating;
 //    private List<String> tags;
     private String reply;
     private LocalDateTime createdAt;

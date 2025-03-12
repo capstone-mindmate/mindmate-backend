@@ -39,7 +39,7 @@ public class Review extends BaseTimeEntity {
 //    @JoinColumn(name = "matching_id")
 //    private Matching matching;
 
-    private Integer rating;
+    private double rating;
 
     @Column(columnDefinition = "TEXT")
     private String content;
@@ -50,7 +50,7 @@ public class Review extends BaseTimeEntity {
     private String reply;
 
     @Builder
-    public Review(User reviewer, User reviewee, Integer rating,
+    public Review(User reviewer, User reviewee, double rating,
                   String content ) {
         this.reviewer = reviewer;
         this.reviewee = reviewee;
