@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -43,17 +44,20 @@ class ProfileServiceTest {
         mockUser = User.builder()
                 .email("test@ajou.ac.kr")
                 .password("password")
-                .nickname("ajou")
-                .department("소프트웨어학과")
-                .entranceTime(LocalDateTime.now().minusYears(2))
-                .graduation(false)
                 .agreedToTerms(true)
                 .role(RoleType.ROLE_USER)
                 .build();
 
+        ReflectionTestUtils.setField(mockUser, "id", 1L);
+
+
         mockProfile = Profile.builder()
                 .user(mockUser)
                 .profileImage("http://example.com/image.jpg")
+                .nickname("ajou")
+                .department("소프트웨어학과")
+                .entranceTime(LocalDateTime.now().minusYears(2))
+                .graduation(false)
                 .build();
 
         mockReview = Review.builder()
@@ -62,29 +66,21 @@ class ProfileServiceTest {
                 .content("아주 나이스한 상담이었습니다.")
                 .rating(4.5)
                 .build();
-
-        try {
-            java.lang.reflect.Field field = User.class.getDeclaredField("id");
-            field.setAccessible(true);
-            field.set(mockUser, 1L);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
     @Test
     @DisplayName("사용자 ID로 프로필 상세 조회 테스트")
     void getProfileDetail() {
-        // given
         Long userId = 1L;
         List<Review> reviews = Collections.singletonList(mockReview);
         Double averageRating = 4.5;
 
         when(userService.findUserById(userId)).thenReturn(mockUser);
         when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(mockProfile));
-        when(reviewRepository.findRecentReviewsByRevieweeId(eq(userId), any(PageRequest.class)))
+        when(reviewRepository.findRecentReviewsByRevieweeId(any(Long.class), any(PageRequest.class)))
                 .thenReturn(reviews);
-        when(reviewRepository.calculateAverageRatingByRevieweeId(userId)).thenReturn(Optional.of(averageRating));
+        when(reviewRepository.calculateAverageRatingByRevieweeId(any(Long.class)))
+                .thenReturn(Optional.of(averageRating));
 
         // when
         ProfileDetailResponse response = profileService.getProfileDetail(userId);
@@ -93,11 +89,11 @@ class ProfileServiceTest {
         assertNotNull(response);
         assertEquals(mockProfile.getId(), response.getId());
         assertEquals(mockUser.getId(), response.getUserId());
-        assertEquals(mockUser.getNickname(), response.getNickname());
+        assertEquals(mockProfile.getNickname(), response.getNickname());
         assertEquals(mockProfile.getProfileImage(), response.getProfileImage());
-        assertEquals(mockUser.getDepartment(), response.getDepartment());
-        assertEquals(mockUser.getEntranceTime(), response.getEntranceTime());
-        assertEquals(mockUser.isGraduation(), response.isGraduation());
+        assertEquals(mockProfile.getDepartment(), response.getDepartment());
+        assertEquals(mockProfile.getEntranceTime(), response.getEntranceTime());
+        assertEquals(mockProfile.isGraduation(), response.isGraduation());
         assertEquals(mockProfile.getCounselingCount(), response.getTotalCounselingCount());
         assertEquals(mockProfile.getAvgResponseTime(), response.getAvgResponseTime());
         assertEquals(averageRating, response.getAverageRating());
@@ -105,8 +101,8 @@ class ProfileServiceTest {
 
         verify(userService).findUserById(userId);
         verify(profileRepository).findByUserId(userId);
-        verify(reviewRepository).findRecentReviewsByRevieweeId(eq(userId), any(PageRequest.class));
-        verify(reviewRepository).calculateAverageRatingByRevieweeId(userId);
+        verify(reviewRepository).findRecentReviewsByRevieweeId(any(Long.class), any(PageRequest.class));
+        verify(reviewRepository).calculateAverageRatingByRevieweeId(any(Long.class));
     }
 
     @Test
@@ -145,6 +141,10 @@ class ProfileServiceTest {
         assertNotNull(response);
         assertEquals(mockProfile.getId(), response.getId());
         assertEquals(mockUser.getId(), response.getUserId());
+        assertEquals(mockProfile.getNickname(), response.getNickname());
+        assertEquals(mockProfile.getDepartment(), response.getDepartment());
+        assertEquals(mockProfile.getEntranceTime(), response.getEntranceTime());
+        assertEquals(mockProfile.isGraduation(), response.isGraduation());
         assertEquals(averageRating, response.getAverageRating());
         assertEquals(1, response.getReviews().size());
     }
@@ -182,7 +182,7 @@ class ProfileServiceTest {
         assertNotNull(response);
         assertEquals(mockProfile.getId(), response.getId());
         assertEquals(mockUser.getId(), response.getUserId());
-        assertEquals(mockUser.getNickname(), response.getNickname());
+        assertEquals(mockProfile.getNickname(), response.getNickname());
         assertEquals(mockProfile.getProfileImage(), response.getProfileImage());
         assertEquals(mockProfile.getCounselingCount(), response.getTotalCounselingCount());
         assertEquals(averageRating, response.getAverageRating());
@@ -195,6 +195,10 @@ class ProfileServiceTest {
         Long userId = 1L;
         ProfileCreateRequest request = ProfileCreateRequest.builder()
                 .profileImage("http://example.com/new_image.jpg")
+                .nickname("ajou")
+                .department("소프트웨어학과")
+                .entranceTime(LocalDateTime.now().minusYears(2))
+                .graduation(false)
                 .build();
 
         when(userService.findUserById(userId)).thenReturn(mockUser);
@@ -207,6 +211,7 @@ class ProfileServiceTest {
         // then
         assertNotNull(response);
         assertEquals(mockProfile.getId(), response.getId());
+        assertEquals(request.getNickname(), response.getNickname());
         assertEquals("프로필이 생성되었습니다.", response.getMessage());
 
         verify(profileRepository).save(any(Profile.class));
@@ -218,6 +223,7 @@ class ProfileServiceTest {
         // given
         Long userId = 1L;
         ProfileCreateRequest request = ProfileCreateRequest.builder()
+                .nickname("ajou")
                 .profileImage("http://example.com/new_image.jpg")
                 .build();
 
@@ -233,12 +239,37 @@ class ProfileServiceTest {
     }
 
     @Test
+    @DisplayName("이미 존재하는 닉네임 생성 시 예외 발생 테스트")
+    void createProfileWhenNicknameExists() {
+        // given
+        Long userId = 2L;
+        ProfileCreateRequest request = ProfileCreateRequest.builder()
+                .nickname("ajou")
+                .profileImage("http://example.com/new_image.jpg")
+                .build();
+
+        when(userService.findUserById(userId)).thenReturn(mockUser);
+        when(profileRepository.existsByNickname("ajou")).thenReturn(true);
+
+        // when & then
+        CustomException exception = assertThrows(CustomException.class, () -> {
+            profileService.createProfile(userId, request);
+        });
+
+        assertEquals(ProfileErrorCode.DUPLICATE_NICKNAME, exception.getErrorCode());
+    }
+
+    @Test
     @DisplayName("프로필 업데이트 테스트 - 프로필 이미지 변경")
     void updateProfile() {
         // given
         Long userId = 1L;
         ProfileUpdateRequest request = ProfileUpdateRequest.builder()
                 .profileImage("http://example.com/updated_image.jpg")
+                .nickname("new ajou")
+                .department("심리학과")
+                .entranceTime(LocalDateTime.now().minusYears(5))
+                .graduation(true)
                 .build();
 
         when(userService.findUserById(userId)).thenReturn(mockUser);
@@ -250,6 +281,7 @@ class ProfileServiceTest {
         // then
         assertNotNull(response);
         assertEquals(mockProfile.getId(), response.getId());
+        assertEquals(mockProfile.getNickname(), response.getNickname());
         assertEquals("프로필이 업데이트되었습니다.", response.getMessage());
 
         verify(profileRepository).findByUserId(any());
