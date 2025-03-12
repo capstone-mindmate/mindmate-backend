@@ -62,6 +62,14 @@ class ProfileServiceTest {
                 .content("아주 나이스한 상담이었습니다.")
                 .rating(4.5)
                 .build();
+
+        try {
+            java.lang.reflect.Field field = User.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(mockUser, 1L);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
