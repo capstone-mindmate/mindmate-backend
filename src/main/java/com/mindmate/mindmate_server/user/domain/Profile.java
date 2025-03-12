@@ -4,6 +4,7 @@ import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -22,6 +23,18 @@ public class Profile extends BaseTimeEntity {
 
     private String profileImage;
 
+    @Column(unique = true, nullable = false)
+    private String nickname;
+
+    @Column(nullable = false)
+    private String department;
+
+    @Column(nullable = false)
+    private LocalDateTime entranceTime;
+
+    @Column(nullable = false)
+    private boolean graduation;
+
     // 활동 정보
     private int counselingCount = 0;
     private int avgResponseTime = 0;
@@ -34,9 +47,13 @@ public class Profile extends BaseTimeEntity {
     private Set<String> evaluationTags = new HashSet<>();
 
     @Builder
-    public Profile(User user, String profileImage) {
+    public Profile(User user, String nickname, String department, LocalDateTime entranceTime, boolean graduation, String profileImage) {
         this.user = user;
         this.profileImage = profileImage;
+        this.nickname = nickname;
+        this.department = department;
+        this.entranceTime = entranceTime;
+        this.graduation = graduation;
     }
 
     public void updateProfileImage(String profileImage) {
@@ -59,4 +76,15 @@ public class Profile extends BaseTimeEntity {
         this.evaluationTags.add(tag);
     }
 
+    public void updateDepartment(String department) {
+        this.department = department;
+    }
+
+    public void updateEntranceTime(LocalDateTime entranceTime) {
+        this.entranceTime = entranceTime;
+    }
+
+    public void updateGraduation(Boolean graduation) {
+        this.graduation = graduation;
+    }
 }

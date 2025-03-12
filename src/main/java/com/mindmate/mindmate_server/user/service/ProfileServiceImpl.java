@@ -57,7 +57,7 @@ public class ProfileServiceImpl implements ProfileService {
         return ProfileSimpleResponse.builder()
                 .id(profile.getId())
                 .userId(user.getId())
-                .nickname(user.getNickname())
+                .nickname(profile.getNickname())
                 .profileImage(profile.getProfileImage())
                 .totalCounselingCount(profile.getCounselingCount())
                 .averageRating(averageRating)
@@ -77,11 +77,14 @@ public class ProfileServiceImpl implements ProfileService {
         Profile profile = Profile.builder()
                 .user(user)
                 .profileImage(request.getProfileImage())
+                .department(request.getDepartment())
+                .entranceTime(request.getEntranceTime())
+                .graduation(request.isGraduation())
                 .build();
 
         profileRepository.save(profile);
 
-        return ProfileResponse.of(profile.getId(), "프로필이 생성되었습니다.");
+        return ProfileResponse.of(profile.getId(), profile.getNickname(), "프로필이 생성되었습니다.");
     }
 
     @Override
@@ -91,11 +94,21 @@ public class ProfileServiceImpl implements ProfileService {
 
         // todo : 닉네임 중복 확인 로직
 
+        // 이걸 여기 두는 게 맞나?
         if (request.getProfileImage() != null) {
             profile.updateProfileImage(request.getProfileImage());
         }
+        if (request.getDepartment() != null) {
+            profile.updateDepartment(request.getDepartment());
+        }
+        if (request.getEntranceTime() != null) {
+            profile.updateEntranceTime(request.getEntranceTime());
+        }
+        if (request.getGraduation() != null) {
+            profile.updateGraduation(request.getGraduation());
+        }
 
-        return ProfileResponse.of(profile.getId(), "프로필이 업데이트되었습니다.");
+        return ProfileResponse.of(profile.getId(), profile.getNickname(), "프로필이 업데이트되었습니다.");
     }
 
     @Override
@@ -161,11 +174,11 @@ public class ProfileServiceImpl implements ProfileService {
         return ProfileDetailResponse.builder()
                 .id(profile.getId())
                 .userId(userId)
-                .nickname(user.getNickname())
+                .nickname(profile.getNickname())
                 .profileImage(profile.getProfileImage())
-                .department(user.getDepartment())
-                .entranceTime(user.getEntranceTime())
-                .graduation(user.isGraduation())
+                .department(profile.getDepartment())
+                .entranceTime(profile.getEntranceTime())
+                .graduation(profile.isGraduation())
                 .totalCounselingCount(profile.getCounselingCount())
                 .avgResponseTime(profile.getAvgResponseTime())
                 .averageRating(averageRating)

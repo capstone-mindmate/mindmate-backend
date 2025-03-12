@@ -30,18 +30,6 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private String password;
 
-    @Column(unique = true, nullable = false)
-    private String nickname;
-
-    @Column(nullable = false)
-    private String department;
-
-    @Column(nullable = false)
-    private LocalDateTime entranceTime;
-
-    @Column(nullable = false)
-    private boolean graduation;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "VARCHAR(20)")
     private RoleType currentRole;
@@ -78,13 +66,9 @@ public class User extends BaseTimeEntity {
     private LocalDate lastActionResetDate;
 
     @Builder
-    public User(String email, String password, String nickname, String department, LocalDateTime entranceTime, boolean graduation, boolean agreedToTerms, RoleType role) {
+    public User(String email, String password, boolean agreedToTerms, RoleType role) {
         this.email = email;
         this.password = password;
-        this.nickname = nickname;
-        this.department = department;
-        this.entranceTime = entranceTime;
-        this.graduation = graduation;
         this.agreedToTerms = agreedToTerms;
         this.currentRole = role;
     }
