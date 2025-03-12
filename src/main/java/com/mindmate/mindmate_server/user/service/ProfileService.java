@@ -3,30 +3,29 @@ package com.mindmate.mindmate_server.user.service;
 import com.mindmate.mindmate_server.auth.dto.TokenResponse;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.dto.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
+import java.util.Set;
 
 public interface ProfileService {
 
-    ListenerProfileResponse getListenerProfile(Long profileId);
-    SpeakerProfileResponse getSpeakerProfile(Long profileId);
+    ProfileDetailResponse getProfileDetail(Long userId);
 
-    ProfileResponse createListenerProfile(Long userId, ListenerProfileRequest request);
+    ProfileDetailResponse getProfileDetailById(Long profileId);
 
-    ProfileResponse createSpeakerProfile(Long userId, SpeakerProfileRequest request);
+    ProfileSimpleResponse getProfileSimple(Long userId);
 
-    ListenerProfileResponse updateListenerProfile(Long profileId, ListenerProfileUpdateRequest request);
+    ProfileResponse createProfile(Long userId, ProfileCreateRequest request);
 
-    SpeakerProfileResponse updateSpeakerProfile(Long profileId, SpeakerProfileUpdateRequest request);
+    ProfileResponse updateProfile(Long userId, ProfileUpdateRequest request);
 
-    ListenerProfileResponse updateListenerCertification(Long profileId, CertificationUpdateRequest request);
+    void incrementCounselingCount(Long userId);
 
-    ProfileStatusResponse switchRole(Long userId, RoleType targetRole);
+    void updateResponseTime(Long userId, Integer responseTime);
 
-    void updateAverageRating(Long profileId, RoleType roleType, Float newRating);
+    void addEvaluationTags(Long userId, Set<String> tags);
 
-    void updateCounselingCount(Long profileId, RoleType roleType);
-
-    void updateResponseTime(Long profileId, Integer responseTime);
-
-//    void deleteProfile(Long profileId); // user 계정 삭제 시 삭제 되도록 만글기
-
+    // 인기 프로필??
 }

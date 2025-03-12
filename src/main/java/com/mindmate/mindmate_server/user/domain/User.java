@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,9 +35,6 @@ public class User extends BaseTimeEntity {
 
     @Column(nullable = false)
     private String department;
-
-    @Column
-    private String imgUrl;
 
     @Column(nullable = false)
     private LocalDateTime entranceTime;
@@ -73,6 +71,11 @@ public class User extends BaseTimeEntity {
 
     @OneToMany(mappedBy = "speaker")
     private List<ChatRoom> speakerRooms = new ArrayList<>();
+
+    // 일일 매칭 제한 관련 필드 추가
+    private int dailyCancellationCount = 0;
+    private int dailyRejectionCount = 0;
+    private LocalDate lastActionResetDate;
 
     @Builder
     public User(String email, String password, String nickname, String department, LocalDateTime entranceTime, boolean graduation, boolean agreedToTerms, RoleType role) {
@@ -113,4 +116,35 @@ public class User extends BaseTimeEntity {
     }
 
 
+    // 매칭 관련 메서드 추가
+    public boolean addCancelCount() {
+        checkAndResetLimits();
+
+        if (dailyCancellationCount >= 3) {
+            return false; // 한도 초과
+        }
+
+        dailyCancellationCount++;
+        return true;
+    }
+
+    public boolean addRejectionCount() {
+        checkAndResetLimits();
+
+        if (dailyRejectionCount >= 3) {
+            return false; // 한도 초과
+        }
+
+        dailyRejectionCount++;
+        return true;
+    }
+
+    private void checkAndResetLimits() {
+        LocalDate today = LocalDate.now();
+        if (lastActionResetDate == null || !today.equals(lastActionResetDate)) {
+            dailyCancellationCount = 0;
+            dailyRejectionCount = 0;
+            lastActionResetDate = today;
+        }
+    }
 }

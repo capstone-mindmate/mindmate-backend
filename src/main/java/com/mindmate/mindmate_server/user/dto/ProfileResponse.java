@@ -8,15 +8,13 @@ import lombok.Getter;
 @Builder
 public class ProfileResponse {
     private Long id;
-    private String nickname;
-    private RoleType role;
+//    private String nickname;
     private String message;
 
-    public static ProfileResponse of(Long id, String nickname, RoleType role, String message) {
+    public static ProfileResponse of(Long id, /*String nickname,*/String message) {
         return ProfileResponse.builder()
                 .id(id)
-                .nickname(nickname)
-                .role(role)
+//                .nickname(nickname)
                 .message(message)
                 .build();
     }
