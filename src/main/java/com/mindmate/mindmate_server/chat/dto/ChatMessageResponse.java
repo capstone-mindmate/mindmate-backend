@@ -30,7 +30,7 @@ public class ChatMessageResponse {
                 .id(message.getId())
                 .roomId(message.getChatRoom().getId())
                 .senderId(message.getSender().getId())
-                .senderName(message.getSender().getNickname())
+//                .senderName(message.getSender().getNickname())
 //                .senderRole(message.getSenderRole())
                 .content(message.getFilteredContent() != null ? message.getFilteredContent() : message.getContent())
                 .type(message.getType())

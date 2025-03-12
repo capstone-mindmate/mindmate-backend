@@ -23,8 +23,8 @@ public class ChatRoomResponse {
         boolean isListener = chatRoom.getListener().getId().equals(userId);
         int unreadCount = isListener ? chatRoom.getListenerUnreadCount() : chatRoom.getSpeakerUnreadCount();
         Long lastReadMessageId = isListener ? chatRoom.getListenerLastReadMessageId() : chatRoom.getSpeakerLastReadMessageId();
-        String myName = isListener ? chatRoom.getListener().getNickname() : chatRoom.getSpeaker().getNickname();
-        String oppositeName = isListener ? chatRoom.getSpeaker().getNickname() : chatRoom.getListener().getNickname();
+//        String myName = isListener ? chatRoom.getListener().getNickname() : chatRoom.getSpeaker().getNickname();
+//        String oppositeName = isListener ? chatRoom.getSpeaker().getNickname() : chatRoom.getListener().getNickname();
 
         return ChatRoomResponse.builder()
                 .roomId(chatRoom.getId())
@@ -32,8 +32,8 @@ public class ChatRoomResponse {
                 .unreadCount(unreadCount)
                 .lastMessageTime(chatRoom.getLastMessageTime())
                 .lastReadMessageId(lastReadMessageId)
-                .myName(myName)
-                .oppositeName(oppositeName)
+//                .myName(myName)
+//                .oppositeName(oppositeName)
                 .build();
     }
 

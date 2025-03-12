@@ -72,10 +72,11 @@ public class ProfileServiceImpl implements ProfileService {
             throw new CustomException(ProfileErrorCode.PROFILE_ALREADY_EXIST);
         }
 
-        // 닉네임 겹침 여부? 유저에ㅓㅅ?
+        validateDuplicateNickname(request.getNickname());
 
         Profile profile = Profile.builder()
                 .user(user)
+                .nickname(request.getNickname())
                 .profileImage(request.getProfileImage())
                 .department(request.getDepartment())
                 .entranceTime(request.getEntranceTime())
@@ -92,8 +93,10 @@ public class ProfileServiceImpl implements ProfileService {
         User user = userService.findUserById(userId);
         Profile profile = getOrCreateProfile(user);
 
-        // todo : 닉네임 중복 확인 로직
-
+        if (request.getNickname() != null && !request.getNickname().equals(profile.getNickname())) {
+            validateDuplicateNickname(request.getNickname());
+            profile.updateNickname(request.getNickname());
+        }
         // 이걸 여기 두는 게 맞나?
         if (request.getProfileImage() != null) {
             profile.updateProfileImage(request.getProfileImage());
@@ -137,6 +140,12 @@ public class ProfileServiceImpl implements ProfileService {
     private Profile findProfileById(Long profileId) {
         return profileRepository.findById(profileId)
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+    }
+
+    private void validateDuplicateNickname(String nickname) {
+        if (profileRepository.existsByNickname(nickname)) {
+            throw new CustomException(ProfileErrorCode.DUPLICATE_NICKNAME);
+        }
     }
 
     // 조회 아니면 생성

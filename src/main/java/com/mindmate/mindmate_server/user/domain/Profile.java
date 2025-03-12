@@ -87,4 +87,8 @@ public class Profile extends BaseTimeEntity {
     public void updateGraduation(Boolean graduation) {
         this.graduation = graduation;
     }
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
 }
