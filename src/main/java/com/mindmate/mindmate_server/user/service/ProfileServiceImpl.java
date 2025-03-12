@@ -33,81 +33,31 @@ public class ProfileServiceImpl implements ProfileService {
     @Transactional(readOnly = true)
     public ProfileDetailResponse getProfileDetail(Long userId) {
         User user = userService.findUserById(userId);
-        Profile profile = profileRepository.findByUserId(userId)
-                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+        Profile profile = findProfileByUserId(userId);
 
-        List<Review> recentReviews = reviewRepository.findRecentReviewsByRevieweeId(
-                userId,
-                PageRequest.of(0, 5)
-        );
-
-        Double averageRating = reviewRepository.calculateAverageRatingByRevieweeId(userId)
-                .orElse(0.0);
-
-        return ProfileDetailResponse.builder()
-                .id(profile.getId())
-                .userId(user.getId())
-                .nickname(user.getNickname())
-                .profileImage(profile.getProfileImage())
-                .department(user.getDepartment())
-                .entranceTime(user.getEntranceTime())
-                .graduation(user.isGraduation())
-                .totalCounselingCount(profile.getCounselingCount())
-                .avgResponseTime(profile.getAvgResponseTime())
-                .averageRating(averageRating)
-                .evaluationTags(profile.getEvaluationTags())
-                .reviews(mapReviews(recentReviews))
-                .createdAt(profile.getCreatedAt())
-                .build();
+        return buildProfileDetailResponse(profile, user);
     }
 
     @Override
     @Transactional(readOnly = true)
     public ProfileDetailResponse getProfileDetailById(Long profileId) {
-        Profile profile = profileRepository.findById(profileId)
-                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
-
+        Profile profile = findProfileById(profileId);
         User user = profile.getUser();
 
-        List<Review> recentReviews = reviewRepository.findRecentReviewsByRevieweeId(
-                user.getId(),
-                PageRequest.of(0, 5)
-        );
-
-        Double averageRating = reviewRepository.calculateAverageRatingByRevieweeId(user.getId())
-                .orElse(0.0);
-
-        return ProfileDetailResponse.builder()
-                .id(profile.getId())
-                .userId(user.getId())
-                .nickname(user.getNickname())
-                .profileImage(profile.getProfileImage())
-                .department(user.getDepartment())
-                .entranceTime(user.getEntranceTime())
-                .graduation(user.isGraduation())
-                .totalCounselingCount(profile.getCounselingCount())
-                .avgResponseTime(profile.getAvgResponseTime())
-                .averageRating(averageRating)
-                .evaluationTags(profile.getEvaluationTags())
-                .reviews(mapReviews(recentReviews))
-                .createdAt(profile.getCreatedAt())
-                .build();
+        return buildProfileDetailResponse(profile, user);
     }
 
     @Override
     @Transactional(readOnly = true)
     public ProfileSimpleResponse getProfileSimple(Long userId) {
         User user = userService.findUserById(userId);
-        Profile profile = profileRepository.findByUserId(userId)
-                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
-
-        Double averageRating = reviewRepository.calculateAverageRatingByRevieweeId(userId)
-                .orElse(0.0);
+        Profile profile = findProfileByUserId(userId);
+        Double averageRating = getAverageRating(userId);
 
         return ProfileSimpleResponse.builder()
                 .id(profile.getId())
                 .userId(user.getId())
-                .nickname(user.getNickname())
+                .nickname(profile.getNickname())
                 .profileImage(profile.getProfileImage())
                 .totalCounselingCount(profile.getCounselingCount())
                 .averageRating(averageRating)
@@ -122,16 +72,20 @@ public class ProfileServiceImpl implements ProfileService {
             throw new CustomException(ProfileErrorCode.PROFILE_ALREADY_EXIST);
         }
 
-        // 닉네임 겹침 여부? 유저에ㅓㅅ?
+        validateDuplicateNickname(request.getNickname());
 
         Profile profile = Profile.builder()
                 .user(user)
+                .nickname(request.getNickname())
                 .profileImage(request.getProfileImage())
+                .department(request.getDepartment())
+                .entranceTime(request.getEntranceTime())
+                .graduation(request.isGraduation())
                 .build();
 
         profileRepository.save(profile);
 
-        return ProfileResponse.of(profile.getId(), "프로필이 생성되었습니다.");
+        return ProfileResponse.of(profile.getId(), profile.getNickname(), "프로필이 생성되었습니다.");
     }
 
     @Override
@@ -139,13 +93,25 @@ public class ProfileServiceImpl implements ProfileService {
         User user = userService.findUserById(userId);
         Profile profile = getOrCreateProfile(user);
 
-        // todo : 닉네임 중복 확인 로직
-
+        if (request.getNickname() != null && !request.getNickname().equals(profile.getNickname())) {
+            validateDuplicateNickname(request.getNickname());
+            profile.updateNickname(request.getNickname());
+        }
+        // 이걸 여기 두는 게 맞나?
         if (request.getProfileImage() != null) {
             profile.updateProfileImage(request.getProfileImage());
         }
+        if (request.getDepartment() != null) {
+            profile.updateDepartment(request.getDepartment());
+        }
+        if (request.getEntranceTime() != null) {
+            profile.updateEntranceTime(request.getEntranceTime());
+        }
+        if (request.getGraduation() != null) {
+            profile.updateGraduation(request.getGraduation());
+        }
 
-        return ProfileResponse.of(profile.getId(), "프로필이 업데이트되었습니다.");
+        return ProfileResponse.of(profile.getId(), profile.getNickname(), "프로필이 업데이트되었습니다.");
     }
 
     @Override
@@ -163,8 +129,22 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public void addEvaluationTags(Long userId, Set<String> tags) {
         Profile profile = getOrCreateProfile(userService.findUserById(userId));
-        for (String tag : tags) {
-            profile.addEvaluationTag(tag);
+        tags.forEach(profile::addEvaluationTag);
+    }
+
+    private Profile findProfileByUserId(Long userId) {
+        return profileRepository.findByUserId(userId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+    }
+
+    private Profile findProfileById(Long profileId) {
+        return profileRepository.findById(profileId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+    }
+
+    private void validateDuplicateNickname(String nickname) {
+        if (profileRepository.existsByNickname(nickname)) {
+            throw new CustomException(ProfileErrorCode.DUPLICATE_NICKNAME);
         }
     }
 
@@ -177,6 +157,44 @@ public class ProfileServiceImpl implements ProfileService {
                             .build();
                     return profileRepository.save(newProfile);
                 });
+    }
+
+    // 사용자의 최근 리뷰 5개 조회
+    private List<ReviewResponse> getRecentReviews(Long userId) {
+        List<Review> recentReviews = reviewRepository.findRecentReviewsByRevieweeId(
+                userId,
+                PageRequest.of(0, 5)
+        );
+
+        return mapReviews(recentReviews);
+    }
+
+    // 사용자 평균 평점 계산
+    private Double getAverageRating(Long userId) {
+        return reviewRepository.calculateAverageRatingByRevieweeId(userId)
+                .orElse(0.0);
+    }
+
+    private ProfileDetailResponse buildProfileDetailResponse(Profile profile, User user) {
+        Long userId = user.getId();
+        List<ReviewResponse> recentReviews = getRecentReviews(userId);
+        Double averageRating = getAverageRating(userId);
+
+        return ProfileDetailResponse.builder()
+                .id(profile.getId())
+                .userId(userId)
+                .nickname(profile.getNickname())
+                .profileImage(profile.getProfileImage())
+                .department(profile.getDepartment())
+                .entranceTime(profile.getEntranceTime())
+                .graduation(profile.isGraduation())
+                .totalCounselingCount(profile.getCounselingCount())
+                .avgResponseTime(profile.getAvgResponseTime())
+                .averageRating(averageRating)
+                .evaluationTags(profile.getEvaluationTags())
+                .reviews(recentReviews)
+                .createdAt(profile.getCreatedAt())
+                .build();
     }
 
     private List<ReviewResponse> mapReviews(List<Review> reviews) {
