@@ -161,26 +161,6 @@ class UserServiceTest {
         }
     }
 
-    @Test
-    @DisplayName("중복 닉네임 확인")
-    void existsByNickname() {
-        // given
-        String existingNickname = "existingNickname";
-        String newNickname = "newNickname";
-
-        when(userRepository.existsByNickname(existingNickname)).thenReturn(true);
-        when(userRepository.existsByNickname(newNickname)).thenReturn(false);
-
-        // when
-        boolean existingResult = userService.existsByNickname(existingNickname);
-        boolean newResult = userService.existsByNickname(newNickname);
-
-        // then
-        assertTrue(existingResult);
-        assertFalse(newResult);
-        verify(userRepository).existsByNickname(existingNickname);
-        verify(userRepository).existsByNickname(newNickname);
-    }
 
 
     private User createUser() {

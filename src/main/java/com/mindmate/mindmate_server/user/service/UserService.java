@@ -9,7 +9,7 @@ public interface UserService {
 
     boolean existsByEmail(String email);
 
-    boolean existsByNickname(String nickname);
+//    boolean existsByNickname(String nickname);
 
     void save(User user);
 

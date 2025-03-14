@@ -1,6 +1,5 @@
 package com.mindmate.mindmate_server.user.service;
 
-import com.mindmate.mindmate_server.auth.util.SecurityUtil;
 import com.mindmate.mindmate_server.global.exception.AuthErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.UserErrorCode;
@@ -31,10 +30,10 @@ public class UserServiceImpl implements UserService {
         return userRepository.existsByEmail(email);
     }
 
-    @Override
-    public boolean existsByNickname(String nickname) {
-        return userRepository.existsByNickname(nickname);
-    }
+//    @Override
+//    public boolean existsByNickname(String nickname) {
+//        return userRepository.existsByNickname(nickname);
+//    }
 
     @Override
     public void save(User user) {
