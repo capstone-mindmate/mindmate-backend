@@ -66,16 +66,18 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                     .requestMatchers(
                             "/ws/**",
-                            "/api/**",
-//                            "/api/auth/register",
-//                            "/api/auth/login",
-//                            "/api/auth/verify-email",
-//                            "/api/auth/resend-verification",
+                            "/api/auth/register",
+                            "/api/auth/login",
+                            "/api/auth/email/verify",
+                            "/api/auth/email/resend",
                             "/swagger-ui/**",
                             "/swagger-resources/**",
                             "/v3/api-docs/**"
                             ).permitAll() // 향후 수정 (api 접근, role 별 접근 등)
-                    .anyRequest().authenticated())
+                        .requestMatchers("/api/profile/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
+                        .requestMatchers("/api/chat/**", "/ws/**").hasAnyAuthority("ROLE_PROFILE", "ROLE_ADMIN")
+                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                        .anyRequest().authenticated())
 //                .addFilterBefore(new RequestLoggingFilter(), UsernamePasswordAuthenticationFilter.class) // 모든 요청 로깅
 //                .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class) // 초당 50개 요청 제한
 //                .addFilterBefore(new XssFilter(), UsernamePasswordAuthenticationFilter.class) // XSS 공격 방지

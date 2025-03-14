@@ -56,7 +56,7 @@ class ProfileServiceTest {
                 .profileImage("http://example.com/image.jpg")
                 .nickname("ajou")
                 .department("소프트웨어학과")
-                .entranceTime(LocalDateTime.now().minusYears(2))
+                .entranceTime(2020)
                 .graduation(false)
                 .build();
 
@@ -197,7 +197,7 @@ class ProfileServiceTest {
                 .profileImage("http://example.com/new_image.jpg")
                 .nickname("ajou")
                 .department("소프트웨어학과")
-                .entranceTime(LocalDateTime.now().minusYears(2))
+                .entranceTime(2020)
                 .graduation(false)
                 .build();
 
@@ -268,7 +268,7 @@ class ProfileServiceTest {
                 .profileImage("http://example.com/updated_image.jpg")
                 .nickname("new ajou")
                 .department("심리학과")
-                .entranceTime(LocalDateTime.now().minusYears(5))
+                .entranceTime(2020)
                 .graduation(true)
                 .build();
 
