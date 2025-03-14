@@ -106,7 +106,7 @@ public class AuthServiceImpl implements AuthService {
      * 현재 방식은 이전 토큰은 무효화하고 새로 생성된 토큰만 유효
      */
     @Override
-    public void verifyEmail(String token) {
+    public TokenResponse  verifyEmail(String token) {
         User user = userService.findVerificationToken(token);
 
         if (user == null || !user.getVerificationToken().equals(token)) {
@@ -119,7 +119,17 @@ public class AuthServiceImpl implements AuthService {
 
         user.verifyEmail();
         user.updateRole(RoleType.ROLE_USER);
-//        userService.save(user);
+
+        String tokenFamily = UUID.randomUUID().toString();
+        String accessToken = jwtTokenProvider.generateToken(user);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user, tokenFamily);
+
+        tokenService.saveRefreshToken(user.getId(), refreshToken, tokenFamily);
+
+        return TokenResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
     }
 
     /**
@@ -142,9 +152,19 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomException(AuthErrorCode.EMAIL_NOT_VERIFIED);
         }
 
-        validatePassword(email, request.getPassword(), user.getPassword());
+        if (user.getProfile() == null) {
+            throw new CustomException(AuthErrorCode.PROFILE_NOT_REGISTER);
+        }
 
+        validatePassword(email, request.getPassword(), user.getPassword());
         loginAttemptService.loginSucceeded(email);
+
+        // todo: 일단 리프레시 토큰만 무효화 -> 액세스 토큰에 대한 처리는 없긴 함, 어차피 유효 시간이 있긴 하니가?
+        TokenData existingToken = tokenService.getRefreshToken(user.getId());
+        if (existingToken != null) {
+            tokenService.addToBlackList(existingToken.getRefreshToken());
+        }
+
         String tokenFamily = UUID.randomUUID().toString();
         String accessToken = jwtTokenProvider.generateToken(user);
         String refreshToken = jwtTokenProvider.generateRefreshToken(user, tokenFamily);

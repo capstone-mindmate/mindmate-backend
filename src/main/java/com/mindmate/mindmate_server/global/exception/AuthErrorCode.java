@@ -38,7 +38,8 @@ public enum AuthErrorCode implements ErrorCode {
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "잘못된 비밀번호입니다."),
 
     // 인증 여부
-    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증되지 않은 사용자입니다");
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증되지 않은 사용자입니다"), 
+    PROFILE_NOT_REGISTER(HttpStatus.FORBIDDEN, "프로필 등록이 완성되지 않았습니다" );
 
     private final HttpStatus status;
     private final String message;

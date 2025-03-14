@@ -57,6 +57,7 @@ public class JwtTokenProvider {
 
         String username = switch (user.getCurrentRole()) {
             case ROLE_UNVERIFIED, ROLE_USER -> user.getEmail();
+            case ROLE_PROFILE -> user.getProfile().getNickname();
             case ROLE_ADMIN -> "admin:" + user.getEmail();
         };
 
