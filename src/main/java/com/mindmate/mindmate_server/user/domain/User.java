@@ -18,7 +18,7 @@ import java.util.UUID;
 @Table(name = "users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@ToString(exclude = {"sentMessages"})
+@ToString(exclude = {"sentMessages", "listenerRooms", "speakerRooms"})
 public class User extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,11 +54,14 @@ public class User extends BaseTimeEntity {
     @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL)
     private List<ChatMessage> sentMessages = new ArrayList<>();
 
-    @OneToMany(mappedBy = "listener")
+    @OneToMany(mappedBy = "listener") // 사용자 삭제되더라도 채팅방 값 존재
     private List<ChatRoom> listenerRooms = new ArrayList<>();
 
     @OneToMany(mappedBy = "speaker")
     private List<ChatRoom> speakerRooms = new ArrayList<>();
+    
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    private Profile profile;
 
     // 일일 매칭 제한 관련 필드 추가
     private int dailyCancellationCount = 0;

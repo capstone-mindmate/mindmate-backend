@@ -7,10 +7,9 @@ import com.mindmate.mindmate_server.auth.dto.TokenResponse;
 
 public interface AuthService {
 
-
     void registerUser(SignUpRequest request);
 
-    void verifyEmail(String token);
+    TokenResponse verifyEmail(String token);
 
     LoginResponse login(LoginRequest request);
 

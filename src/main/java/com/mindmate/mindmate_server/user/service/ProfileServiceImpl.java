@@ -5,14 +5,14 @@ import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
 import com.mindmate.mindmate_server.review.domain.Review;
 import com.mindmate.mindmate_server.review.dto.ReviewResponse;
 import com.mindmate.mindmate_server.review.repository.ReviewRepository;
-import com.mindmate.mindmate_server.user.domain.*;
+import com.mindmate.mindmate_server.user.domain.Profile;
+import com.mindmate.mindmate_server.user.domain.RoleType;
+import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.dto.*;
 import com.mindmate.mindmate_server.user.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -84,6 +84,7 @@ public class ProfileServiceImpl implements ProfileService {
                 .build();
 
         profileRepository.save(profile);
+        user.updateRole(RoleType.ROLE_PROFILE);
 
         return ProfileResponse.of(profile.getId(), profile.getNickname(), "프로필이 생성되었습니다.");
     }

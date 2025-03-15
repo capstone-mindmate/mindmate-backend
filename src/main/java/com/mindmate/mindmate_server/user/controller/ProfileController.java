@@ -1,6 +1,5 @@
 package com.mindmate.mindmate_server.user.controller;
 
-import com.mindmate.mindmate_server.auth.util.SecurityUtil;
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import com.mindmate.mindmate_server.user.dto.*;
 import com.mindmate.mindmate_server.user.service.ProfileService;

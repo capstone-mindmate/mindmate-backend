@@ -37,9 +37,9 @@ public class AuthController {
 
     @Operation(summary = "이메일 인증", description = "이메일 인증 토큰을 검증합니다.")
     @GetMapping("/email/verify")
-    public ResponseEntity<Void> verifyEmail(@RequestParam String token) {
-        authService.verifyEmail(token);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<TokenResponse> verifyEmail(@RequestParam String token) {
+        TokenResponse response = authService.verifyEmail(token);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "로그인", description = "이메일과 비밀번호로 로그인합니다.")

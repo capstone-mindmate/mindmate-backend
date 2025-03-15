@@ -1,0 +1,39 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: build-spring-app
+spec:
+  workspaces:
+    - name: source
+      description: 소스 코드가 있는 작업 공간
+  params:
+    - name: image-name
+      type: string
+      description: 빌드할 Docker 이미지 이름
+      default: "docker.io/daehuijoe/mindmate:latest" # todo: 수정
+    - name: gradle-task
+      type: string
+      description: 실행할 Gradle 태스크
+      default: "clean bootJar"
+  steps:
+    - name: build-jar
+      image: gradle:7.6.1-jdk17
+      workingDir: $(workspaces.source.path)
+      script: |
+        echo "Building Spring Boot application..."
+        chmod +x ./gradlew
+        ./gradlew $(params.gradle-task) -x test
+        echo "Build completed."
+    - name: build-image
+      image: gcr.io/kaniko-project/executor:v1.9.1-debug
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: DOCKER_CONFIG
+          value: /tekton/home/.docker
+      script: |
+        echo "Building Docker image $(params.image-name)..."
+        /kaniko/executor --dockerfile=Dockerfile \
+                         --context=$(workspaces.source.path) \
+                         --destination=$(params.image-name) \
+                         --skip-tls-verify
+        echo "Image build completed."

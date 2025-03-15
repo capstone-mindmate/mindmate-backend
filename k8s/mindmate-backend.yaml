@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mindmate-backend
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: mindmate-backend
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mindmate-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mindmate-backend
+  template:
+    metadata:
+      labels:
+        app: mindmate-backend
+    spec:
+      containers:
+        - name: mindmate-backend
+          image: docker.io/daehuijoe/mindmate:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/mindmate?useSSL=false
+            - name: SPRING_DATASOURCE_USERNAME
+              value: mindmate
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: mindmate12!
+            - name: SPRING_REDIS_HOST
+              value: redis
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:29092

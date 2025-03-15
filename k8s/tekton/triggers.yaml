@@ -1,0 +1,64 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: mindmate-trigger-template
+spec:
+  params:
+    - name: gitrepositoryurl
+      description: Git 저장소 URL
+    - name: gitrevision
+      description: Git 리비전(브랜치, 태그, SHA)
+    - name: namespace
+      description: 파이프라인이 실행될 네임스페이스
+      default: "default"
+    - name: image-name
+      description: 빌드할 Docker 이미지 이름
+      default: "docker.io/daehuijoe/mindmate:latest"
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: mindmate-pipeline-run-
+        namespace: $(tt.params.namespace)
+      spec:
+        pipelineRef:
+          name: mindmate-pipeline
+        workspaces:
+          - name: shared-workspace
+            persistentVolumeClaim:
+              claimName: tekton-workspace
+        params:
+          - name: git-url
+            value: $(tt.params.gitrepositoryurl)
+          - name: git-revision
+            value: $(tt.params.gitrevision)
+          - name: image-name
+            value: $(tt.params.image-name)
+          - name: app-namespace
+            value: $(tt.params.namespace)
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: mindmate-trigger-binding
+spec:
+  params:
+    - name: gitrepositoryurl
+      value: $(body.repository.clone_url)
+    - name: gitrevision
+      value: $(body.ref)
+    - name: namespace
+      value: default
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: mindmate-event-listener
+spec:
+  serviceAccountName: tekton-triggers-sa
+  triggers:
+    - name: github-push
+      bindings:
+        - ref: mindmate-trigger-binding
+      template:
+        ref: mindmate-trigger-template

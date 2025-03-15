@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  ports:
+    - port: 3306
+      targetPort: 3306
+  selector:
+    app: mysql
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - image: mysql:8.0
+          name: mysql
+          env:
+            - name: MYSQL_DATABASE
+              value: mindmate
+            - name: MYSQL_USER
+              value: mindmate
+            - name: MYSQL_PASSWORD
+              value: mindmate12!
+            - name: MYSQL_ROOT_PASSWORD
+              value: root1234
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+          args:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+      volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: mysql-data

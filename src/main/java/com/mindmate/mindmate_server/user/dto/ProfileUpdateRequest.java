@@ -11,7 +11,7 @@ public class ProfileUpdateRequest {
     private String nickname;
     private String profileImage;
     private String department;
-    private LocalDateTime entranceTime;
+    private Integer entranceTime;
     private Boolean graduation;
 }
 

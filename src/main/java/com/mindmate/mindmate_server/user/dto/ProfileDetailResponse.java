@@ -20,7 +20,7 @@ public class ProfileDetailResponse {
     private String nickname;
     private String profileImage;
     private String department;
-    private LocalDateTime entranceTime;
+    private Integer entranceTime;
     private boolean graduation;
 
     // 활동 정보
