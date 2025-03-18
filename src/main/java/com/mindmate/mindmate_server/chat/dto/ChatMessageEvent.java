@@ -18,7 +18,6 @@ public class ChatMessageEvent {
     private LocalDateTime timestamp;
     private Long roomId;
     private Long senderId;
-//    private RoleType senderRole;
     private String content;
     private MessageType type;
 

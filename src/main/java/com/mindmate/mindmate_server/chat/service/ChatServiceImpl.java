@@ -42,16 +42,20 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final ChatPresenceService chatPresenceService;
 
+    // todo: 채팅 관련 전체적으로 채팅방 상태에 따른 처리 추가해야함
 
     @Override
     public ChatMessageResponse sendMessage(Long userId, ChatMessageRequest request) {
         ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getRoomId());
-        User user = userService.findUserById(userId);
+        User sender = userService.findUserById(userId);
+
+        if (!chatRoom.isListener(sender) && !chatRoom.isSpeaker(sender)) {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+        }
 
         ChatMessage chatMessage = ChatMessage.builder()
                 .chatRoom(chatRoom)
-                .sender(user)
-//                .senderRole(user.getCurrentRole())
+                .sender(sender)
                 .content(request.getContent())
                 .type(request.getType())
                 .build();

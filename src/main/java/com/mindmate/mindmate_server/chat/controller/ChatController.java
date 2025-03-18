@@ -56,10 +56,10 @@ public class ChatController {
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            String role) {
+            @PathVariable String roleType) {
         Page<ChatRoomResponse> rooms = chatRoomService.getChatRoomsByUserRole(
                 principal.getUserId(),
-                PageRequest.of(page, size, Sort.by("lastMessageTime").descending()), role);
+                PageRequest.of(page, size, Sort.by("lastMessageTime").descending()), roleType);
         return ResponseEntity.ok(rooms);
     }
 
