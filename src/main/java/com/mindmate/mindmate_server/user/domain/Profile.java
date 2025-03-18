@@ -33,7 +33,7 @@ public class Profile extends BaseTimeEntity {
     private String department;
 
     @Column(nullable = false)
-    private LocalDateTime entranceTime;
+    private Integer entranceTime;
 
     @Column(nullable = false)
     private boolean graduation;
@@ -50,7 +50,7 @@ public class Profile extends BaseTimeEntity {
 
 
     @Builder
-    public Profile(User user, String nickname, String department, LocalDateTime entranceTime, boolean graduation, String profileImage) {
+    public Profile(User user, String nickname, String department, Integer entranceTime, boolean graduation, String profileImage) {
         this.user = user;
         this.profileImage = profileImage;
         this.nickname = nickname;
@@ -83,7 +83,7 @@ public class Profile extends BaseTimeEntity {
         this.department = department;
     }
 
-    public void updateEntranceTime(LocalDateTime entranceTime) {
+    public void updateEntranceTime(Integer entranceTime) {
         this.entranceTime = entranceTime;
     }
 

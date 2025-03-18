@@ -128,12 +128,6 @@ public class ProfileServiceImpl implements ProfileService {
         profile.updateResponseTime(responseTime);
     }
 
-    @Override
-    public void addEvaluationTags(Long userId, Set<String> tags) {
-        Profile profile = getOrCreateProfile(userService.findUserById(userId));
-        tags.forEach(profile::addEvaluationTag);
-    }
-
     private Profile findProfileByUserId(Long userId) {
         return profileRepository.findByUserId(userId)
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
@@ -193,7 +187,7 @@ public class ProfileServiceImpl implements ProfileService {
                 .totalCounselingCount(profile.getCounselingCount())
                 .avgResponseTime(profile.getAvgResponseTime())
                 .averageRating(averageRating)
-                .evaluationTags(profile.getEvaluationTags())
+//                .evaluationTags(profile.getEvaluationTags())
                 .reviews(recentReviews)
                 .createdAt(profile.getCreatedAt())
                 .build();

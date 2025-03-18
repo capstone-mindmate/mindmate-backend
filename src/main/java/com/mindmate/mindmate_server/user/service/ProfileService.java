@@ -46,10 +46,5 @@ public interface ProfileService {
      */
     void updateResponseTime(Long userId, Integer responseTime);
 
-    /**
-     * 평가 태그 추가
-     */
-    void addEvaluationTags(Long userId, Set<String> tags);
-
     // 인기 프로필??
 }
