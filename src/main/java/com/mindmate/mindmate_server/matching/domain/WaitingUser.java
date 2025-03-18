@@ -23,17 +23,34 @@ public class WaitingUser {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "applicant_id", nullable = false)
-    private User applicant;
+    private User waitingUser;
 
     @Column(length = 100)
     private String message;
 
-    // status?
+    @Enumerated(EnumType.STRING)
+    private WaitingStatus status;
+
     @Builder
-    public WaitingUser(User applicant, String message) {
-        this.applicant = applicant;
+    public WaitingUser(User waitingUser, String message) {
+        this.waitingUser = waitingUser;
         this.message = message;
     }
 
+    public void setMatching(Matching matching) {
+        this.matching = matching;
+    }
+
+    public void accept() {
+        this.status = WaitingStatus.ACCEPTED;
+    }
+
+    public void reject() {
+        this.status = WaitingStatus.REJECTED;
+    }
+
+    public boolean isOwner(User user) {
+        return this.waitingUser.getId().equals(user.getId());
+    }
 
 }

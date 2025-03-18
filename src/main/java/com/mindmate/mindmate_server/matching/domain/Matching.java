@@ -41,6 +41,9 @@ public class Matching extends BaseTimeEntity {
     private MatchingType type;
 
     @Enumerated(EnumType.STRING)
+    private MatchingCategory category;
+
+    @Enumerated(EnumType.STRING)
     private MatchingStatus status;
 
     @Enumerated(EnumType.STRING)
@@ -56,15 +59,54 @@ public class Matching extends BaseTimeEntity {
 
     private LocalDateTime matchedAt;
 
-    @OneToMany(mappedBy = "matchingRoom", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "matching", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WaitingUser> waitingUsers = new ArrayList<>();
 
     @Builder
-    public Matching(User creator, String title, String description, InitiatorType creatorRole) {
+    public Matching(User creator, String title, String description, MatchingCategory category, InitiatorType creatorRole) {
         this.creator = creator;
         this.title = title;
         this.description = description;
         this.creatorRole = creatorRole;
-        this.status = MatchingStatus.REQUESTED;
+        this.category = category;
+        this.status = MatchingStatus.OPEN;
+    }
+
+    public void closeMatching() {
+        this.status = MatchingStatus.CLOSED;
+    }
+
+    public void acceptMatching(User acceptedUser, ChatRoom chatRoom) {
+        this.acceptedUser = acceptedUser;
+        this.chatRoom = chatRoom;
+        this.matchedAt = LocalDateTime.now();
+        this.status = MatchingStatus.MATCHED;
+    }
+
+    public boolean isOpen() {
+        return this.status == MatchingStatus.OPEN;
+    }
+
+    public void addApplication(WaitingUser waitingUser) {
+        this.waitingUsers.add(waitingUser);
+        waitingUser.setMatching(this);
+    }
+
+    public boolean isCreator(User user) {
+        return this.creator.getId().equals(user.getId());
+    }
+
+    public boolean isCreatorSpeaker() {
+        return this.creatorRole == InitiatorType.SPEAKER;
+    }
+
+    public InitiatorType getRequiredRole() {
+        return this.creatorRole == InitiatorType.SPEAKER
+                ? InitiatorType.LISTENER
+                : InitiatorType.SPEAKER;
+    }
+
+    public int getWaitingUsersCount() {
+        return this.waitingUsers.size();
     }
 }
