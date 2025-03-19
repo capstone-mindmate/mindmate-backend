@@ -20,7 +20,6 @@ public class ChatMessageResponse {
     private Long senderId;
 
     private String senderName;
-    private RoleType senderRole;
     private String content;
     private MessageType type;
     private LocalDateTime createdAt;
@@ -30,8 +29,7 @@ public class ChatMessageResponse {
                 .id(message.getId())
                 .roomId(message.getChatRoom().getId())
                 .senderId(message.getSender().getId())
-//                .senderName(message.getSender().getNickname())
-//                .senderRole(message.getSenderRole())
+                .senderName(message.getSender().getProfile().getNickname())
                 .content(message.getFilteredContent() != null ? message.getFilteredContent() : message.getContent())
                 .type(message.getType())
                 .createdAt(message.getCreatedAt())

@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
+import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
@@ -26,6 +27,8 @@ public class ChatPresenceService {
     private final RedisKeyManager redisKeyManager;
 
     private final UserService userService;
+    private final ChatRoomRepository chatRoomRepository;
+    private final ChatRoomService chatRoomService;
     /**
      * Redis 값 관리 정리
      * [사용자 상태]
@@ -100,8 +103,25 @@ public class ChatPresenceService {
         }
     }
 
+    /**
+     * Redis에서만 미읽음 카운트 증가
+     */
+    public Long incrementUnreadCountInRedis(Long roomId, Long userId) {
+        // Redis 업데이트
+        String unreadKey = redisKeyManager.getUnreadCountKey(roomId, userId);
+        Long count = redisTemplate.opsForValue().increment(unreadKey);
+
+        // WebSocket 알림
+        notifyUnreadCount(roomId, userId, count);
+
+        log.info("Incremented unread count in Redis for user {} in room {} to {}", userId, roomId, count);
+        return count;
+    }
+
+    // db 관련은 여기서 처리하지 않도록 설정
     @Transactional
-    public void incrementUnreadCount(Long roomId, Long userId, ChatRoom chatRoom) {
+    public void incrementUnreadCount(Long roomId, Long userId) {
+        ChatRoom chatRoom = chatRoomService.findChatRoomById(roomId);
         // Redis 업데이트
         String unreadKey = redisKeyManager.getUnreadCountKey(roomId, userId);
         Long count = redisTemplate.opsForValue().increment(unreadKey);
@@ -110,12 +130,15 @@ public class ChatPresenceService {
         // WebSocket 알림
         notifyUnreadCount(roomId, userId, count);
 
+        log.info("Before increase: {}", chatRoom.getListenerUnreadCount());
         // DB 업데이트 (트랜잭션 내에서)
-        if (userId.equals(chatRoom.getListener().getId())) {
-            chatRoom.increaseUnreadCountForSpeaker();
-        } else {
-            chatRoom.increaseUnreadCountForListener();
-        }
+        chatRoom.increaseUnreadCount(user);
+//            chatRoom.increaseUnreadCountForSpeaker();
+//        } else {
+//            chatRoom.increaseUnreadCountForListener();
+//        }
+
+        chatRoomRepository.saveAndFlush(chatRoom);
         log.info("Incremented unread count for user {} in room {} to {}", userId, roomId, count);
     }
 

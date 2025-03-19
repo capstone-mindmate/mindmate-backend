@@ -8,6 +8,7 @@ import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
+import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
@@ -18,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -37,6 +39,7 @@ public class ChatServiceImpl implements ChatService {
     private final ObjectMapper objectMapper;
     private final RedisKeyManager redisKeyManager;
 
+    private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomService chatRoomService;
     private final UserService userService;
     private final ChatMessageRepository chatMessageRepository;
@@ -45,6 +48,7 @@ public class ChatServiceImpl implements ChatService {
     // todo: 채팅 관련 전체적으로 채팅방 상태에 따른 처리 추가해야함
 
     @Override
+//    @Transactional(propagation = Propagation.REQUIRED)
     public ChatMessageResponse sendMessage(Long userId, ChatMessageRequest request) {
         ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getRoomId());
         User sender = userService.findUserById(userId);
@@ -60,6 +64,8 @@ public class ChatServiceImpl implements ChatService {
                 .type(request.getType())
                 .build();
         ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
+
+        chatRoom.updateLastMessageTime();
 
         ChatMessageEvent event = ChatMessageEvent.builder()
                 .messageId(savedMessage.getId())
@@ -91,21 +97,25 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+//    @Transactional(propagation = Propagation.REQUIRED)
     public int markAsRead(Long userId, Long roomId) {
         ChatRoom chatRoom = chatRoomService.findChatRoomById(roomId);
         User user = userService.findUserById(userId);
 
         validateChatRoomAccess(chatRoom, user);
-        boolean isListener = isUserListener(chatRoom, user);
         Long lastMessageId = chatMessageRepository.findTopByChatRoomIdOrderByIdDesc(roomId)
                 .map(ChatMessage::getId)
                 .orElse(0L);
 
-        if (isListener) {
-            chatRoom.markAsReadForListener(lastMessageId);
-        } else {
-            chatRoom.markAsReadForSpeaker(lastMessageId);
-        }
+//        boolean isListener = isUserListener(chatRoom, user);
+//        if (isListener) {
+//            chatRoom.markAsReadForListener(lastMessageId);
+//        } else {
+//            chatRoom.markAsReadForSpeaker(lastMessageId);
+//        }
+
+        chatRoom.markAsRead(user, lastMessageId);
+        chatRoomRepository.saveAndFlush(chatRoom);
 
         chatPresenceService.resetUnreadCount(roomId, userId);
         String key = redisKeyManager.getReadStatusKey(roomId, userId);
@@ -134,9 +144,5 @@ public class ChatServiceImpl implements ChatService {
         if (!hasAccess) {
             throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
         }
-    }
-
-    private boolean isUserListener(ChatRoom chatRoom, User user) {
-        return chatRoom.getListener().equals(user);
     }
 }

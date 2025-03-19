@@ -9,6 +9,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ import java.util.List;
 @Entity
 @Table(name = "chat_rooms")
 @Getter
+@Slf4j
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ChatRoom extends BaseTimeEntity {
     @Id
@@ -74,10 +76,12 @@ public class ChatRoom extends BaseTimeEntity {
 
     public void increaseUnreadCountForListener() {
         this.listenerUnreadCount++;
+        log.info("Current listenerUnreadCOunt: {}", listenerUnreadCount);
     }
 
     public void increaseUnreadCountForSpeaker() {
         this.speakerUnreadCount++;
+        log.info("Current speakerUnreadCount: {}", speakerUnreadCount);
     }
 
     public User getListener() {

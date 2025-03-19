@@ -78,6 +78,10 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     private List<ChatMessage> fetchMessages(Long roomId, Long lastReadMessageId, int size) {
         long totalMessages = chatMessageRepository.countByChatRoomId(roomId);
 
+        if (totalMessages == 0) {
+            return new ArrayList<>();
+        }
+
         if (lastReadMessageId == 0) {
             // 첫 접속: 가장 오래된 메시지부터 표시
             return new ArrayList<>(chatMessageRepository.findByChatRoomIdOrderByIdAsc(

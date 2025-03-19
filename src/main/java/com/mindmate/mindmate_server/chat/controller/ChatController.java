@@ -49,7 +49,7 @@ public class ChatController {
 
     /**
      * 특정 역할로 참여 중인 채팅방 목록 조회
-     * todo: 리스너, 스피커 분리해서 받기 roletype 이ㅛㅇ안하고
+     * roleType: LISTENER, SPEAKER
      */
     @GetMapping("/rooms/role/{roleType}")
     public ResponseEntity<Page<ChatRoomResponse>> getChatRoomsByRole(
