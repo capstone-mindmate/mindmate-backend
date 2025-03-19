@@ -38,9 +38,6 @@ public class Matching extends BaseTimeEntity {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    private MatchingType type;
-
-    @Enumerated(EnumType.STRING)
     private MatchingCategory category;
 
     @Enumerated(EnumType.STRING)
@@ -63,12 +60,13 @@ public class Matching extends BaseTimeEntity {
     private List<WaitingUser> waitingUsers = new ArrayList<>();
 
     @Builder
-    public Matching(User creator, String title, String description, MatchingCategory category, InitiatorType creatorRole) {
+    public Matching(User creator, String title, String description, MatchingCategory category, InitiatorType creatorRole, ChatRoom chatRoom) {
         this.creator = creator;
         this.title = title;
         this.description = description;
         this.creatorRole = creatorRole;
         this.category = category;
+        this.chatRoom = chatRoom;
         this.status = MatchingStatus.OPEN;
     }
 
@@ -87,7 +85,7 @@ public class Matching extends BaseTimeEntity {
         return this.status == MatchingStatus.OPEN;
     }
 
-    public void addApplication(WaitingUser waitingUser) {
+    public void addWaitingUser(WaitingUser waitingUser) {
         this.waitingUsers.add(waitingUser);
         waitingUser.setMatching(this);
     }

@@ -30,4 +30,5 @@ public interface ChatRoomService {
     void rejectCloseChatRoom(Long userId, Long roomId);
 
     void acceptCloseChatRoom(Long userId, Long roomId);
+
 }

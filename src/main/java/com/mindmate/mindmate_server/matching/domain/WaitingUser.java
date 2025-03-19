@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.matching.domain;
 
+import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import com.mindmate.mindmate_server.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -11,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "waiting_users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class WaitingUser {
+public class WaitingUser extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,12 +30,16 @@ public class WaitingUser {
     private String message;
 
     @Enumerated(EnumType.STRING)
-    private WaitingStatus status;
+    private MatchingType matchingType = MatchingType.MANUAL;
+
+    @Enumerated(EnumType.STRING)
+    private WaitingStatus status = WaitingStatus.PENDING;
 
     @Builder
-    public WaitingUser(User waitingUser, String message) {
+    public WaitingUser(User waitingUser, String message, MatchingType matchingType) {
         this.waitingUser = waitingUser;
         this.message = message;
+        this.matchingType = matchingType;
     }
 
     public void setMatching(Matching matching) {
@@ -51,6 +56,10 @@ public class WaitingUser {
 
     public boolean isOwner(User user) {
         return this.waitingUser.getId().equals(user.getId());
+    }
+
+    public boolean isAutoMatching() {
+        return this.matchingType == MatchingType.AUTO_FORMAT;
     }
 
 }
