@@ -44,7 +44,7 @@ public class Matching extends BaseTimeEntity {
     )
     @Enumerated(EnumType.STRING)
     @Column(name = "category")
-    private Set<MatchingCategory> categories = new HashSet<>();
+    private Set<MatchingCategory> categories = new HashSet<>();\
 
     @Enumerated(EnumType.STRING)
     private MatchingStatus status;

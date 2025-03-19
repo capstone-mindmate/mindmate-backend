@@ -119,6 +119,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         public void updateChatRoomParticipant(Long id, User speaker, User listener) {
             log.info("chatroom 사용자 추가");
         }
+
+        @Override
+        public ChatRoom createChatRoom(User speaker, User listener, String title) {
+            log.info("chatroom 생성");
+            return null;
+        }
+
+        @Override
+        public void updateChatRoomParticipant(Long id, User speaker, User listener) {
+            log.info("chatroom 사용자 추가");
+        }
     }
 
     @Override
