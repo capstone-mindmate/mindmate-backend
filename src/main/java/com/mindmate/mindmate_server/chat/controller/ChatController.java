@@ -66,6 +66,7 @@ public class ChatController {
 
     /**
      * 채팅방 입장 시 메시지 조회
+     * todo: PathVariable roomeId랑 dto에도 값 중복
      */
     @GetMapping("/rooms/{roomId}/messages")
     public ResponseEntity<ChatRoomDetailResponse> getChatRoomWithMessages(

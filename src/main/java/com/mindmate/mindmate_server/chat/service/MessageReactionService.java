@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
+import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.domain.MessageReaction;
 import com.mindmate.mindmate_server.chat.domain.ReactionType;
 import com.mindmate.mindmate_server.chat.dto.MessageReactionResponse;
@@ -23,11 +24,15 @@ public class MessageReactionService {
     private final MessageReactionRepository messageReactionRepository;
     private final UserService userService;
     private final ChatMessageService chatMessageService;
+    private final ChatRoomService chatRoomService;
 
     @Transactional
     public MessageReactionResponse addReaction(Long userId, Long messageId, ReactionType reactionType) {
         User user = userService.findUserById(userId);
         ChatMessage chatMessage = chatMessageService.findChatMessageById(messageId);
+        ChatRoom chatRoom = chatMessage.getChatRoom();
+
+        chatRoomService.validateChatActivity(user, chatRoom);
 
         Optional<MessageReaction> existingReaction = messageReactionRepository
                 .findByMessageIdAndUserId(messageId, userId);
@@ -69,6 +74,12 @@ public class MessageReactionService {
 
     @Transactional
     public void removeReaction(Long userId, Long messageId, ReactionType reactionType) {
+        User user = userService.findUserById(userId);
+        ChatMessage chatMessage = chatMessageService.findChatMessageById(messageId);
+        ChatRoom chatRoom = chatMessage.getChatRoom();
+
+        chatRoomService.validateChatActivity(user, chatRoom);
+
         messageReactionRepository.findByMessageIdAndUserIdAndReactionType(messageId, userId, reactionType)
                 .ifPresent(messageReactionRepository::delete);
     }

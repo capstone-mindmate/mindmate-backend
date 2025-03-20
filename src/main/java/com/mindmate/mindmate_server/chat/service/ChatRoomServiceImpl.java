@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
+import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomDetailResponse;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
 public class ChatRoomServiceImpl implements ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final ChatMessageService chatMessageService;
 
     private final UserService userService;
 
@@ -140,5 +142,21 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         }
         chatRoom.close();
         log.info("Closed chat room {}", roomId);
+    }
+
+    @Override
+    public void validateChatActivity(User user, ChatRoom chatRoom) {
+         /*
+          유효성 검사
+          1. 해당 채팅방 참가 여부
+          2. 채팅방 상태 확인
+         */
+        if (chatRoom.getChatRoomStatus() != ChatRoomStatus.ACTIVE) {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+        }
+
+        if (!chatRoom.isListener(user) && !chatRoom.isSpeaker(user)) {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+        }
     }
 }

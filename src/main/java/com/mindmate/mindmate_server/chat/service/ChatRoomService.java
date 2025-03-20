@@ -5,6 +5,7 @@ import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomDetailResponse;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
 import com.mindmate.mindmate_server.user.domain.RoleType;
+import com.mindmate.mindmate_server.user.domain.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 
@@ -21,5 +22,7 @@ public interface ChatRoomService {
     List<ChatMessageResponse> getPreviousMessages(Long roomId, Long messageId, Long userId, int size);
 
     void closeChatRoom(Long userId, Long roomId);
+
+    void validateChatActivity(User user, ChatRoom chatRoom);
 
 }

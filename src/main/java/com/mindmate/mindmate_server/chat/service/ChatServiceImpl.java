@@ -19,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -45,7 +44,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final ChatPresenceService chatPresenceService;
 
-    // todo: 채팅 관련 전체적으로 채팅방 상태에 따른 처리 추가해야함
+    // todo: 채팅 관련 전체적으로 채팅방 상태에 따른 처리 추가해야함. 메시지 보내기 +
 
     @Override
 //    @Transactional(propagation = Propagation.REQUIRED)
@@ -53,9 +52,7 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getRoomId());
         User sender = userService.findUserById(userId);
 
-        if (!chatRoom.isListener(sender) && !chatRoom.isSpeaker(sender)) {
-            throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
-        }
+        chatRoomService.validateChatActivity(sender, chatRoom);
 
         ChatMessage chatMessage = ChatMessage.builder()
                 .chatRoom(chatRoom)
