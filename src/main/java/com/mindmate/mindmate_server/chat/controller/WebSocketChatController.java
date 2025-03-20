@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindmate.mindmate_server.chat.dto.*;
 import com.mindmate.mindmate_server.chat.service.ChatPresenceService;
 import com.mindmate.mindmate_server.chat.service.ChatService;
+import com.mindmate.mindmate_server.chat.service.MessageReactionService;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,8 +29,9 @@ import java.util.Map;
 public class WebSocketChatController {
     private final ChatService chatService;
     private final ChatPresenceService chatPresenceService;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final MessageReactionService messageReactionService;
 
+    private final SimpMessagingTemplate messagingTemplate;
     private final RedisKeyManager redisKeyManager;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
@@ -116,5 +118,24 @@ public class WebSocketChatController {
 
         // 해당 채팅방의 모든 참가자에게 읽음 상태 전송
         messagingTemplate.convertAndSend("/topic/chat.room." + request.getRoomId() + ".read", notification);
+    }
+
+    /**
+     * 채팅에 감정표현 추가
+     */
+    @MessageMapping("/chat.reaction")
+    public void handleReaction(
+            @Payload ReactionRequest request,
+            Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+
+        MessageReactionResponse response = messageReactionService.addReaction(
+                userId, request.getMessageId(), request.getReactionType()
+        );
+
+        messagingTemplate.convertAndSend(
+                "/topic/chat.room." + request.getRoomId() + ".reaction",
+                response
+        );
     }
 }
