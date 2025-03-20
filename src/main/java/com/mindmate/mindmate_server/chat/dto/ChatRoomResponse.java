@@ -14,15 +14,18 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ChatRoomResponse {
     private Long roomId;
-    private ChatRoomStatus chatRoomStatus;
-    private int unreadCount;
+    private Long matchingId;
 
+    private ChatRoomStatus chatRoomStatus;
+    private Long unreadCount;
     private LocalDateTime lastMessageTime;
     private String lastMessage;
 
+    private Long oppositeId;
     private String oppositeName;
     private String oppositeImage;
     private String userRole;
+
 
     // todo: 채팅방 or 매칭방 이름 + 자신의 역할
     public static ChatRoomResponse from(ChatRoom chatRoom, User user) {
@@ -32,7 +35,7 @@ public class ChatRoomResponse {
         String oppositeName = opposite.getProfile().getNickname();
         String oppositeImage = opposite.getProfile().getProfileImage();
 
-        int unreadCount = isListener ? chatRoom.getListenerUnreadCount() : chatRoom.getSpeakerUnreadCount();
+        Long unreadCount = isListener ? chatRoom.getListenerUnreadCount() : chatRoom.getSpeakerUnreadCount();
         String userRole = isListener ? "LISTENER" : "SPEAKER";
 
         String lastMessage = null;
@@ -42,10 +45,12 @@ public class ChatRoomResponse {
 
         return ChatRoomResponse.builder()
                 .roomId(chatRoom.getId())
+                .matchingId(chatRoom.getMatching().getId())
                 .chatRoomStatus(chatRoom.getChatRoomStatus())
                 .unreadCount(unreadCount)
                 .lastMessageTime(chatRoom.getLastMessageTime())
                 .lastMessage(lastMessage)
+                .oppositeId(opposite.getId())
                 .oppositeName(oppositeName)
                 .oppositeImage(oppositeImage)
                 .userRole(userRole)

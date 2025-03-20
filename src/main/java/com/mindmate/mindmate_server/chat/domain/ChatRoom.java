@@ -43,8 +43,8 @@ public class ChatRoom extends BaseTimeEntity {
 
     private Long listenerLastReadMessageId = 0L;
     private Long speakerLastReadMessageId = 0L;
-    private int listenerUnreadCount = 0;
-    private int speakerUnreadCount = 0;
+    private Long listenerUnreadCount = 0L;
+    private Long speakerUnreadCount = 0L;
 
     @Builder
     public ChatRoom(Matching matching) {
@@ -66,12 +66,12 @@ public class ChatRoom extends BaseTimeEntity {
 
     public void markAsReadForListener(Long messageId) {
         this.listenerLastReadMessageId = messageId;
-        this.listenerUnreadCount = 0;
+        this.listenerUnreadCount = 0L;
     }
 
     public void markAsReadForSpeaker(Long messageId) {
         this.speakerLastReadMessageId = messageId;
-        this.speakerUnreadCount = 0;
+        this.speakerUnreadCount = 0L;
     }
 
     public void increaseUnreadCountForListener() {

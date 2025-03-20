@@ -12,14 +12,16 @@ import java.util.stream.Collectors;
 @Builder
 public class ChatRoomDetailResponse {
     private Long roomId;
-//    private String matchingName;
+    private Long matchingId;
+    // todo: 상대방 id?
     private List<ChatMessageResponse> messages;
 
-    public static ChatRoomDetailResponse from(ChatRoom chatRoom, List<ChatMessage> messages) {
+    public static ChatRoomDetailResponse from(ChatRoom chatRoom, List<ChatMessage> messages, Long userId) {
         return ChatRoomDetailResponse.builder()
                 .roomId(chatRoom.getId())
+                .matchingId(chatRoom.getMatching().getId())
                 .messages(messages.stream()
-                        .map(ChatMessageResponse::from)
+                        .map(message -> ChatMessageResponse.from(message, userId))
                         .collect(Collectors.toList()))
                 .build();
     }
