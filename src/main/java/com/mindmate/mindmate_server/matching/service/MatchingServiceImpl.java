@@ -12,6 +12,7 @@ import com.mindmate.mindmate_server.matching.repository.WaitingUserRepository;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.repository.UserRepository;
 import com.mindmate.mindmate_server.user.service.ProfileService;
+import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -27,19 +28,15 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MatchingServiceImpl implements MatchingService{
 
-    private MatchingRepository matchingRepository;
-    private WaitingUserRepository waitingUserRepository;
-    private UserRepository userRepository;
-    private ProfileService profileService;
-    private ChatRoomService chatRoomService;
+    private final MatchingRepository matchingRepository;
+    private final WaitingUserRepository waitingUserRepository;
+    private final UserService userService;
+    private final ChatRoomService chatRoomService;
 
     // 매칭 생성 -> + 채팅 생성
     @Override @Transactional
     public Long createMatching(Long userId, MatchingCreateRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(
-                        UserErrorCode.USER_NOT_FOUND
-                ));
+        User user = userService.findUserById(userId);
 
         // 활성화된 매칭 수 카운트
         int activeRoomCount = matchingRepository.countByCreatorAndStatus(user, MatchingStatus.OPEN);
@@ -67,8 +64,7 @@ public class MatchingServiceImpl implements MatchingService{
 
     @Override @Transactional // 수동
     public Long applyForMatching(Long userId, Long matchingId, WaitingUserRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+        User user = userService.findUserById(userId);
 
         Matching matching = matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
@@ -99,8 +95,7 @@ public class MatchingServiceImpl implements MatchingService{
 
     @Override @Transactional
     public Long acceptMatching(Long userId, Long matchingId, Long waitingUserId) {
-        User creator = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+        User creator = userService.findUserById(userId);
 
         Matching matching = matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
@@ -152,8 +147,7 @@ public class MatchingServiceImpl implements MatchingService{
         String department = request.getDepartment();
         String message = request.getMessage();
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+        User user = userService.findUserById(userId);
 
         // 신청한 role과 반대되는 걸로
         InitiatorType targetCreatorRole = userRole == InitiatorType.SPEAKER
@@ -211,8 +205,7 @@ public class MatchingServiceImpl implements MatchingService{
 
     @Override @Transactional
     public void cancelWaiting(Long userId, Long waitingUserId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+        User user = userService.findUserById(userId);
 
         WaitingUser waitingUser = waitingUserRepository.findById(waitingUserId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.WAITING_NOT_FOUND));
@@ -234,7 +227,7 @@ public class MatchingServiceImpl implements MatchingService{
 
     @Override
     public Page<MatchingResponse> getMatchings(Pageable pageable, MatchingCategory category,
-                                                       String department, InitiatorType requiredRole) {
+                                               String department, InitiatorType requiredRole) {
 
         Page<Matching> matchings;
 
@@ -271,8 +264,7 @@ public class MatchingServiceImpl implements MatchingService{
 
     @Override
     public List<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+        User user = userService.findUserById(userId);
 
         Matching Matching = matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
@@ -291,8 +283,7 @@ public class MatchingServiceImpl implements MatchingService{
     @Override
     public Page<Matching> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant) {
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+        User user = userService.findUserById(userId);
 
         if (asParticipant) {
             return matchingRepository.findByAcceptedUserAndStatusOrderByMatchedAtDesc(
@@ -305,8 +296,7 @@ public class MatchingServiceImpl implements MatchingService{
 
     @Override @Transactional
     public void closeMatching(Long userId, Long matchingId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+        User user = userService.findUserById(userId);
 
         Matching matching = matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));

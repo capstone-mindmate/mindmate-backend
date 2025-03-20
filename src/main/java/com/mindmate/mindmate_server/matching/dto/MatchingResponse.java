@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.Set;
 
 @Builder
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
 public class MatchingResponse {
@@ -23,7 +24,6 @@ public class MatchingResponse {
     private String creatorDepartment;
     private String creatorProfileImage;
     private int applicationCount;
-    private MatchingType matchingType;
     private Long chatRoomId;
     private LocalDateTime createdAt;
 
@@ -39,8 +39,7 @@ public class MatchingResponse {
                 .creatorDepartment(matching.getCreator().getProfile().getDepartment())
                 .creatorProfileImage(matching.getCreator().getProfile().getProfileImage())
                 .applicationCount(matching.getWaitingUsersCount())
-                .matchingType(matching.getType())
-                .chatRoomId(matching.getChatRoom().getId())
+                .chatRoomId(1L)
                 .createdAt(matching.getCreatedAt())
                 .build();
     }
