@@ -72,7 +72,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
             chatRoomRepository.save(chatRoom);
         }
 
-        return ChatRoomDetailResponse.from(chatRoom, messages);
+        return ChatRoomDetailResponse.from(chatRoom, messages, user.getId());
     }
 
     private List<ChatMessage> fetchMessages(Long roomId, Long lastReadMessageId, int size) {
@@ -115,7 +115,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     }
 
     @Override
-    public List<ChatMessageResponse> getPreviousMessages(Long roomId, Long messageId, int size) {
+    public List<ChatMessageResponse> getPreviousMessages(Long roomId, Long messageId, Long userId, int size) {
         // 4. 이전 메시지 페이지네이션 (스크롤 업)
         List<ChatMessage> tempMessages = chatMessageRepository.findByChatRoomIdAndIdLessThanOrderByIdDesc(
                 roomId, messageId, PageRequest.of(0, size)).getContent();
@@ -125,7 +125,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         Collections.reverse(messages);
 
         return messages.stream()
-                .map(ChatMessageResponse::from)
+                .map(message -> ChatMessageResponse.from(message, userId))
                 .collect(Collectors.toList());
     }
 

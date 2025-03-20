@@ -48,6 +48,7 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
         List<Tuple> results = queryFactory
                 .select(
                         chatRoom.id,
+                        chatRoom.matching.id,
                         chatRoom.chatRoomStatus,
                         chatRoom.lastMessageTime,
                         lastMessage.content,
@@ -61,6 +62,10 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                                 .when(matching.creator.id.eq(userId))
                                 .then(acceptedUserProfile.profileImage)
                                 .otherwise(creatorProfile.profileImage).as("oppositeImage"),
+                        new CaseBuilder()
+                                .when(matching.creator.id.eq(userId))
+                                .then(acceptedUser.id)
+                                .otherwise(creator.id).as("oppositeId"),
                         // 안읽은 메시지 수
                         new CaseBuilder()
                                 // 사용자가 리스너인 경우
@@ -93,13 +98,15 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
         List<ChatRoomResponse> content = results.stream()
                 .map(tuple -> ChatRoomResponse.builder()
                         .roomId(tuple.get(chatRoom.id))
+                        .matchingId(tuple.get(chatRoom.matching.id))
                         .chatRoomStatus(tuple.get(chatRoom.chatRoomStatus))
                         .lastMessageTime(tuple.get(chatRoom.lastMessageTime))
                         .lastMessage(tuple.get(lastMessage.content))
-                        .oppositeName(tuple.get(4, String.class)) // "oppositeName" alias
-                        .oppositeImage(tuple.get(5, String.class)) // "oppositeImage" alias
-                        .unreadCount(tuple.get(6, Integer.class)) // "unreadCount" alias
-                        .userRole(tuple.get(7, String.class))
+                        .oppositeName(tuple.get(5, String.class))
+                        .oppositeImage(tuple.get(6, String.class))
+                        .oppositeId(tuple.get(7, Long.class))
+                        .unreadCount(tuple.get(8, Long.class))
+                        .userRole(tuple.get(9, String.class))
                         .build())
                 .collect(Collectors.toList());
 
@@ -140,6 +147,7 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
         List<Tuple> results = queryFactory
                 .select(
                         chatRoom.id,
+                        chatRoom.matching.id,
                         chatRoom.chatRoomStatus,
                         chatRoom.lastMessageTime,
                         lastMessage.content,
@@ -152,6 +160,10 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                                 .when(matching.creator.id.eq(userId))
                                 .then(acceptedUserProfile.profileImage)
                                 .otherwise(creatorProfile.profileImage).as("oppositeImage"),
+                        new CaseBuilder()
+                                .when(matching.creator.id.eq(userId))
+                                .then(acceptedUser.id)
+                                .otherwise(creator.id).as("oppositeId"),
                         // 안읽은 메시지 수
                         new CaseBuilder()
                                 // 사용자가 리스너인 경우
@@ -185,13 +197,15 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
         List<ChatRoomResponse> content = results.stream()
                 .map(tuple -> ChatRoomResponse.builder()
                         .roomId(tuple.get(chatRoom.id))
+                        .matchingId(tuple.get(chatRoom.matching.id))
                         .chatRoomStatus(tuple.get(chatRoom.chatRoomStatus))
                         .lastMessageTime(tuple.get(chatRoom.lastMessageTime))
                         .lastMessage(tuple.get(lastMessage.content))
-                        .oppositeName(tuple.get(4, String.class)) // "oppositeName" alias
-                        .oppositeImage(tuple.get(5, String.class)) // "oppositeImage" alias
-                        .unreadCount(tuple.get(6, Integer.class)) // "unreadCount" alias
-                        .userRole(tuple.get(7, String.class))
+                        .oppositeName(tuple.get(5, String.class))
+                        .oppositeImage(tuple.get(6, String.class))
+                        .oppositeId(tuple.get(7, Long.class))
+                        .unreadCount(tuple.get(8, Long.class))
+                        .userRole(tuple.get(9, String.class))
                         .build())
                 .collect(Collectors.toList());
 

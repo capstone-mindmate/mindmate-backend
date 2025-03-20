@@ -83,7 +83,7 @@ public class ChatServiceImpl implements ChatService {
             }
         });
 
-        ChatMessageResponse chatMessageResponse = ChatMessageResponse.from(savedMessage);
+        ChatMessageResponse chatMessageResponse = ChatMessageResponse.from(savedMessage, userId);
 
         String channel = redisKeyManager.getChatRoomChannel(chatRoom.getId());
         try {
@@ -140,6 +140,7 @@ public class ChatServiceImpl implements ChatService {
     private void validateChatRoomAccess(ChatRoom chatRoom, User user) {
         boolean hasAccess = chatRoom.getListener().getId().equals(user.getId()) ||
                 chatRoom.getSpeaker().getId().equals(user.getId());
+        log.info("listener id: {} / speaker id: {}", chatRoom.getListener().getId(), chatRoom.getSpeaker().getId());
 
         if (!hasAccess) {
             throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);

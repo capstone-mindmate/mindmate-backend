@@ -18,7 +18,7 @@ public interface ChatRoomService {
     Page<ChatRoomResponse> getChatRoomsByUserRole(Long userId, PageRequest pageRequest, String role);
 
     ChatRoomDetailResponse getInitialMessages(Long userId, Long roomId, int size);
-    List<ChatMessageResponse> getPreviousMessages(Long roomId, Long messageId, int size);
+    List<ChatMessageResponse> getPreviousMessages(Long roomId, Long messageId, Long userId, int size);
 
     void closeChatRoom(Long userId, Long roomId);
 
