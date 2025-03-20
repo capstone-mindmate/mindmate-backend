@@ -30,9 +30,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ChatRoomServiceImpl implements ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
-    private final ChatMessageRepository chatMessageRepository;
-    private final ChatMessageService chatMessageService;
 
+    private final ChatMessageService chatMessageService;
     private final UserService userService;
 
     @Override
@@ -78,7 +77,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     }
 
     private List<ChatMessage> fetchMessages(Long roomId, Long lastReadMessageId, int size) {
-        long totalMessages = chatMessageRepository.countByChatRoomId(roomId);
+        long totalMessages = chatMessageService.countMessagesByChatRoomId(roomId);
 
         if (totalMessages == 0) {
             return new ArrayList<>();
@@ -86,18 +85,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
         if (lastReadMessageId == 0) {
             // 첫 접속: 가장 오래된 메시지부터 표시
-            return new ArrayList<>(chatMessageRepository.findByChatRoomIdOrderByIdAsc(
-                    roomId, PageRequest.of(0, (int)Math.min(totalMessages, size))).getContent());
+            return chatMessageService.findByChatRoomIdOrderByIdAsc(roomId, size);
         } else {
             // 재접속: 안읽은 메시지 처리
-            Optional<ChatMessage> latestMessageOpt = chatMessageRepository.findTopByChatRoomIdOrderByIdDesc(roomId);
+            Optional<ChatMessage> latestMessageOpt = chatMessageService.findLatestMessageByChatRoomId(roomId);
 
             if (latestMessageOpt.isPresent() && latestMessageOpt.get().getId() > lastReadMessageId) {
                 List<ChatMessage> previousMessages = new ArrayList<>(
-                        chatMessageRepository.findMessagesBeforeIdLimited(roomId, lastReadMessageId, PageRequest.of(0, 10))
+                        chatMessageService.findMessagesBeforeId(roomId, lastReadMessageId, 10)
                 );
-                List<ChatMessage> newMessages = chatMessageRepository
-                        .findByChatRoomIdAndIdGreaterThanEqualOrderByIdAsc(roomId, lastReadMessageId);
+                List<ChatMessage> newMessages = chatMessageService
+                        .findMessagesAfterOrEqualId(roomId, lastReadMessageId);
 
                 Collections.reverse(previousMessages);
 
@@ -107,11 +105,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
                 return messages;
             } else {
                 // 안읽은 메시지 없음: 최신 메시지 표시
-                List<ChatMessage> tempMessages = chatMessageRepository
-                        .findByChatRoomIdOrderByIdDesc(roomId, PageRequest.of(0, size)).getContent();
-                List<ChatMessage> messages = new ArrayList<>(tempMessages);
-                Collections.reverse(messages);
-                return messages;
+                return chatMessageService.findRecentMessages(roomId, size);
             }
         }
     }
@@ -119,12 +113,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     @Override
     public List<ChatMessageResponse> getPreviousMessages(Long roomId, Long messageId, Long userId, int size) {
         // 4. 이전 메시지 페이지네이션 (스크롤 업)
-        List<ChatMessage> tempMessages = chatMessageRepository.findByChatRoomIdAndIdLessThanOrderByIdDesc(
-                roomId, messageId, PageRequest.of(0, size)).getContent();
-
-        // 시간순 정렬 (오래된 메시지부터)
-        List<ChatMessage> messages = new ArrayList<>(tempMessages);
-        Collections.reverse(messages);
+        List<ChatMessage> messages = chatMessageService.findPreviousMessages(roomId, messageId, size);
 
         return messages.stream()
                 .map(message -> ChatMessageResponse.from(message, userId))
