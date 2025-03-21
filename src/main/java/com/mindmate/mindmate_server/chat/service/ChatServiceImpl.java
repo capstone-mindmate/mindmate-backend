@@ -10,6 +10,11 @@ import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
 import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
+<<<<<<< HEAD
+=======
+import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
+import com.mindmate.mindmate_server.global.exception.CustomException;
+>>>>>>> f6e6cce (matching을 위해 chating 코드 가져옴)
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
@@ -18,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -38,14 +44,19 @@ public class ChatServiceImpl implements ChatService {
     private final ObjectMapper objectMapper;
     private final RedisKeyManager redisKeyManager;
 
+    private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomService chatRoomService;
     private final UserService userService;
     private final ChatPresenceService chatPresenceService;
     private final ContentFilterService contentFilterService;
     private final ChatMessageService chatMessageService;
 
+<<<<<<< HEAD
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomRepository chatRoomRepository;
+=======
+    // todo: 채팅 관련 전체적으로 채팅방 상태에 따른 처리 추가해야함
+>>>>>>> f6e6cce (matching을 위해 chating 코드 가져옴)
 
     // todo: 채팅 관련 전체적으로 채팅방 상태에 따른 처리 추가해야함. 메시지 보내기 +
 
@@ -56,6 +67,7 @@ public class ChatServiceImpl implements ChatService {
      * 3. 필터링 기반 토스트 박스
      */
     @Override
+//    @Transactional(propagation = Propagation.REQUIRED)
     public ChatMessageResponse sendMessage(Long userId, ChatMessageRequest request) {
         try {
             ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getRoomId());
