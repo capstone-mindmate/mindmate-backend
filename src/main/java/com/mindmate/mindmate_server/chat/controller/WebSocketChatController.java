@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindmate.mindmate_server.chat.dto.*;
 import com.mindmate.mindmate_server.chat.service.ChatPresenceService;
 import com.mindmate.mindmate_server.chat.service.ChatService;
+import com.mindmate.mindmate_server.chat.service.CustomFormService;
 import com.mindmate.mindmate_server.chat.service.MessageReactionService;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class WebSocketChatController {
     private final ChatService chatService;
     private final ChatPresenceService chatPresenceService;
     private final MessageReactionService messageReactionService;
+    private final CustomFormService customFormService;
 
     private final SimpMessagingTemplate messagingTemplate;
     private final RedisKeyManager redisKeyManager;
@@ -71,6 +73,7 @@ public class WebSocketChatController {
     /**
      * 타이핑 상태 알림??
      * 사용자가 메시지 입력 중인거 알릴건가?
+     * todo : 관련 로직 삭제
      */
     @MessageMapping("/chat.typing")
     public void notifyTyping(
@@ -138,4 +141,29 @@ public class WebSocketChatController {
                 response
         );
     }
+
+    /**
+     * 커스텀폼 생성
+     */
+    @MessageMapping("/chat.customform.create")
+    public void createCustomForm(
+            @Payload CustomFormRequest request,
+            Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+        CustomFormResponse response = customFormService.createCustomForm(userId, request);
+        messagingTemplate.convertAndSend("/topic/chat.room." + request.getChatRoomId() + ".customform", response);
+    }
+
+    /**
+     * 커스텀폼 응답 제출
+     */
+    @MessageMapping("/chat.customform.respond")
+    public void respondToCustomForm(
+            @Payload RespondToCustomFormRequest request,
+            Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+        CustomFormResponse response = customFormService.respondToCustomForm(request.getFormId(), userId, request);
+        messagingTemplate.convertAndSend("/topic/chat.room." + response.getChatRoomId() + ".customform", response);
+    }
+
 }
