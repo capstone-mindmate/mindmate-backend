@@ -148,4 +148,12 @@ public class ChatRoomServiceImpl implements ChatRoomService {
             throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
         }
     }
+
+    @Override
+    public Page<ChatRoomResponse> getChatRoomsByUserAndStatus(Long userId, PageRequest pageRequest, ChatRoomStatus status) {
+        return chatRoomRepository.findAllByUserIdAndStatus(userId, status, pageRequest);
+    }
+
+
+    // todo: 채팅방 만들기 로직 추가
 }

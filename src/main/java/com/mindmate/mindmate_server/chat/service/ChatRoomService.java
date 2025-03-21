@@ -1,10 +1,10 @@
 package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
+import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomDetailResponse;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
-import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,4 +25,5 @@ public interface ChatRoomService {
 
     void validateChatActivity(User user, ChatRoom chatRoom);
 
+    Page<ChatRoomResponse> getChatRoomsByUserAndStatus(Long userId, PageRequest lastMessageTime, ChatRoomStatus status);
 }

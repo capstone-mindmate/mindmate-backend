@@ -26,8 +26,11 @@ public class ChatRoomResponse {
     private String oppositeImage;
     private String userRole;
 
+    private boolean isCreator;
+    private String matchingTitle;
 
-    // todo: 채팅방 or 매칭방 이름 + 자신의 역할
+
+    // todo: 매칭방 타입 + 내가 방 생성자인지
     public static ChatRoomResponse from(ChatRoom chatRoom, User user) {
         boolean isListener = chatRoom.isListener(user);
 
@@ -37,6 +40,8 @@ public class ChatRoomResponse {
 
         Long unreadCount = isListener ? chatRoom.getListenerUnreadCount() : chatRoom.getSpeakerUnreadCount();
         String userRole = isListener ? "LISTENER" : "SPEAKER";
+
+        boolean isCreator = chatRoom.getMatching().getCreator().equals(user);
 
         String lastMessage = null;
         if (!chatRoom.getMessages().isEmpty()) {
@@ -54,6 +59,8 @@ public class ChatRoomResponse {
                 .oppositeName(oppositeName)
                 .oppositeImage(oppositeImage)
                 .userRole(userRole)
+                .isCreator(isCreator)
+                .matchingTitle(chatRoom.getMatching().getTitle())
                 .build();
     }
 }

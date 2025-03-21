@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.chat.controller;
 
+import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
@@ -34,6 +35,7 @@ public class ChatController {
     /**
      * 사용자의 모든 채팅방 목록 조회
      * todo: 채팅방 상태에 따른 목록 조회를 따로 api 뺼건지, 프론트에서 어차피 값 있으니까 렌더링만 바꿔서 보여줄지
+     * -> 각 항목별 페이지네이션이 다르게 들어가므로 따로 api를 분리해야함
      */
     @GetMapping("/rooms")
     public ResponseEntity<Page<ChatRoomResponse>> getChatRooms(
@@ -61,6 +63,23 @@ public class ChatController {
         Page<ChatRoomResponse> rooms = chatRoomService.getChatRoomsByUserRole(
                 principal.getUserId(),
                 PageRequest.of(page, size, Sort.by("lastMessageTime").descending()), roleType);
+        return ResponseEntity.ok(rooms);
+    }
+
+    /**
+     * 특정 상태의 채팅방 목록 조회
+     * status: ACTIVE, CLOSED 등
+     */
+    @GetMapping("/rooms/status/{status}")
+    public ResponseEntity<Page<ChatRoomResponse>> getChatRoomsByStatus(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @PathVariable ChatRoomStatus status) {
+        Page<ChatRoomResponse> rooms = chatRoomService.getChatRoomsByUserAndStatus(
+                principal.getUserId(),
+                PageRequest.of(page, size, Sort.by("lastMessageTime").descending()),
+                status);
         return ResponseEntity.ok(rooms);
     }
 
