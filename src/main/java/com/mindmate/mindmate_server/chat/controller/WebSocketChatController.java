@@ -5,7 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindmate.mindmate_server.chat.dto.*;
 import com.mindmate.mindmate_server.chat.service.ChatPresenceService;
 import com.mindmate.mindmate_server.chat.service.ChatService;
+<<<<<<< HEAD
 import com.mindmate.mindmate_server.chat.service.CustomFormService;
+=======
+>>>>>>> f6e6cce (matching을 위해 chating 코드 가져옴)
 import com.mindmate.mindmate_server.chat.service.MessageReactionService;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import lombok.RequiredArgsConstructor;

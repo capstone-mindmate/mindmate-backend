@@ -10,11 +10,6 @@ import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
 import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
-<<<<<<< HEAD
-=======
-import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
-import com.mindmate.mindmate_server.global.exception.CustomException;
->>>>>>> f6e6cce (matching을 위해 chating 코드 가져옴)
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
@@ -51,12 +46,8 @@ public class ChatServiceImpl implements ChatService {
     private final ContentFilterService contentFilterService;
     private final ChatMessageService chatMessageService;
 
-<<<<<<< HEAD
     private final ChatMessageRepository chatMessageRepository;
     private final ChatRoomRepository chatRoomRepository;
-=======
-    // todo: 채팅 관련 전체적으로 채팅방 상태에 따른 처리 추가해야함
->>>>>>> f6e6cce (matching을 위해 chating 코드 가져옴)
 
     // todo: 채팅 관련 전체적으로 채팅방 상태에 따른 처리 추가해야함. 메시지 보내기 +
 
