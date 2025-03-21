@@ -39,6 +39,8 @@ public class ChatMessage extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+
+    // todo: 삭제??
     private String filteredContent;
 
     @Enumerated(EnumType.STRING)

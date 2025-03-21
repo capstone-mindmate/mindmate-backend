@@ -31,6 +31,9 @@ public class ChatMessageResponse {
     private Map<ReactionType, Integer> reactionCounts;
     private ReactionType userReaction;
 
+    private boolean filtered;
+    private boolean error;
+    private String errorMessage;
 
     public static ChatMessageResponse from(ChatMessage message, Long currentUserId) {
         Map<ReactionType, Integer> reactionCounts = new HashMap<>();
@@ -60,6 +63,41 @@ public class ChatMessageResponse {
                 .createdAt(message.getCreatedAt())
                 .reactionCounts(reactionCounts)
                 .userReaction(userReaction)
+                .filtered(message.getFilteredContent() != null)
+                .error(false)
+                .build();
+    }
+
+    // 필터링 걸린 경우
+    public static ChatMessageResponse filteredResponse(Long roomId, Long senderId, String senderName,
+                                                       String filteredContent, MessageType type) {
+        return ChatMessageResponse.builder()
+                .roomId(roomId)
+                .senderId(senderId)
+                .senderName(senderName)
+                .content(filteredContent)
+                .type(type)
+                .createdAt(LocalDateTime.now())
+                .reactionCounts(new HashMap<>())
+                .filtered(true)
+                .error(false)
+                .build();
+    }
+
+    // 저장 에러
+    public static ChatMessageResponse errorResponse(Long roomId, Long senderId, String senderName,
+                                                    String content, MessageType type, String errorMessage) {
+        return ChatMessageResponse.builder()
+                .roomId(roomId)
+                .senderId(senderId)
+                .senderName(senderName)
+                .content(content)
+                .type(type)
+                .createdAt(LocalDateTime.now())
+                .reactionCounts(new HashMap<>())
+                .filtered(false)
+                .error(true)
+                .errorMessage(errorMessage)
                 .build();
     }
 

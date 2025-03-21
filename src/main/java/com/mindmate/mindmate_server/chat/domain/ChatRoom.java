@@ -49,7 +49,7 @@ public class ChatRoom extends BaseTimeEntity {
     @Builder
     public ChatRoom(Matching matching) {
         this.matching = matching;
-        this.chatRoomStatus = ChatRoomStatus.ACTIVE;
+        this.chatRoomStatus = ChatRoomStatus.PENDING;
 //        this.listener = listener;
 //        this.speaker = speaker;
 //        this.expiryTime = expiryTime;

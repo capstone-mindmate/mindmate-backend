@@ -40,12 +40,12 @@ public class WebSocketChatController {
      * websocket을 통한 메시지 전송
      */
     @MessageMapping("/chat.send")
-    public ChatMessageResponse sendMessage(
+    public void sendMessage(
             @Payload ChatMessageRequest request,
             Principal principal) {
         Long userId = Long.parseLong(principal.getName());
-
-        return chatService.sendMessage(userId, request);
+        ChatMessageResponse response = chatService.sendMessage(userId, request);
+        messagingTemplate.convertAndSend("/topic/chat.room." + request.getRoomId(), response);
     }
 
     /**
