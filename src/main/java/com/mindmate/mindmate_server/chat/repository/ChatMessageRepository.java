@@ -51,4 +51,40 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 
     // 채팅방의 총 메시지 수 조회
     long countByChatRoomId(Long roomId);
+
+    /**
+     * 채팅방에서 키워드가 포함된 메시지 ID 목록 조회 (최신순)
+     */
+    @Query("SELECT m.id FROM ChatMessage m WHERE m.chatRoom.id = :roomId AND " +
+            "LOWER(m.content) LIKE LOWER(CONCAT('%', :keyword, '%')) ORDER BY m.id DESC")
+    List<Long> findMessageIdsByKeyword(@Param("roomId") Long roomId, @Param("keyword") String keyword);
+
+    /**
+     * 특정 ID 범위 내의 메시지 조회 (오래된 순)
+     */
+    @Query("SELECT m FROM ChatMessage m WHERE m.chatRoom.id = :roomId AND " +
+            "m.id >= :fromId AND m.id <= :toId ORDER BY m.id ASC")
+    List<ChatMessage> findByRoomIdAndIdBetween(
+            @Param("roomId") Long roomId,
+            @Param("fromId") Long fromId,
+            @Param("toId") Long toId);
+
+    /**
+     * 특정 ID보다 작은 메시지 중 최근 n개 조회
+     */
+    @Query("SELECT m FROM ChatMessage m WHERE m.chatRoom.id = :roomId AND " +
+            "m.id < :messageId ORDER BY m.id DESC")
+    Page<ChatMessage> findMessagesBeforeId(
+            @Param("roomId") Long roomId,
+            @Param("messageId") Long messageId,
+            Pageable pageable);
+
+    /**
+     * 특정 ID 이후의 메시지 조회
+     */
+    @Query("SELECT m FROM ChatMessage m WHERE m.chatRoom.id = :roomId AND " +
+            "m.id > :messageId ORDER BY m.id ASC")
+    List<ChatMessage> findMessagesAfterId(
+            @Param("roomId") Long roomId,
+            @Param("messageId") Long messageId);
 }

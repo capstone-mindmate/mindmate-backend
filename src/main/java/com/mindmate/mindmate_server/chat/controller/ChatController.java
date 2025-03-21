@@ -2,12 +2,10 @@ package com.mindmate.mindmate_server.chat.controller;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
-import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
-import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
-import com.mindmate.mindmate_server.chat.dto.ChatRoomDetailResponse;
-import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
+import com.mindmate.mindmate_server.chat.dto.*;
 import com.mindmate.mindmate_server.chat.service.ChatPresenceService;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
+import com.mindmate.mindmate_server.chat.service.ChatSearchService;
 import com.mindmate.mindmate_server.chat.service.ChatService;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import jakarta.validation.Valid;
@@ -31,11 +29,10 @@ public class ChatController {
     private final ChatService chatService;
     private final ChatPresenceService chatPresenceService;
     private final ChatRoomService chatRoomService;
+    private final ChatSearchService chatSearchService;
 
     /**
      * 사용자의 모든 채팅방 목록 조회
-     * todo: 채팅방 상태에 따른 목록 조회를 따로 api 뺼건지, 프론트에서 어차피 값 있으니까 렌더링만 바꿔서 보여줄지
-     * -> 각 항목별 페이지네이션이 다르게 들어가므로 따로 api를 분리해야함
      */
     @GetMapping("/rooms")
     public ResponseEntity<Page<ChatRoomResponse>> getChatRooms(
@@ -85,7 +82,7 @@ public class ChatController {
 
     /**
      * 채팅방 입장 시 메시지 조회
-     * todo: PathVariable roomeId랑 dto에도 값 중복
+     * todo: 채팅방 입장시, 이전 메시지 조회 시 커스텀 폼 존재한다면 해당 데이터를 어떻게 가져와야하는지? -> 커스텀폼 생성시 해당 아이디에 메시지를 저장하게끔? 그리고 메시지 로드시 type을 보고 커스텀폼이면 커스텀 갖고오게/
      */
     @GetMapping("/rooms/{roomId}/messages")
     public ResponseEntity<ChatRoomDetailResponse> getChatRoomWithMessages(
@@ -128,6 +125,35 @@ public class ChatController {
             @RequestBody @Valid ChatMessageRequest request) {
         ChatMessageResponse response = chatService.sendMessage(principal.getUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * 채팅방 내 메시지 검색
+     */
+    @GetMapping("/rooms/{roomId}/search")
+    public ResponseEntity<ChatSearchResponse> searchMessages(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long roomId,
+            @RequestParam String keyword,
+            @RequestParam(required = false) Long oldestLoadedMessageId,
+            @RequestParam(required = false) Long newestLoadedMessageId) {
+        ChatSearchResponse response = chatSearchService.searchMessages(principal.getUserId(), roomId, keyword, oldestLoadedMessageId, newestLoadedMessageId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 검색 결과 네비게이션
+     */
+    @GetMapping("/rooms/{roomId}/search/navigate")
+    public ResponseEntity<SearchNavigationResponse> navigateToSearchResult(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long roomId,
+            @RequestParam String keyword,
+            @RequestParam Long targetMessageId,
+            @RequestParam Long oldestLoadedMessageId) {
+        SearchNavigationResponse response = chatSearchService.navigateToSearchResult(
+                principal.getUserId(), roomId, keyword, targetMessageId, oldestLoadedMessageId);
+        return ResponseEntity.ok(response);
     }
 
     /**
