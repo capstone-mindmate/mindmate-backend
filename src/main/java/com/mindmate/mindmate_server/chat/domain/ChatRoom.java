@@ -37,6 +37,9 @@ public class ChatRoom extends BaseTimeEntity {
     @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatMessage> messages = new ArrayList<>();
 
+    @OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CustomForm> customForms = new ArrayList<>();
+
     private LocalDateTime lastMessageTime;
     private LocalDateTime closedAt;
 //    private LocalDateTime expiryTime;
