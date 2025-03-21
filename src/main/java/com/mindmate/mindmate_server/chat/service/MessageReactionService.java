@@ -32,7 +32,7 @@ public class MessageReactionService {
         ChatMessage chatMessage = chatMessageService.findChatMessageById(messageId);
         ChatRoom chatRoom = chatMessage.getChatRoom();
 
-        chatRoomService.validateChatActivity(user, chatRoom);
+        chatRoomService.validateChatActivity(userId, chatMessage.getChatRoom().getId());
 
         Optional<MessageReaction> existingReaction = messageReactionRepository
                 .findByMessageIdAndUserId(messageId, userId);
@@ -78,7 +78,7 @@ public class MessageReactionService {
         ChatMessage chatMessage = chatMessageService.findChatMessageById(messageId);
         ChatRoom chatRoom = chatMessage.getChatRoom();
 
-        chatRoomService.validateChatActivity(user, chatRoom);
+        chatRoomService.validateChatActivity(userId, chatRoom.getId());
 
         messageReactionRepository.findByMessageIdAndUserIdAndReactionType(messageId, userId, reactionType)
                 .ifPresent(messageReactionRepository::delete);

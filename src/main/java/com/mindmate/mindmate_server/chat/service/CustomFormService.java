@@ -30,7 +30,7 @@ public class CustomFormService {
         User user = userService.findUserById(userId);
         ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getChatRoomId());
 
-        chatRoomService.validateChatActivity(user, chatRoom);
+        chatRoomService.validateChatActivity(userId, request.getChatRoomId());
 
         CustomForm customForm = CustomForm.builder()
                 .chatRoom(chatRoom)
@@ -55,7 +55,7 @@ public class CustomFormService {
         User user = userService.findUserById(userId);
         ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getChatRoomId());
 
-        chatRoomService.validateChatActivity(user, chatRoom);
+        chatRoomService.validateChatActivity(userId, request.getChatRoomId());
 
         if (customForm.isAnswered()) {
             throw new CustomException(CustomFormErrorCode.CUSTOM_FORM_ALREADY_ANSWERED);

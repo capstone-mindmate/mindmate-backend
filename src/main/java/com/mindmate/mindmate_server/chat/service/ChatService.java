@@ -8,6 +8,4 @@ public interface ChatService {
 
     int markAsRead(Long userId, Long roomId);
 
-//    void updateUserStatus(Long userId, boolean isOnline, Long activeRoomId);
-
 }

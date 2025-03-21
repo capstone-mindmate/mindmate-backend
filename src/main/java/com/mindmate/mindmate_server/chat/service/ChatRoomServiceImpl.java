@@ -134,12 +134,15 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     }
 
     @Override
-    public void validateChatActivity(User user, ChatRoom chatRoom) {
+    public void validateChatActivity(Long userId, Long roomId) {
          /*
           유효성 검사
           1. 해당 채팅방 참가 여부
           2. 채팅방 상태 확인
          */
+        User user = userService.findUserById(userId);
+        ChatRoom chatRoom = findChatRoomById(roomId);
+
         if (chatRoom.getChatRoomStatus() != ChatRoomStatus.ACTIVE) {
             throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
         }

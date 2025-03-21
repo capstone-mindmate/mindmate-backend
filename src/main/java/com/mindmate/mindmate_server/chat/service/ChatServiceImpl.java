@@ -63,7 +63,7 @@ public class ChatServiceImpl implements ChatService {
             ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getRoomId());
             User sender = userService.findUserById(userId);
 
-            chatRoomService.validateChatActivity(sender, chatRoom);
+            chatRoomService.validateChatActivity(userId, request.getRoomId());
 
             // 필터링 동기 처리
             Optional<FilteringWordCategory> filteringCategory =

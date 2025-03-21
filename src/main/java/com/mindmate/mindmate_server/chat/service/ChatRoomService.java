@@ -23,7 +23,7 @@ public interface ChatRoomService {
 
     void closeChatRoom(Long userId, Long roomId);
 
-    void validateChatActivity(User user, ChatRoom chatRoom);
+    void validateChatActivity(Long userId, Long roomId);
 
     Page<ChatRoomResponse> getChatRoomsByUserAndStatus(Long userId, PageRequest lastMessageTime, ChatRoomStatus status);
 }
