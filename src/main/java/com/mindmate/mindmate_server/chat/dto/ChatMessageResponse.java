@@ -20,7 +20,7 @@ import java.util.Map;
 @AllArgsConstructor
 public class ChatMessageResponse {
     private Long id;
-    private Long roomId; // 겹치지 않나?
+//    private Long roomId; // 겹치지 않나?
     private Long senderId;
 
     private String senderName;
@@ -55,7 +55,7 @@ public class ChatMessageResponse {
 
         return ChatMessageResponse.builder()
                 .id(message.getId())
-                .roomId(message.getChatRoom().getId())
+//                .roomId(message.getChatRoom().getId())
                 .senderId(message.getSender().getId())
                 .senderName(message.getSender().getProfile().getNickname())
                 .content(message.getFilteredContent() != null ? message.getFilteredContent() : message.getContent())
@@ -72,7 +72,7 @@ public class ChatMessageResponse {
     public static ChatMessageResponse filteredResponse(Long roomId, Long senderId, String senderName,
                                                        String filteredContent, MessageType type) {
         return ChatMessageResponse.builder()
-                .roomId(roomId)
+//                .roomId(roomId)
                 .senderId(senderId)
                 .senderName(senderName)
                 .content(filteredContent)
@@ -88,7 +88,7 @@ public class ChatMessageResponse {
     public static ChatMessageResponse errorResponse(Long roomId, Long senderId, String senderName,
                                                     String content, MessageType type, String errorMessage) {
         return ChatMessageResponse.builder()
-                .roomId(roomId)
+//                .roomId(roomId)
                 .senderId(senderId)
                 .senderName(senderName)
                 .content(content)

@@ -48,7 +48,6 @@ public class ChatMessage extends BaseTimeEntity {
 
     private boolean isRead;
     private LocalDateTime readAt;
-//    private LocalDateTime expiryTime;
 
     @Builder
     public ChatMessage(ChatRoom chatRoom, User sender, String content, MessageType type) {

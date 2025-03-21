@@ -118,7 +118,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         return messages.stream()
                 .map(message -> ChatMessageResponse.from(message, userId))
                 .collect(Collectors.toList());
-    }
+    }   
 
 
     @Override

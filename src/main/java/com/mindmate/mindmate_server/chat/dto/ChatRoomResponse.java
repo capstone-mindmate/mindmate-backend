@@ -30,7 +30,7 @@ public class ChatRoomResponse {
     private String matchingTitle;
 
 
-    // todo: 매칭방 타입 + 내가 방 생성자인지
+    // todo: 매칭방 타입
     public static ChatRoomResponse from(ChatRoom chatRoom, User user) {
         boolean isListener = chatRoom.isListener(user);
 

@@ -91,7 +91,7 @@ public class ChatController {
     public ResponseEntity<ChatRoomDetailResponse> getChatRoomWithMessages(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long roomId,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "30") int size) {
 
         ChatRoomDetailResponse response = chatRoomService.getInitialMessages(
                 principal.getUserId(), roomId, size);
@@ -110,7 +110,7 @@ public class ChatController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long roomId,
             @PathVariable Long messageId,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "30") int size) {
 
         List<ChatMessageResponse> messages = chatRoomService.getPreviousMessages(
                 roomId, messageId, principal.getUserId(), size);
