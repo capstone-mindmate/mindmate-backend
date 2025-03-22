@@ -6,6 +6,7 @@ import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import com.mindmate.mindmate_server.matching.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -18,6 +19,8 @@ public interface MatchingService {
     Long acceptMatching(Long userId, Long matchingId, Long waitingUserId);
 
     Long autoMatchApply(Long userId, AutoMatchingRequest request);
+
+    MatchingDetailResponse updateMatching(Long userId, Long matchingId, MatchingUpdateRequest request);
 
     void cancelWaiting(Long userId, Long waitingUserId);
 

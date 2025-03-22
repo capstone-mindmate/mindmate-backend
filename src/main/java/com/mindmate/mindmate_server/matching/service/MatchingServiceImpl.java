@@ -177,6 +177,35 @@ public class MatchingServiceImpl implements MatchingService{
         return matching.getChatRoom().getId();
     }
 
+    @Override
+    @Transactional
+    public MatchingDetailResponse updateMatching(Long userId, Long matchingId, MatchingUpdateRequest request) {
+
+        User user = userService.findUserById(userId);
+
+        Matching matching = matchingRepository.findById(matchingId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+
+        if (!matching.isCreator(user)) {
+            throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
+        }
+
+        if (!matching.isOpen()) {
+            throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
+        }
+
+        matching.updateMatchingInfo(
+                request.getTitle(),
+                request.getDescription(),
+                request.getMatchingCategories(),
+                request.isAnonymous(),
+                request.isAllowRandom(),
+                request.isShowDepartment()
+        );
+
+        return MatchingDetailResponse.of(matching);
+    }
+
     @Override @Transactional
     public void cancelWaiting(Long userId, Long waitingUserId) {
         User user = userService.findUserById(userId);

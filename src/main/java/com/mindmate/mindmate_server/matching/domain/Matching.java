@@ -126,4 +126,20 @@ public class Matching extends BaseTimeEntity {
     public int getWaitingUsersCount() {
         return this.waitingUsers.size();
     }
+
+    public void updateMatchingInfo(String title, String description, Set<MatchingCategory> categories,
+                                   boolean isAnonymous, boolean allowRandom, boolean showDepartment) {
+
+        this.title = title;
+        this.description = description;
+
+        this.categories.clear();
+        if (categories != null && !categories.isEmpty()) {
+            this.categories.addAll(categories);
+        }
+
+        this.isAnonymous = isAnonymous;
+        this.allowRandom = allowRandom;
+        this.showDepartment = showDepartment;
+    }
 }
