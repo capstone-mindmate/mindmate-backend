@@ -219,4 +219,11 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
         return chatRoomRepository.save(chatRoom);
     }
+
+    @Override
+    public ChatRoom createChatRoom(Matching matching) {
+        return ChatRoom.builder()
+                .matching(matching)
+                .build();
+    }
 }
