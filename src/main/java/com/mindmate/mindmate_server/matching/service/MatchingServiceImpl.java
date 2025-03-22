@@ -271,6 +271,40 @@ public class MatchingServiceImpl implements MatchingService{
     }
 
     @Override
+    public Page<MatchingResponse> searchMatchings(Pageable pageable, MatchingSearchRequest request) {
+        Page<Matching> matchings;
+        MatchingStatus status = MatchingStatus.OPEN;
+        String keyword = request.getKeyword() != null ? request.getKeyword().trim() : "";
+
+        if (keyword.isEmpty()) {
+            return getMatchings(pageable, request.getCategory(), request.getDepartment(), request.getRequiredRole());
+        }
+
+        if (request.getCategory() != null || request.getDepartment() != null || request.getRequiredRole() != null) {
+            InitiatorType targetCreatorRole = null;
+
+            if (request.getRequiredRole() != null) {
+                targetCreatorRole = request.getRequiredRole() == InitiatorType.SPEAKER
+                        ? InitiatorType.LISTENER
+                        : InitiatorType.SPEAKER;
+            }
+
+            matchings = matchingRepository.searchByKeywordWithFilters(
+                    status,
+                    keyword,
+                    request.getCategory(),
+                    request.getDepartment(),
+                    targetCreatorRole,
+                    pageable
+            );
+        } else {
+            matchings = matchingRepository.searchByKeyword(status, keyword, pageable);
+        }
+
+        return matchings.map(MatchingResponse::of);
+    }
+
+    @Override
     public List<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId) {
         User user = userService.findUserById(userId);
 

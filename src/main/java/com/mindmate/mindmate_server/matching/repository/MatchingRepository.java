@@ -19,15 +19,6 @@ public interface MatchingRepository extends JpaRepository<Matching, Long> {
 
     // 사용자가 생성한 매칭방 목록?
 
-    @Query("SELECT mr FROM Matching mr WHERE mr.status = 'OPEN' AND mr.creator.profile.department = :department ORDER BY mr.createdAt DESC")
-    Page<Matching> findOpenMatchingsByDepartment(
-            @Param("department") String department, Pageable pageable);
-
-    List<Matching> findByStatusAndCreatorRoleAndCategoryOrderByCreatedAt(
-            MatchingStatus status,
-            InitiatorType creatorRole,
-            MatchingCategory category);
-
     // 자동 매칭
     @Query("SELECT m FROM Matching m WHERE m.status = :status AND m.allowRandom = :allowRandom " +
             "AND m.creatorRole = :creatorRole AND (SELECT COUNT(w) FROM m.waitingUsers w) = 0")
@@ -78,4 +69,36 @@ public interface MatchingRepository extends JpaRepository<Matching, Long> {
     // 사용자의 매칭 이력 조회 (생성자로)
     Page<Matching> findByCreatorAndStatusOrderByMatchedAtDesc(
             User creator, MatchingStatus status, Pageable pageable);
+
+    // 검색
+    @Query("SELECT DISTINCT m FROM Matching m LEFT JOIN m.creator u LEFT JOIN u.profile p " +
+            "WHERE m.status = :status AND (" +
+            "LOWER(m.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(m.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "(m.showDepartment = true AND LOWER(p.department) LIKE LOWER(CONCAT('%', :keyword, '%')))) " +
+            "ORDER BY m.createdAt DESC")
+    Page<Matching> searchByKeyword(
+            @Param("status") MatchingStatus status,
+            @Param("keyword") String keyword,
+            Pageable pageable);
+
+    // 필터링 포함 검샏
+    @Query("SELECT DISTINCT m FROM Matching m " +
+            "LEFT JOIN m.creator u " +
+            "LEFT JOIN u.profile p " +
+            "WHERE m.status = :status AND (" +
+            "LOWER(m.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(m.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "(m.showDepartment = true AND LOWER(p.department) LIKE LOWER(CONCAT('%', :keyword, '%')))) " +
+            "AND (:category IS NULL OR :category MEMBER OF m.categories) " +
+            "AND (:department IS NULL OR (m.showDepartment = true AND p.department = :department)) " +
+            "AND (:creatorRole IS NULL OR m.creatorRole = :creatorRole) " +
+            "ORDER BY m.createdAt DESC")
+    Page<Matching> searchByKeywordWithFilters(
+            @Param("status") MatchingStatus status,
+            @Param("keyword") String keyword,
+            @Param("category") MatchingCategory category,
+            @Param("department") String department,
+            @Param("creatorRole") InitiatorType creatorRole,
+            Pageable pageable);
 }

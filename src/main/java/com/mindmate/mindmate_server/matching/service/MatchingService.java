@@ -29,6 +29,8 @@ public interface MatchingService {
 
     MatchingDetailResponse getMatchingDetail(Long matchingId);
 
+    Page<MatchingResponse> searchMatchings(Pageable pageable, MatchingSearchRequest request);
+
     List<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId);
 
     Page<Matching> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant);
