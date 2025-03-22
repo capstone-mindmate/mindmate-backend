@@ -21,7 +21,7 @@ public class MatchingDetailResponse {
     private LocalDateTime createdAt;
     private int waitingCount;
 
-    private boolean isAnonymous;
+    private boolean anonymous;
     private boolean showDepartment;
     private InitiatorType creatorRole;
 
@@ -43,9 +43,12 @@ public class MatchingDetailResponse {
         int counselingCount = 0;
         double avgRating = 0.0;
 
-        if (!isAnonymous && matching.getCreator().getProfile() != null) {
-            nickname = matching.getCreator().getProfile().getNickname();
-            profileImage = matching.getCreator().getProfile().getProfileImage();
+        if(matching.getCreator().getProfile() != null) {
+
+            if (!isAnonymous) {
+                nickname = matching.getCreator().getProfile().getNickname();
+                profileImage = matching.getCreator().getProfile().getProfileImage();
+            }
 
             if (matching.isShowDepartment()) {
                 department = matching.getCreator().getProfile().getDepartment();
@@ -63,7 +66,7 @@ public class MatchingDetailResponse {
                 .status(matching.getStatus())
                 .createdAt(matching.getCreatedAt())
                 .waitingCount(matching.getWaitingUsersCount())
-                .isAnonymous(matching.isAnonymous())
+                .anonymous(matching.isAnonymous())
                 .showDepartment(matching.isShowDepartment())
                 .creatorRole(matching.getCreatorRole())
                 .creatorId(creatorId)

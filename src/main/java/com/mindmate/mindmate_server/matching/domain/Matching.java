@@ -62,7 +62,7 @@ public class Matching extends BaseTimeEntity {
 
     private LocalDateTime matchedAt;
 
-    private boolean isAnonymous;
+    private boolean anonymous;
     private boolean allowRandom;
     private boolean showDepartment;
 
@@ -70,12 +70,12 @@ public class Matching extends BaseTimeEntity {
     private List<WaitingUser> waitingUsers = new ArrayList<>();
 
     @Builder
-    public Matching(User creator, String title, String description, Set<MatchingCategory> categories, InitiatorType creatorRole, boolean isAnonymous, boolean allowRandom, boolean showDepartment) {
+    public Matching(User creator, String title, String description, Set<MatchingCategory> categories, InitiatorType creatorRole, boolean anonymous, boolean allowRandom, boolean showDepartment) {
         this.creator = creator;
         this.title = title;
         this.description = description;
         this.creatorRole = creatorRole;
-        this.isAnonymous = isAnonymous;
+        this.anonymous = anonymous;
         this.allowRandom = allowRandom;
         this.showDepartment = showDepartment;
 
@@ -128,7 +128,7 @@ public class Matching extends BaseTimeEntity {
     }
 
     public void updateMatchingInfo(String title, String description, Set<MatchingCategory> categories,
-                                   boolean isAnonymous, boolean allowRandom, boolean showDepartment) {
+                                   boolean anonymous, boolean allowRandom, boolean showDepartment) {
 
         this.title = title;
         this.description = description;
@@ -138,7 +138,7 @@ public class Matching extends BaseTimeEntity {
             this.categories.addAll(categories);
         }
 
-        this.isAnonymous = isAnonymous;
+        this.anonymous = anonymous;
         this.allowRandom = allowRandom;
         this.showDepartment = showDepartment;
     }

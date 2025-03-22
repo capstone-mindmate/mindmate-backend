@@ -14,4 +14,5 @@ public class WaitingUserRequest {
 
     @Size(max = 100)
     private String message;
+    private boolean anonymous;
 }

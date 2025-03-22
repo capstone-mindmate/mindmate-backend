@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.matching.dto;
 
 import com.mindmate.mindmate_server.matching.domain.WaitingStatus;
 import com.mindmate.mindmate_server.matching.domain.WaitingUser;
+import com.mindmate.mindmate_server.review.domain.EvaluationTag;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -29,24 +30,37 @@ public class WaitingUserResponse {
     private List<String> evaluationTags;
     private LocalDateTime createdAt;
 
-    public static WaitingUserResponse of(WaitingUser application) {
-        // 지원자의 평가 태그 목록 가져오기
-        List<String> tagNames = application.getWaitingUser().getProfile().getEvaluationTags().stream()
-                .map(tag -> tag.getTagContent())
+    public static WaitingUserResponse of(WaitingUser waitingUser) {
+
+        String nickname = null;
+        String profileImage = null;
+        String department = null;
+
+        if (!waitingUser.isAnonymous()) {
+            nickname = waitingUser.getWaitingUser().getProfile().getNickname();
+            profileImage = waitingUser.getWaitingUser().getProfile().getProfileImage();
+        }
+
+        if (waitingUser.getMatching().isShowDepartment()) {
+            department = waitingUser.getWaitingUser().getProfile().getDepartment();
+        }
+
+        List<String> tagNames = waitingUser.getWaitingUser().getProfile().getEvaluationTags().stream()
+                .map(EvaluationTag::getTagContent)
                 .toList();
 
         return WaitingUserResponse.builder()
-                .id(application.getId())
-                .waitingUserId(application.getWaitingUser().getId())
-                .waitingUserNickname(application.getWaitingUser().getProfile().getNickname())
-                .waitingUserDepartment(application.getWaitingUser().getProfile().getDepartment())
-                .waitingUserEntranceTime(application.getWaitingUser().getProfile().getEntranceTime())
-                .waitingUserGraduation(application.getWaitingUser().getProfile().isGraduation())
-                .waitingUserCounselingCount(application.getWaitingUser().getProfile().getCounselingCount())
-                .waitingUserProfileImage(application.getWaitingUser().getProfile().getProfileImage())
-                .message(application.getMessage())
-//                .status(application.getStatus())
-                .createdAt(application.getCreatedAt())
+                .id(waitingUser.getId())
+                .waitingUserId(waitingUser.getWaitingUser().getId())
+                .waitingUserNickname(waitingUser.getWaitingUser().getProfile().getNickname())
+                .waitingUserDepartment(waitingUser.getWaitingUser().getProfile().getDepartment())
+                .waitingUserEntranceTime(waitingUser.getWaitingUser().getProfile().getEntranceTime())
+                .waitingUserGraduation(waitingUser.getWaitingUser().getProfile().isGraduation())
+                .waitingUserCounselingCount(waitingUser.getWaitingUser().getProfile().getCounselingCount())
+                .waitingUserProfileImage(waitingUser.getWaitingUser().getProfile().getProfileImage())
+                .message(waitingUser.getMessage())
+//                .status(waitingUser.getStatus())
+                .createdAt(waitingUser.getCreatedAt())
                 .evaluationTags(tagNames)
                 .build();
     }

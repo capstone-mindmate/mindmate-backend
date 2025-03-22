@@ -47,10 +47,12 @@ public class MatchingServiceImpl implements MatchingService{
                 .description(request.getDescription())
                 .categories(request.getMatchingCategories())
                 .creatorRole(request.getCreatorRole())
-                .isAnonymous(request.isAnonymous())
+                .anonymous(request.isAnonymous())
                 .allowRandom(request.isAllowRandom())
                 .showDepartment(request.isShowDepartment())
                 .build();
+
+        matchingRepository.save(matching);
 
         ChatRoom chatRoom = chatRoomService.createChatRoom(matching);
 
@@ -89,6 +91,7 @@ public class MatchingServiceImpl implements MatchingService{
                 .waitingUser(user)
                 .message(request.getMessage())
                 .matchingType(MatchingType.MANUAL) // 수동 매칭
+                .anonymous(request.isAnonymous())
                 .build();
 
         matching.addWaitingUser(waitingUser);
@@ -96,7 +99,7 @@ public class MatchingServiceImpl implements MatchingService{
     }
 
     @Override @Transactional
-    public Long acceptMatching(Long userId, Long matchingId, Long waitingUserId) {
+    public Long acceptMatching(Long userId, Long matchingId, Long waitingId) {
         User creator = userService.findUserById(userId);
 
         Matching matching = matchingRepository.findById(matchingId)
@@ -111,24 +114,23 @@ public class MatchingServiceImpl implements MatchingService{
             throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
         }
 
-        WaitingUser waitingUser = waitingUserRepository.findById(waitingUserId)
+        WaitingUser waitingUser = waitingUserRepository.findById(waitingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.WAITING_NOT_FOUND));
 
-        // 현재 매칭방인지 확인
         if (!waitingUser.getMatching().getId().equals(matchingId)) {
             throw new CustomException(MatchingErrorCode.INVALID_MATCHING_WAITING);
         }
-
         waitingUser.accept();
 
         // 다른 신청들은 모두 거절
         waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching).stream()
-                .filter(app -> !app.getId().equals(waitingUserId))
+                .filter(app -> !app.getId().equals(waitingId))
                 .forEach(WaitingUser::reject);
 
         // 매칭 완료 처리ㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇ
         matching.acceptMatching(waitingUser.getWaitingUser());
 
+        matchingRepository.save(matching);
         return matching.getId();
     }
 
@@ -160,7 +162,7 @@ public class MatchingServiceImpl implements MatchingService{
         WaitingUser waitingUser = WaitingUser.builder()
                 .waitingUser(user)
                 .matchingType(MatchingType.AUTO_FORMAT)
-                .isAnonymous(request.isAnonymous())
+                .anonymous(request.isAnonymous())
                 .build();
 
         matching.addWaitingUser(waitingUser);
@@ -178,14 +180,16 @@ public class MatchingServiceImpl implements MatchingService{
     }
 
     @Override
-    @Transactional
+//    @Transactional
     public MatchingDetailResponse updateMatching(Long userId, Long matchingId, MatchingUpdateRequest request) {
 
+        log.info("시작");
         User user = userService.findUserById(userId);
 
         Matching matching = matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
 
+        log.info("중간");
         if (!matching.isCreator(user)) {
             throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
         }
@@ -194,6 +198,7 @@ public class MatchingServiceImpl implements MatchingService{
             throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
         }
 
+        log.info("시작1");
         matching.updateMatchingInfo(
                 request.getTitle(),
                 request.getDescription(),
@@ -203,6 +208,7 @@ public class MatchingServiceImpl implements MatchingService{
                 request.isShowDepartment()
         );
 
+        log.info("끝");
         return MatchingDetailResponse.of(matching);
     }
 
@@ -323,17 +329,20 @@ public class MatchingServiceImpl implements MatchingService{
     }
 
     @Override
-    public Page<Matching> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant) {
+    public Page<MatchingResponse> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant) {
 
         User user = userService.findUserById(userId);
 
+        Page<Matching> matchings;
         if (asParticipant) {
-            return matchingRepository.findByAcceptedUserAndStatusOrderByMatchedAtDesc(
+            matchings = matchingRepository.findByAcceptedUserAndStatusOrderByMatchedAtDesc(
                     user, MatchingStatus.MATCHED, pageable);
         } else {
-            return matchingRepository.findByCreatorAndStatusOrderByMatchedAtDesc(
+            matchings = matchingRepository.findByCreatorAndStatusOrderByMatchedAtDesc(
                     user, MatchingStatus.MATCHED, pageable);
         }
+
+        return matchings.map(MatchingResponse::of);
     }
 
     @Override @Transactional

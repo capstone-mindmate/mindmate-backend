@@ -1,12 +1,10 @@
 package com.mindmate.mindmate_server.matching.service;
 
 import com.mindmate.mindmate_server.matching.domain.InitiatorType;
-import com.mindmate.mindmate_server.matching.domain.Matching;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import com.mindmate.mindmate_server.matching.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,7 +14,7 @@ public interface MatchingService {
 
     Long applyForMatching(Long userId, Long matchingId, WaitingUserRequest request);
 
-    Long acceptMatching(Long userId, Long matchingId, Long waitingUserId);
+    Long acceptMatching(Long userId, Long matchingId, Long waitingId);
 
     Long autoMatchApply(Long userId, AutoMatchingRequest request);
 
@@ -33,7 +31,7 @@ public interface MatchingService {
 
     List<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId);
 
-    Page<Matching> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant);
+    Page<MatchingResponse> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant);
 
     void closeMatching(Long userId, Long matchingId);
 }

@@ -59,6 +59,16 @@ public class MatchingController {
         return ResponseEntity.ok(waitingUserId);
     }
 
+    @PutMapping("/{matchingId}")
+    public ResponseEntity<MatchingDetailResponse> updateMatching(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long matchingId,
+            @Valid @RequestBody MatchingUpdateRequest request) {
+        MatchingDetailResponse updatedMatching = matchingService.updateMatching(
+                userPrincipal.getUserId(), matchingId, request);
+        return ResponseEntity.ok(updatedMatching);
+    }
+
     @GetMapping("/{matchingId}/waitingUsers")
     public ResponseEntity<List<WaitingUserResponse>> getWaitingUsers(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
@@ -67,12 +77,12 @@ public class MatchingController {
         return ResponseEntity.ok(waitingUsers);
     }
 
-    @PostMapping("/{matchingId}/accept/{waitingUserId}")
+    @PostMapping("/{matchingId}/accept/{waitingId}")
     public ResponseEntity<Long> acceptMatching(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long matchingId,
-            @PathVariable Long waitingUserId) {
-        Long matchedId = matchingService.acceptMatching(userPrincipal.getUserId(), matchingId, waitingUserId);
+            @PathVariable Long waitingId) {
+        Long matchedId = matchingService.acceptMatching(userPrincipal.getUserId(), matchingId, waitingId);
         return ResponseEntity.ok(matchedId);
     }
 
@@ -94,19 +104,19 @@ public class MatchingController {
 
     // 생성한거
     @GetMapping("/history/created")
-    public ResponseEntity<Page<Matching>> getCreatedMatchingHistory(
+    public ResponseEntity<Page<MatchingResponse>> getCreatedMatchingHistory(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PageableDefault(size = 10, sort = "matchedAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<Matching> matchingHistory = matchingService.getUserMatchingHistory(userPrincipal.getUserId(), pageable, false);
+        Page<MatchingResponse> matchingHistory = matchingService.getUserMatchingHistory(userPrincipal.getUserId(), pageable, false);
         return ResponseEntity.ok(matchingHistory);
     }
 
     // 참여한거
     @GetMapping("/history/participated")
-    public ResponseEntity<Page<Matching>> getParticipatedMatchingHistory(
+    public ResponseEntity<Page<MatchingResponse>> getParticipatedMatchingHistory(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PageableDefault(size = 10, sort = "matchedAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<Matching> matchingHistory = matchingService.getUserMatchingHistory(userPrincipal.getUserId(), pageable, true);
+        Page<MatchingResponse> matchingHistory = matchingService.getUserMatchingHistory(userPrincipal.getUserId(), pageable, true);
         return ResponseEntity.ok(matchingHistory);
     }
 
@@ -117,5 +127,17 @@ public class MatchingController {
         Long matchingId = matchingService.autoMatchApply(
                 userPrincipal.getUserId(), request);
         return ResponseEntity.ok(matchingId);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<Page<MatchingResponse>> searchMatchings(
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) MatchingCategory category,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) InitiatorType requiredRole) {
+        MatchingSearchRequest request = new MatchingSearchRequest(keyword, category, department, requiredRole);
+        Page<MatchingResponse> matchings = matchingService.searchMatchings(pageable, request);
+        return ResponseEntity.ok(matchings);
     }
 }

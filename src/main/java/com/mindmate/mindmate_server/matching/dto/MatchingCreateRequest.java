@@ -34,5 +34,5 @@ public class MatchingCreateRequest {
 
     private boolean allowRandom;
 
-    private boolean isAnonymous;
+    private boolean anonymous;
 }

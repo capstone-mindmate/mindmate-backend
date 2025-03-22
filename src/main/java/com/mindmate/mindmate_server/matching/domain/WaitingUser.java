@@ -35,14 +35,14 @@ public class WaitingUser extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private WaitingStatus status = WaitingStatus.PENDING;
 
-    private boolean isAnonymous; // 프로필 보여줄지 말지
+    private boolean anonymous; // 프로필 보여줄지 말지
 
     @Builder
-    public WaitingUser(User waitingUser, String message, MatchingType matchingType, boolean isAnonymous) {
+    public WaitingUser(User waitingUser, String message, MatchingType matchingType, boolean anonymous) {
         this.waitingUser = waitingUser;
         this.message = message;
         this.matchingType = matchingType;
-        this.isAnonymous = isAnonymous;
+        this.anonymous = anonymous;
     }
 
     public void setMatching(Matching matching) {
