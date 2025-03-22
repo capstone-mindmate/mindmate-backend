@@ -4,14 +4,11 @@ import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MatchingErrorCode;
-import com.mindmate.mindmate_server.global.exception.UserErrorCode;
 import com.mindmate.mindmate_server.matching.domain.*;
 import com.mindmate.mindmate_server.matching.dto.*;
 import com.mindmate.mindmate_server.matching.repository.MatchingRepository;
 import com.mindmate.mindmate_server.matching.repository.WaitingUserRepository;
 import com.mindmate.mindmate_server.user.domain.User;
-import com.mindmate.mindmate_server.user.repository.UserRepository;
-import com.mindmate.mindmate_server.user.service.ProfileService;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +32,7 @@ public class MatchingServiceImpl implements MatchingService{
 
     // 매칭 생성 -> + 채팅 생성
     @Override @Transactional
-    public Long createMatching(Long userId, MatchingCreateRequest request) {
+    public MatchingCreateResponse createMatching(Long userId, MatchingCreateRequest request) {
         User user = userService.findUserById(userId);
 
         // 활성화된 매칭 수 카운트
@@ -44,22 +41,27 @@ public class MatchingServiceImpl implements MatchingService{
             throw new CustomException(MatchingErrorCode.MATCHING_LIMIT_EXCEED);
         }
 
-        // 채팅방 생성
-        User speaker = request.getCreatorRole() == InitiatorType.SPEAKER ? user : null;
-        User listener = request.getCreatorRole() == InitiatorType.LISTENER ? user : null;
-
-        ChatRoom chatRoom = chatRoomService.createChatRoom(speaker, listener, request.getTitle());
-
         Matching matching = Matching.builder()
                 .creator(user)
                 .title(request.getTitle())
                 .description(request.getDescription())
-                .category(request.getMatchingCategory())
+                .categories(request.getMatchingCategories())
                 .creatorRole(request.getCreatorRole())
-                .chatRoom(chatRoom)
+                .isAnonymous(request.isAnonymous())
+                .allowRandom(request.isAllowRandom())
+                .showDepartment(request.isShowDepartment())
                 .build();
 
-        return matchingRepository.save(matching).getId();
+        ChatRoom chatRoom = chatRoomService.createChatRoom(matching);
+
+        matching.setChatRoom(chatRoom);
+
+        Long matchingId = matchingRepository.save(matching).getId();
+
+        return MatchingCreateResponse.builder()
+                .matchingId(matchingId)
+                .chatRoomId(chatRoom.getId())
+                .build();
     }
 
     @Override @Transactional // 수동
@@ -117,8 +119,6 @@ public class MatchingServiceImpl implements MatchingService{
             throw new CustomException(MatchingErrorCode.INVALID_MATCHING_WAITING);
         }
 
-        User applicant = waitingUser.getWaitingUser();
-
         waitingUser.accept();
 
         // 다른 신청들은 모두 거절
@@ -126,16 +126,8 @@ public class MatchingServiceImpl implements MatchingService{
                 .filter(app -> !app.getId().equals(waitingUserId))
                 .forEach(WaitingUser::reject);
 
-        // 채팅방 업데이트 - 상대방 추가ㅇㅇ 근데 todo : 채팅 로직 확인해야됨
-        User speaker = matching.isCreatorSpeaker() ? creator : applicant;
-        User listener = matching.isCreatorSpeaker() ? applicant : creator;
-
-        chatRoomService.updateChatRoomParticipant(matching.getChatRoom().getId(), speaker, listener);
-
         // 매칭 완료 처리ㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇ
-        matching.acceptMatching(applicant, matching.getChatRoom());
-
-        // 채팅이 끝나면 상담횟수 +1 (리스너 역할에만?)
+        matching.acceptMatching(waitingUser.getWaitingUser());
 
         return matching.getId();
     }
@@ -143,9 +135,6 @@ public class MatchingServiceImpl implements MatchingService{
     @Override @Transactional
     public Long autoMatchApply(Long userId, AutoMatchingRequest request) {
         InitiatorType userRole = request.getUserRole();
-        MatchingCategory category = request.getCategory();
-        String department = request.getDepartment();
-        String message = request.getMessage();
 
         User user = userService.findUserById(userId);
 
@@ -154,53 +143,38 @@ public class MatchingServiceImpl implements MatchingService{
                 ? InitiatorType.LISTENER
                 : InitiatorType.SPEAKER;
 
-        List<Matching> candidateRooms;
-
-        // 학과 필터링이 있는 경우
-        if (department != null && !department.isEmpty()) {
-            candidateRooms = matchingRepository
-                    .findByStatusRoleCategoryAndDepartment(
-                            MatchingStatus.OPEN, targetCreatorRole, category, department);
-
-            if (candidateRooms.isEmpty()) {
-                log.info("같은 학과 매칭 없음.. 전체 학과로 검색");
-                candidateRooms = matchingRepository
-                        .findByStatusAndCreatorRoleAndCategoryOrderByCreatedAt(
-                                MatchingStatus.OPEN, targetCreatorRole, category);
-            }
-        } else { // 없을 때
-            candidateRooms = matchingRepository
-                    .findByStatusAndCreatorRoleAndCategoryOrderByCreatedAt(
-                            MatchingStatus.OPEN, targetCreatorRole, category);
-        }
+        List<Matching> candidateRooms = matchingRepository.findByStatusAndAllowRandomAndCreatorRoleAndWaitingUsersIsEmpty(
+                MatchingStatus.OPEN,
+                true,
+                targetCreatorRole
+        );
 
         if (candidateRooms.isEmpty()) {
             throw new CustomException(MatchingErrorCode.NO_MATCHING_AVAILABLE);
         }
 
-        // 제일 오래된걸로. (나중에 알고리즘 수정해야할듯)
-        Matching matching = candidateRooms.get(0);
+        int randomIndex = (int) (Math.random() * candidateRooms.size());
+        Matching matching = candidateRooms.get(randomIndex);
 
-        // 자동 신청됨
+        // 자동 매칭 신청
         WaitingUser waitingUser = WaitingUser.builder()
                 .waitingUser(user)
-                .message(message)
                 .matchingType(MatchingType.AUTO_FORMAT)
+                .isAnonymous(request.isAnonymous())
                 .build();
 
         matching.addWaitingUser(waitingUser);
-        waitingUser = waitingUserRepository.save(waitingUser);
+        Long waitingUserId = waitingUserRepository.save(waitingUser).getId();
 
         // 매칭 수락
         try {
-            acceptMatching(matching.getCreator().getId(), matching.getId(), waitingUser.getId());
+            acceptMatching(matching.getCreator().getId(), matching.getId(), waitingUserId);
         } catch (CustomException e) {
-            // 자동 매칭 실패 -> 이후에 어떻게 처리?
-            log.error("자동 매칭 수락 처리 실패: {}", e.getMessage());
+            log.error("자동 매칭 수락 실패: {}", e.getMessage());
             throw new CustomException(MatchingErrorCode.AUTO_MATCHING_FAILED);
         }
 
-        return waitingUser.getId();
+        return matching.getChatRoom().getId();
     }
 
     @Override @Transactional
@@ -228,38 +202,43 @@ public class MatchingServiceImpl implements MatchingService{
     @Override
     public Page<MatchingResponse> getMatchings(Pageable pageable, MatchingCategory category,
                                                String department, InitiatorType requiredRole) {
-
         Page<Matching> matchings;
+        MatchingStatus requireStatus = MatchingStatus.OPEN;
 
-        // 필터링 로직 (카테고리, 학과, 원하는 역할 등) -> 이후에 바꾸거나 해야할듯
         if (requiredRole != null) {
+            InitiatorType targetCreatorRole = requiredRole == InitiatorType.SPEAKER
+                    ? InitiatorType.LISTENER
+                    : InitiatorType.SPEAKER;
+
             matchings = matchingRepository.findByStatusAndCreatorRoleOrderByCreatedAtDesc(
-                    MatchingStatus.OPEN,
-                    requiredRole == InitiatorType.SPEAKER ? InitiatorType.LISTENER : InitiatorType.SPEAKER,
-                    pageable);
-        } else if (category != null && department != null) {
+                    requireStatus, targetCreatorRole, pageable);
+        }
+        else if (category != null && department != null) {
             matchings = matchingRepository.findByStatusAndCategoryAndDepartment(
-                    MatchingStatus.OPEN, category, department, pageable);
-        } else if (category != null) {
+                    requireStatus, category, department, pageable);
+        }
+        else if (category != null) {
             matchings = matchingRepository.findByStatusAndCategoryOrderByCreatedAtDesc(
-                    MatchingStatus.OPEN, category, pageable);
-        } else if (department != null) {
-            matchings = matchingRepository.findOpenMatchingsByDepartment(department, pageable);
-        } else {
-            matchings = matchingRepository.findByStatusOrderByCreatedAtDesc(MatchingStatus.OPEN, pageable);
+                    requireStatus, category, pageable);
+        }
+        else if (department != null) {
+            matchings = matchingRepository.findOpenMatchingsByDepartment(
+                    requireStatus, department, pageable);
+        }
+        else {
+            matchings = matchingRepository.findByStatusOrderByCreatedAtDesc(requireStatus, pageable);
         }
 
-        // todo : 필터링 로직 더 추가
         return matchings.map(MatchingResponse::of);
     }
 
     @Override
-    public MatchingResponse getMatchingDetail(Long matchingId) {
+    public MatchingDetailResponse getMatchingDetail(Long matchingId) {
 
         Matching matching = matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
 
-        return MatchingResponse.of(matching);
+        return MatchingDetailResponse.of(matching);
     }
 
     @Override
@@ -310,6 +289,8 @@ public class MatchingServiceImpl implements MatchingService{
         }
 
         matching.closeMatching();
+
+        // 채팅이 끝나면 상담횟수 +1 (리스너 역할에만?)
     }
 
 }

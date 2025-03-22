@@ -37,8 +37,14 @@ public class Matching extends BaseTimeEntity {
     @Column(length = 100)
     private String description;
 
+    @ElementCollection
+    @CollectionTable(
+            name = "matching_categories",
+            joinColumns = @JoinColumn(name = "matching_id")
+    )
     @Enumerated(EnumType.STRING)
-    private MatchingCategory category;
+    @Column(name = "category")
+    private Set<MatchingCategory> categories = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
     private MatchingStatus status;
@@ -56,27 +62,40 @@ public class Matching extends BaseTimeEntity {
 
     private LocalDateTime matchedAt;
 
+    private boolean isAnonymous;
+    private boolean allowRandom;
+    private boolean showDepartment;
+
     @OneToMany(mappedBy = "matching", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WaitingUser> waitingUsers = new ArrayList<>();
 
     @Builder
-    public Matching(User creator, String title, String description, MatchingCategory category, InitiatorType creatorRole, ChatRoom chatRoom) {
+    public Matching(User creator, String title, String description, Set<MatchingCategory> categories, InitiatorType creatorRole, boolean isAnonymous, boolean allowRandom, boolean showDepartment) {
         this.creator = creator;
         this.title = title;
         this.description = description;
         this.creatorRole = creatorRole;
-        this.category = category;
-        this.chatRoom = chatRoom;
+        this.isAnonymous = isAnonymous;
+        this.allowRandom = allowRandom;
+        this.showDepartment = showDepartment;
+
+        if (categories != null && !categories.isEmpty()) {
+            this.categories.addAll(categories);
+        }
+
         this.status = MatchingStatus.OPEN;
+    }
+
+    public void setChatRoom(ChatRoom chatRoom){
+        this.chatRoom = chatRoom;
     }
 
     public void closeMatching() {
         this.status = MatchingStatus.CLOSED;
     }
 
-    public void acceptMatching(User acceptedUser, ChatRoom chatRoom) {
+    public void acceptMatching(User acceptedUser) {
         this.acceptedUser = acceptedUser;
-        this.chatRoom = chatRoom;
         this.matchedAt = LocalDateTime.now();
         this.status = MatchingStatus.MATCHED;
     }

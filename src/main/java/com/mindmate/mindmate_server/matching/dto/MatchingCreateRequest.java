@@ -10,6 +10,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.Set;
+
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -22,9 +24,15 @@ public class MatchingCreateRequest {
     @Size(max = 500, message = "설명은 500자 이내로 입력해주세요")
     private String description;
 
-    @NotNull(message = "고민 카테고리는 필수입니다")
-    private MatchingCategory matchingCategory;
+    @NotNull(message = "고민 카테고리 선택은 필수입니다")
+    private Set<MatchingCategory> matchingCategories;
 
     @NotNull(message = "역할 유형은 필수입니다")
     private InitiatorType creatorRole;
+
+    private boolean showDepartment;
+
+    private boolean allowRandom;
+
+    private boolean isAnonymous;
 }

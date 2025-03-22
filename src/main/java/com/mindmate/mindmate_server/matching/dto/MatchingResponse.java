@@ -1,46 +1,31 @@
 package com.mindmate.mindmate_server.matching.dto;
 
-import com.mindmate.mindmate_server.matching.domain.*;
-import lombok.AllArgsConstructor;
+import com.mindmate.mindmate_server.matching.domain.InitiatorType;
+import com.mindmate.mindmate_server.matching.domain.Matching;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-import java.util.Set;
-
-@Builder
 @Getter
-@NoArgsConstructor
-@AllArgsConstructor
+@Builder
 public class MatchingResponse {
     private Long id;
     private String title;
     private String description;
-    private MatchingCategory category;
+    private String department;
     private InitiatorType creatorRole;
-    private InitiatorType requiredRole;
-    private String creatorNickname;
-    private String creatorDepartment;
-    private String creatorProfileImage;
-    private int applicationCount;
-    private Long chatRoomId;
-    private LocalDateTime createdAt;
 
     public static MatchingResponse of(Matching matching) {
+        String department = null;
+        if (matching.isShowDepartment() && matching.getCreator().getProfile() != null) {
+            department = matching.getCreator().getProfile().getDepartment();
+        }
+
         return MatchingResponse.builder()
                 .id(matching.getId())
                 .title(matching.getTitle())
                 .description(matching.getDescription())
-                .category(matching.getCategory())
+                .department(department)
                 .creatorRole(matching.getCreatorRole())
-                .requiredRole(matching.getRequiredRole())
-                .creatorNickname(matching.getCreator().getProfile().getNickname())
-                .creatorDepartment(matching.getCreator().getProfile().getDepartment())
-                .creatorProfileImage(matching.getCreator().getProfile().getProfileImage())
-                .applicationCount(matching.getWaitingUsersCount())
-                .chatRoomId(1L)
-                .createdAt(matching.getCreatedAt())
                 .build();
     }
 }

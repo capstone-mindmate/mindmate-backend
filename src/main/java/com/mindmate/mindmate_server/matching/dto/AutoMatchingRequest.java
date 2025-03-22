@@ -13,11 +13,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AutoMatchingRequest {
 
-    private MatchingCategory category;
     private InitiatorType userRole;
-
-    @Size(max = 100)
-    private String message;
-
-    private String department;
+    private boolean isAnonymous;
+    private boolean showDepartment; // 굳이 학과를 보여줄 필요가 있나?
 }

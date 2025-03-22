@@ -48,6 +48,7 @@ public class Profile extends BaseTimeEntity {
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EvaluationTag> evaluationTags = new ArrayList<>();
 
+    private double avgRating = 0;
 
     @Builder
     public Profile(User user, String nickname, String department, Integer entranceTime, boolean graduation, String profileImage) {
@@ -93,5 +94,9 @@ public class Profile extends BaseTimeEntity {
 
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    private void updateAvgRating(double rating){
+        this.avgRating = (this.avgRating*counselingCount + rating)/(counselingCount+1);
     }
 }

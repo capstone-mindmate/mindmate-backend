@@ -16,7 +16,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class WaitingUserResponse {
-    private Long id; // 무슨?
+    private Long id;
     private Long waitingUserId;
     private String waitingUserNickname;
     private String waitingUserDepartment;

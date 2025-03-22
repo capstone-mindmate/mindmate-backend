@@ -3,11 +3,7 @@ package com.mindmate.mindmate_server.matching.controller;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import com.mindmate.mindmate_server.matching.domain.Matching;
-import com.mindmate.mindmate_server.matching.dto.AutoMatchingRequest;
-import com.mindmate.mindmate_server.matching.dto.WaitingUserRequest;
-import com.mindmate.mindmate_server.matching.dto.MatchingCreateRequest;
-import com.mindmate.mindmate_server.matching.dto.WaitingUserResponse;
-import com.mindmate.mindmate_server.matching.dto.MatchingResponse;
+import com.mindmate.mindmate_server.matching.dto.*;
 import com.mindmate.mindmate_server.matching.service.MatchingService;
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import jakarta.validation.Valid;
@@ -30,11 +26,11 @@ public class MatchingController {
     private final MatchingService matchingService;
 
     @PostMapping
-    public ResponseEntity<Long> createMatching(
+    public ResponseEntity<MatchingCreateResponse> createMatching(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody MatchingCreateRequest request) {
-        Long matchingId = matchingService.createMatching(userPrincipal.getUserId(), request);
-        return ResponseEntity.ok(matchingId);
+        MatchingCreateResponse matching = matchingService.createMatching(userPrincipal.getUserId(), request);
+        return ResponseEntity.ok(matching);
     }
 
     @GetMapping
@@ -48,9 +44,9 @@ public class MatchingController {
     }
 
     @GetMapping("/{matchingId}")
-    public ResponseEntity<MatchingResponse> getMatchingDetail(
+    public ResponseEntity<MatchingDetailResponse> getMatchingDetail(
             @PathVariable Long matchingId) {
-        MatchingResponse matching = matchingService.getMatchingDetail(matchingId);
+        MatchingDetailResponse matching = matchingService.getMatchingDetail(matchingId);
         return ResponseEntity.ok(matching);
     }
 

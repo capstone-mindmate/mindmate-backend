@@ -6,13 +6,12 @@ import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import com.mindmate.mindmate_server.matching.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 public interface MatchingService {
 
-    Long createMatching(Long userId, MatchingCreateRequest request);
+    MatchingCreateResponse createMatching(Long userId, MatchingCreateRequest request);
 
     Long applyForMatching(Long userId, Long matchingId, WaitingUserRequest request);
 
@@ -25,7 +24,7 @@ public interface MatchingService {
     Page<MatchingResponse> getMatchings(Pageable pageable, MatchingCategory category,
                                         String department, InitiatorType requiredRole);
 
-    MatchingResponse getMatchingDetail(Long matchingId);
+    MatchingDetailResponse getMatchingDetail(Long matchingId);
 
     List<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId);
 

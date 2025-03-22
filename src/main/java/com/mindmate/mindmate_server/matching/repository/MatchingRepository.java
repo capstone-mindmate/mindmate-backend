@@ -19,47 +19,63 @@ public interface MatchingRepository extends JpaRepository<Matching, Long> {
 
     // 사용자가 생성한 매칭방 목록?
 
-    Page<Matching> findByStatusOrderByCreatedAtDesc(MatchingStatus status, Pageable pageable);
-
-    Page<Matching> findByStatusAndCategoryOrderByCreatedAtDesc(
-            MatchingStatus status, MatchingCategory category, Pageable pageable);
-
-    Page<Matching> findByStatusAndCreatorRoleOrderByCreatedAtDesc(
-            MatchingStatus status, InitiatorType creatorRole, Pageable pageable);
-
     @Query("SELECT mr FROM Matching mr WHERE mr.status = 'OPEN' AND mr.creator.profile.department = :department ORDER BY mr.createdAt DESC")
     Page<Matching> findOpenMatchingsByDepartment(
             @Param("department") String department, Pageable pageable);
-
-    int countByCreatorAndStatus(User creator, MatchingStatus status);
-
-    @Query("SELECT mr FROM Matching mr JOIN mr.creator u JOIN u.profile p " +
-            "WHERE mr.status = :status AND mr.creatorRole = :role " +
-            "AND mr.category = :category AND p.department = :department " +
-            "ORDER BY mr.createdAt ASC")
-    List<Matching> findByStatusRoleCategoryAndDepartment(
-            @Param("status") MatchingStatus status,
-            @Param("role") InitiatorType role,
-            @Param("category") MatchingCategory category,
-            @Param("department") String department);
-
-    Page<Matching> findByAcceptedUserAndStatusOrderByMatchedAtDesc(
-            User acceptedApplicant, MatchingStatus status, Pageable pageable);
-
-    Page<Matching> findByCreatorAndStatusOrderByMatchedAtDesc(
-            User creator, MatchingStatus status, Pageable pageable);
 
     List<Matching> findByStatusAndCreatorRoleAndCategoryOrderByCreatedAt(
             MatchingStatus status,
             InitiatorType creatorRole,
             MatchingCategory category);
 
-    @Query("SELECT mr FROM Matching mr JOIN mr.creator u JOIN u.profile p " +
-            "WHERE mr.status = :status AND mr.category = :category " +
-            "AND p.department = :department ORDER BY mr.createdAt DESC")
+    // 자동 매칭
+    @Query("SELECT m FROM Matching m WHERE m.status = :status AND m.allowRandom = :allowRandom " +
+            "AND m.creatorRole = :creatorRole AND (SELECT COUNT(w) FROM m.waitingUsers w) = 0")
+    List<Matching> findByStatusAndAllowRandomAndCreatorRoleAndWaitingUsersIsEmpty(
+            @Param("status") MatchingStatus status,
+            @Param("allowRandom") boolean allowRandom,
+            @Param("creatorRole") InitiatorType creatorRole
+    );
+
+    // 기본 매칭 조회 메서드
+    Page<Matching> findByStatusOrderByCreatedAtDesc(MatchingStatus status, Pageable pageable);
+
+    // 역할별 필터링
+    Page<Matching> findByStatusAndCreatorRoleOrderByCreatedAtDesc(
+            MatchingStatus status, InitiatorType creatorRole, Pageable pageable);
+
+    // 학과별 오픈 매칭 필터링
+    @Query("SELECT m FROM Matching m WHERE m.status = :status AND m.creator.profile.department = :department ORDER BY m.createdAt DESC")
+    Page<Matching> findOpenMatchingsByDepartment(
+            @Param("status") MatchingStatus status,
+            @Param("department") String department,
+            Pageable pageable);
+
+    // 카테고리별 필터링
+    @Query("SELECT m FROM Matching m WHERE m.status = :status AND :category MEMBER OF m.categories ORDER BY m.createdAt DESC")
+    Page<Matching> findByStatusAndCategoryOrderByCreatedAtDesc(
+            @Param("status") MatchingStatus status,
+            @Param("category") MatchingCategory category,
+            Pageable pageable);
+
+    // 카테고리와 학과별 필터링
+    @Query("SELECT m FROM Matching m JOIN m.creator u JOIN u.profile p " +
+            "WHERE m.status = :status AND :category MEMBER OF m.categories " +
+            "AND p.department = :department ORDER BY m.createdAt DESC")
     Page<Matching> findByStatusAndCategoryAndDepartment(
             @Param("status") MatchingStatus status,
             @Param("category") MatchingCategory category,
             @Param("department") String department,
             Pageable pageable);
+
+    // 사용자의 활성화된 매칭 수 카운트
+    int countByCreatorAndStatus(User creator, MatchingStatus status);
+
+    // 사용자의 매칭 이력 조회 (참여자로)
+    Page<Matching> findByAcceptedUserAndStatusOrderByMatchedAtDesc(
+            User acceptedApplicant, MatchingStatus status, Pageable pageable);
+
+    // 사용자의 매칭 이력 조회 (생성자로)
+    Page<Matching> findByCreatorAndStatusOrderByMatchedAtDesc(
+            User creator, MatchingStatus status, Pageable pageable);
 }
