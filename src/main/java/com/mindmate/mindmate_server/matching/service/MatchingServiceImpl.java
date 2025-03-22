@@ -157,6 +157,7 @@ public class MatchingServiceImpl implements MatchingService{
             matchingEventProducer.publishMatchingAccepted(event);
         }
 
+        matchingRepository.save(matching);
         return matching.getId();
     }
 
@@ -199,14 +200,16 @@ public class MatchingServiceImpl implements MatchingService{
     }
 
     @Override
-    @Transactional
+//    @Transactional
     public MatchingDetailResponse updateMatching(Long userId, Long matchingId, MatchingUpdateRequest request) {
 
+        log.info("시작");
         User user = userService.findUserById(userId);
 
         Matching matching = matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
 
+        log.info("중간");
         if (!matching.isCreator(user)) {
             throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
         }
@@ -215,6 +218,7 @@ public class MatchingServiceImpl implements MatchingService{
             throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
         }
 
+        log.info("시작1");
         matching.updateMatchingInfo(
                 request.getTitle(),
                 request.getDescription(),
@@ -224,6 +228,7 @@ public class MatchingServiceImpl implements MatchingService{
                 request.isShowDepartment()
         );
 
+        log.info("끝");
         return MatchingDetailResponse.of(matching);
     }
 

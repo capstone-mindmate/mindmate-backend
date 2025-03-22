@@ -2,10 +2,7 @@ package com.mindmate.mindmate_server.matching.dto;
 
 import com.mindmate.mindmate_server.matching.domain.WaitingStatus;
 import com.mindmate.mindmate_server.matching.domain.WaitingUser;
-<<<<<<< HEAD
 import com.mindmate.mindmate_server.review.domain.EvaluationTag;
-=======
->>>>>>> 390e2aa (🎉 update : 매칭&대기 서비스 로직 및 repository 추가)
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

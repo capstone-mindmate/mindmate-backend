@@ -222,8 +222,10 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
     @Override
     public ChatRoom createChatRoom(Matching matching) {
-        return ChatRoom.builder()
+        ChatRoom chatRoom = ChatRoom.builder()
                 .matching(matching)
                 .build();
+
+        return chatRoomRepository.save(chatRoom);
     }
 }
