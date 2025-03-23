@@ -30,6 +30,8 @@ public class MatchingServiceImpl implements MatchingService{
     private final UserService userService;
     private final ChatRoomService chatRoomService;
 
+    private final RedisMatchingService redisMatchingService;
+
     // 매칭 생성 -> + 채팅 생성
     @Override @Transactional
     public MatchingCreateResponse createMatching(Long userId, MatchingCreateRequest request) {
@@ -59,6 +61,10 @@ public class MatchingServiceImpl implements MatchingService{
         matching.setChatRoom(chatRoom);
 
         Long matchingId = matchingRepository.save(matching).getId();
+
+        if(request.isAllowRandom()){
+            redisMatchingService.addMatchingToAvailableSet(matching);
+        } // 레디스 set에 추가
 
         return MatchingCreateResponse.builder()
                 .matchingId(matchingId)
@@ -140,23 +146,16 @@ public class MatchingServiceImpl implements MatchingService{
 
         User user = userService.findUserById(userId);
 
-        // 신청한 role과 반대되는 걸로
-        InitiatorType targetCreatorRole = userRole == InitiatorType.SPEAKER
-                ? InitiatorType.LISTENER
-                : InitiatorType.SPEAKER;
+        Long matchingId = redisMatchingService.getRandomMatching(userRole);
 
-        List<Matching> candidateRooms = matchingRepository.findByStatusAndAllowRandomAndCreatorRoleAndWaitingUsersIsEmpty(
-                MatchingStatus.OPEN,
-                true,
-                targetCreatorRole
-        );
-
-        if (candidateRooms.isEmpty()) {
+        if (matchingId == null) {
             throw new CustomException(MatchingErrorCode.NO_MATCHING_AVAILABLE);
         }
 
-        int randomIndex = (int) (Math.random() * candidateRooms.size());
-        Matching matching = candidateRooms.get(randomIndex);
+        Matching matching = matchingRepository.findById(matchingId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+
+        redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
 
         // 자동 매칭 신청
         WaitingUser waitingUser = WaitingUser.builder()
@@ -180,16 +179,14 @@ public class MatchingServiceImpl implements MatchingService{
     }
 
     @Override
-//    @Transactional
+    @Transactional
     public MatchingDetailResponse updateMatching(Long userId, Long matchingId, MatchingUpdateRequest request) {
 
-        log.info("시작");
         User user = userService.findUserById(userId);
 
         Matching matching = matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
 
-        log.info("중간");
         if (!matching.isCreator(user)) {
             throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
         }
@@ -198,7 +195,6 @@ public class MatchingServiceImpl implements MatchingService{
             throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
         }
 
-        log.info("시작1");
         matching.updateMatchingInfo(
                 request.getTitle(),
                 request.getDescription(),
@@ -208,7 +204,6 @@ public class MatchingServiceImpl implements MatchingService{
                 request.isShowDepartment()
         );
 
-        log.info("끝");
         return MatchingDetailResponse.of(matching);
     }
 
@@ -362,6 +357,7 @@ public class MatchingServiceImpl implements MatchingService{
 
         matching.closeMatching();
 
+        redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
         // 채팅이 끝나면 상담횟수 +1 (리스너 역할에만?)
     }
 
