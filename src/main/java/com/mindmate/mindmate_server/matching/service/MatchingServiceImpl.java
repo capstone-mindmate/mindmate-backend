@@ -38,7 +38,7 @@ public class MatchingServiceImpl implements MatchingService{
         User user = userService.findUserById(userId);
 
         // 활성화된 매칭 수 카운트
-        int activeRoomCount = matchingRepository.countByCreatorAndStatus(user, MatchingStatus.OPEN);
+        int activeRoomCount = redisMatchingService.getUserActiveMatchingCount(userId);
         if (activeRoomCount >= 3) {
             throw new CustomException(MatchingErrorCode.MATCHING_LIMIT_EXCEED);
         }
@@ -65,6 +65,8 @@ public class MatchingServiceImpl implements MatchingService{
         if(request.isAllowRandom()){
             redisMatchingService.addMatchingToAvailableSet(matching);
         } // 레디스 set에 추가
+
+        redisMatchingService.incrementUserActiveMatchingCount(userId);
 
         return MatchingCreateResponse.builder()
                 .matchingId(matchingId)
@@ -101,6 +103,9 @@ public class MatchingServiceImpl implements MatchingService{
                 .build();
 
         matching.addWaitingUser(waitingUser);
+
+        redisMatchingService.incrementUserActiveMatchingCount(userId);
+
         return waitingUserRepository.save(waitingUser).getId();
     }
 
@@ -131,7 +136,10 @@ public class MatchingServiceImpl implements MatchingService{
         // 다른 신청들은 모두 거절
         waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching).stream()
                 .filter(app -> !app.getId().equals(waitingId))
-                .forEach(WaitingUser::reject);
+                .forEach(app->{
+                    app.reject();
+                    redisMatchingService.decrementUserActiveMatchingCount(app.getWaitingUser().getId());
+                });
 
         // 매칭 완료 처리ㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇ
         matching.acceptMatching(waitingUser.getWaitingUser());
@@ -227,6 +235,7 @@ public class MatchingServiceImpl implements MatchingService{
         }
 
         waitingUserRepository.delete(waitingUser);
+        redisMatchingService.decrementUserActiveMatchingCount(userId);
     }
 
     @Override
@@ -355,8 +364,16 @@ public class MatchingServiceImpl implements MatchingService{
             throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
         }
 
+        waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching).stream()
+                .filter(app -> app.getStatus() == WaitingStatus.PENDING)
+                .forEach(app -> {
+                    app.reject();
+                    redisMatchingService.decrementUserActiveMatchingCount(app.getWaitingUser().getId());
+                });
+
         matching.closeMatching();
 
+        redisMatchingService.decrementUserActiveMatchingCount(userId);
         redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
         // 채팅이 끝나면 상담횟수 +1 (리스너 역할에만?)
     }
