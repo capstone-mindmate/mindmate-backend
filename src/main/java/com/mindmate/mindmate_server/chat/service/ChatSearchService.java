@@ -49,6 +49,7 @@ public class ChatSearchService {
     @Transactional(readOnly = true)
     public SearchNavigationResponse navigateToSearchResult(
             Long userId, Long roomId, String keyword, Long targetMessageId, Long oldestLoadedMessageId) {
+        chatRoomService.validateChatActivity(userId, roomId);
         List<ChatMessageResponse> additionalMessages = Collections.emptyList();
 
         if (targetMessageId < oldestLoadedMessageId) {

@@ -6,7 +6,6 @@ import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomDetailResponse;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
-import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
 import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
@@ -73,7 +72,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
             chatRoomRepository.save(chatRoom);
         }
 
-        return ChatRoomDetailResponse.from(chatRoom, messages, user.getId());
+        return ChatRoomDetailResponse.from(chatRoom, messages, user);
     }
 
     private List<ChatMessage> fetchMessages(Long roomId, Long lastReadMessageId, int size) {
@@ -118,19 +117,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         return messages.stream()
                 .map(message -> ChatMessageResponse.from(message, userId))
                 .collect(Collectors.toList());
-    }   
+    }
 
 
     @Override
     @Transactional
     public void closeChatRoom(Long userId, Long roomId) {
+        validateChatActivity(userId, roomId); // active일 때만 close 요청 가능하지..맞지
+
+        User user = userService.findUserById(userId);
         ChatRoom chatRoom = findChatRoomById(roomId);
-        if (!chatRoom.getListener().getId().equals(userId) &&
-                !chatRoom.getSpeaker().getId().equals(userId)) {
-            throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
-        }
-        chatRoom.close();
-        log.info("Closed chat room {}", roomId);
+        chatRoom.requestClosure(user);
     }
 
     @Override
@@ -157,6 +154,37 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         return chatRoomRepository.findAllByUserIdAndStatus(userId, status, pageRequest);
     }
 
+    @Override
+    @Transactional
+    public void rejectCloseChatRoom(Long userId, Long roomId) {
+        User user = userService.findUserById(userId);
+        ChatRoom chatRoom = findChatRoomById(roomId);
 
-    // todo: 채팅방 만들기 로직 추가
+        if (chatRoom.getChatRoomStatus() != ChatRoomStatus.CLOSE_REQUEST) {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_NOT_REQUESTED_CLOSE);
+        }
+
+        if (chatRoom.isClosureRequester(user)) {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_CANNOT_ACCEPT_OWN);
+        }
+
+        chatRoom.rejectClosure();
+    }
+
+    @Override
+    @Transactional
+    public void acceptCloseChatRoom(Long userId, Long roomId) {
+        User user = userService.findUserById(userId);
+        ChatRoom chatRoom = findChatRoomById(roomId);
+
+        // 채팅방 상태가 close_request여야만 함
+        if (chatRoom.getChatRoomStatus() != ChatRoomStatus.CLOSE_REQUEST) {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_NOT_REQUESTED_CLOSE);
+        }
+
+        if (chatRoom.isClosureRequester(user)) {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_CANNOT_ACCEPT_OWN);
+        }
+        chatRoom.acceptClosure();
+    }
 }

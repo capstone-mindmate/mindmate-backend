@@ -37,7 +37,11 @@ public enum ChatErrorCode implements ErrorCode {
     KAFKA_CONNECTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "Kafka 연결에 실패했습니다"),
 
     // 알림 관련 오류
-    NOTIFICATION_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "알림 전송에 실패했습니다");
+    NOTIFICATION_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "알림 전송에 실패했습니다"), 
+    
+    // 채팅방 종료 관련 오류
+    CHAT_ROOM_NOT_REQUESTED_CLOSE(HttpStatus.BAD_REQUEST, "채팅방 종료 요청을 받지 않았습니다" ), 
+    CHAT_ROOM_CANNOT_ACCEPT_OWN(HttpStatus.BAD_REQUEST, "자신이 요청한 종료 요청을 처리할 수 없습니다" );
 
     private final HttpStatus status;
     private final String message;

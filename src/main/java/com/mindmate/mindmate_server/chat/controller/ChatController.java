@@ -157,8 +157,7 @@ public class ChatController {
     }
 
     /**
-     * 채팅방 종료
-     * todo : 매칭 종료와 어떤 식으로 분리해서 처리해야 할지 고민
+     * 채팅방 종료 요청
      */
     @PostMapping("/rooms/{roomId}/close")
     public ResponseEntity<Void> closeChatRoom(
@@ -166,17 +165,29 @@ public class ChatController {
             @PathVariable Long roomId) {
         chatRoomService.closeChatRoom(principal.getUserId(), roomId);
 
-        // 채팅방 상태 변경 알림
-//        ChatRoomStatusNotification notification = ChatRoomStatusNotification.builder()
-//                .roomId(roomId)
-//                .status("CLOSED")
-//                .updatedBy(principal.getUserId())
-//                .timestamp(LocalDateTime.now())
-//                .build();
-//
-//        messagingTemplate.convertAndSend("/topic/chat.room." + roomId + ".status", notification);
+        return ResponseEntity.ok().build();
+    }
 
+    /**
+     * 채팅방 종료 수락
+     * 매칭방 상태까지 바꿔줘야 함
+     */
+    @PostMapping("/rooms/{roomId}/close/accept")
+    public ResponseEntity<Void> acceptCloseChatRoom(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long roomId) {
+        chatRoomService.acceptCloseChatRoom(principal.getUserId(), roomId);
+        return ResponseEntity.ok().build();
+    }
 
+    /**
+     * 채팅방 종료 거절
+     */
+    @PostMapping("/rooms/{roomId}/close/reject")
+    public ResponseEntity<Void> rejectCloseChatRoom(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long roomId) {
+        chatRoomService.rejectCloseChatRoom(principal.getUserId(), roomId);
         return ResponseEntity.ok().build();
     }
 }

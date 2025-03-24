@@ -26,4 +26,8 @@ public interface ChatRoomService {
     void validateChatActivity(Long userId, Long roomId);
 
     Page<ChatRoomResponse> getChatRoomsByUserAndStatus(Long userId, PageRequest lastMessageTime, ChatRoomStatus status);
+
+    void rejectCloseChatRoom(Long userId, Long roomId);
+
+    void acceptCloseChatRoom(Long userId, Long roomId);
 }

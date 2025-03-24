@@ -42,20 +42,21 @@ public class ChatRoom extends BaseTimeEntity {
 
     private LocalDateTime lastMessageTime;
     private LocalDateTime closedAt;
-//    private LocalDateTime expiryTime;
 
     private Long listenerLastReadMessageId = 0L;
     private Long speakerLastReadMessageId = 0L;
     private Long listenerUnreadCount = 0L;
     private Long speakerUnreadCount = 0L;
 
+    @Enumerated(EnumType.STRING)
+    private InitiatorType closureRequesterRole;
+    private LocalDateTime closureRequestAt;
+
+
     @Builder
     public ChatRoom(Matching matching) {
         this.matching = matching;
         this.chatRoomStatus = ChatRoomStatus.PENDING;
-//        this.listener = listener;
-//        this.speaker = speaker;
-//        this.expiryTime = expiryTime;
     }
 
     public void updateLastMessageTime() {
@@ -79,12 +80,10 @@ public class ChatRoom extends BaseTimeEntity {
 
     public void increaseUnreadCountForListener() {
         this.listenerUnreadCount++;
-        log.info("Current listenerUnreadCOunt: {}", listenerUnreadCount);
     }
 
     public void increaseUnreadCountForSpeaker() {
         this.speakerUnreadCount++;
-        log.info("Current speakerUnreadCount: {}", speakerUnreadCount);
     }
 
     public User getListener() {
@@ -125,6 +124,37 @@ public class ChatRoom extends BaseTimeEntity {
         } else if (isListener(sender)) {
             increaseUnreadCountForSpeaker();
         }
+    }
+
+    public void updateChatRoomStatus(ChatRoomStatus status) {
+        this.chatRoomStatus = status;
+    }
+
+    public void requestClosure(User user) {
+        this.chatRoomStatus = ChatRoomStatus.CLOSE_REQUEST;
+        this.closureRequesterRole = isListener(user) ? InitiatorType.LISTENER : InitiatorType.SPEAKER;
+        this.closureRequestAt = LocalDateTime.now();
+    }
+
+    public void rejectClosure() {
+        this.chatRoomStatus = ChatRoomStatus.ACTIVE;
+        this.closureRequesterRole = null;
+        this.closureRequestAt = null;
+    }
+
+    public boolean isClosureRequester(User user) {
+        if (closureRequesterRole == null) return false;
+
+        if (closureRequesterRole == InitiatorType.LISTENER) {
+            return isListener(user);
+        } else {
+            return isSpeaker(user);
+        }
+    }
+
+    public void acceptClosure() {
+        this.chatRoomStatus = ChatRoomStatus.CLOSED;
+        this.closedAt = LocalDateTime.now();
     }
 
 }

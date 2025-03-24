@@ -94,7 +94,8 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom chatRoom = chatRoomService.findChatRoomById(roomId);
         User user = userService.findUserById(userId);
 
-        validateChatRoomAccess(chatRoom, user);
+        chatRoomService.validateChatActivity(userId, roomId);
+
         Long lastMessageId = chatMessageRepository.findTopByChatRoomIdOrderByIdDesc(roomId)
                 .map(ChatMessage::getId)
                 .orElse(0L);
@@ -197,16 +198,6 @@ public class ChatServiceImpl implements ChatService {
             redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(filterEvent));
         } catch (JsonProcessingException e) {
             log.error("Error serializing filter event", e);
-        }
-    }
-
-    private void validateChatRoomAccess(ChatRoom chatRoom, User user) {
-        boolean hasAccess = chatRoom.getListener().getId().equals(user.getId()) ||
-                chatRoom.getSpeaker().getId().equals(user.getId());
-        log.info("listener id: {} / speaker id: {}", chatRoom.getListener().getId(), chatRoom.getSpeaker().getId());
-
-        if (!hasAccess) {
-            throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
         }
     }
 }
