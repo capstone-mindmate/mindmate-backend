@@ -32,6 +32,8 @@ public class MatchingServiceImpl implements MatchingService{
 
     private final RedisMatchingService redisMatchingService;
 
+    private final MatchingEventProducer matchingEventProducer;
+
     // 매칭 생성 -> + 채팅 생성
     @Override @Transactional
     public MatchingCreateResponse createMatching(Long userId, MatchingCreateRequest request) {
@@ -133,18 +135,28 @@ public class MatchingServiceImpl implements MatchingService{
         }
         waitingUser.accept();
 
-        // 다른 신청들은 모두 거절
-        waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching).stream()
-                .filter(app -> !app.getId().equals(waitingId))
-                .forEach(app->{
-                    app.reject();
-                    redisMatchingService.decrementUserActiveMatchingCount(app.getWaitingUser().getId());
-                });
-
         // 매칭 완료 처리ㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇ
         matching.acceptMatching(waitingUser.getWaitingUser());
-
         matchingRepository.save(matching);
+
+        // 대기자는 비동기로 처리
+        List<Long> pendingWaitingUserIds = waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching)
+                .stream()
+                .filter(app -> !app.getId().equals(waitingId) && app.getStatus() == WaitingStatus.PENDING)
+                .map(WaitingUser::getId)
+                .collect(Collectors.toList());
+
+        if (!pendingWaitingUserIds.isEmpty()) {
+            MatchingAcceptedEvent event = MatchingAcceptedEvent.builder()
+                    .matchingId(matchingId)
+                    .creatorId(userId)
+                    .acceptedUserId(waitingUser.getWaitingUser().getId())
+                    .pendingWaitingUserIds(pendingWaitingUserIds)
+                    .build();
+
+            matchingEventProducer.publishMatchingAccepted(event);
+        }
+
         return matching.getId();
     }
 
