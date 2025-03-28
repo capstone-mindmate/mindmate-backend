@@ -84,7 +84,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
         if (lastReadMessageId == 0) {
             // 첫 접속: 가장 오래된 메시지부터 표시
-            return chatMessageService.findByChatRoomIdOrderByIdAsc(roomId, size);
+            return chatMessageService.findAllByChatRoomIdOrderByIdAsc(roomId);
         } else {
             // 재접속: 안읽은 메시지 처리
             Optional<ChatMessage> latestMessageOpt = chatMessageService.findLatestMessageByChatRoomId(roomId);

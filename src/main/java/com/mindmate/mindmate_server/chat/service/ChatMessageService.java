@@ -10,7 +10,7 @@ public interface ChatMessageService {
 
     long countMessagesByChatRoomId(Long roomId);
 
-    List<ChatMessage> findByChatRoomIdOrderByIdAsc(Long roomId, int size);
+    List<ChatMessage> findAllByChatRoomIdOrderByIdAsc(Long roomId);
 
     Optional<ChatMessage> findLatestMessageByChatRoomId(Long roomId);
 

@@ -17,10 +17,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     Optional<ChatMessage> findTopByChatRoomIdOrderByIdDesc(Long roomId);
 
     // 채팅방의 메시지를 오래된 순으로 조회 (첫 방문용)
-    Page<ChatMessage> findByChatRoomIdOrderByIdAsc(
-            @Param("roomId") Long roomId,
-            Pageable pageable
-    );
+    List<ChatMessage> findByChatRoomIdOrderByIdAsc(Long roomId);
 
     // 채팅방의 메시지를 최신순으로 조회 (재방문용)
     Page<ChatMessage> findByChatRoomIdOrderByIdDesc(

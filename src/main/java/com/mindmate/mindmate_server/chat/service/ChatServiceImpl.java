@@ -10,8 +10,6 @@ import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
 import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
-import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
-import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
@@ -135,21 +133,7 @@ public class ChatServiceImpl implements ChatService {
         ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
         chatRoom.updateLastMessageTime();
 
-        ChatMessageEvent event = ChatMessageEvent.builder()
-                .messageId(savedMessage.getId())
-                .roomId(chatRoom.getId())
-                .senderId(sender.getId())
-                .content(request.getContent())
-                .type(request.getType())
-                .timestamp(savedMessage.getCreatedAt())
-                .build();
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                kafkaTemplate.send("chat-message-topic", event.getRoomId().toString(), event);
-            }
-        });
+        publishMessageEvent(savedMessage);
 
         ChatMessageResponse chatMessageResponse = ChatMessageResponse.from(savedMessage, sender.getId());
 
@@ -162,6 +146,25 @@ public class ChatServiceImpl implements ChatService {
 //        }
 
         return chatMessageResponse;
+    }
+
+    @Override
+    public void publishMessageEvent(ChatMessage savedMessage) {
+        ChatMessageEvent event = ChatMessageEvent.builder()
+                .messageId(savedMessage.getId())
+                .roomId(savedMessage.getChatRoom().getId())
+                .senderId(savedMessage.getSender().getId())
+                .content(savedMessage.getContent())
+                .type(savedMessage.getType())
+                .timestamp(savedMessage.getCreatedAt())
+                .build();
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                kafkaTemplate.send("chat-message-topic", event.getRoomId().toString(), event);
+            }
+        });
     }
 
     private ChatMessageResponse handleFilteredMessage(FilteringWordCategory filteringWordCategory, ChatRoom chatRoom, User sender, ChatMessageRequest request) {

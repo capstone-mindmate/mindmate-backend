@@ -1,10 +1,13 @@
 package com.mindmate.mindmate_server.chat.service;
 
+import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.domain.CustomForm;
+import com.mindmate.mindmate_server.chat.domain.MessageType;
 import com.mindmate.mindmate_server.chat.dto.CustomFormRequest;
 import com.mindmate.mindmate_server.chat.dto.CustomFormResponse;
 import com.mindmate.mindmate_server.chat.dto.RespondToCustomFormRequest;
+import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
 import com.mindmate.mindmate_server.chat.repository.CustomFormRepository;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.CustomFormErrorCode;
@@ -21,8 +24,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CustomFormService {
     private final CustomFormRepository customFormRepository;
+    private final ChatMessageRepository chatMessageRepository;
+
     private final UserService userService;
     private final ChatRoomService chatRoomService;
+    private final ChatService chatService;
 
 
     @Transactional
@@ -39,8 +45,21 @@ public class CustomFormService {
                 .build();
 
         request.getQuestions().forEach(customForm::addItem);
-
         CustomForm savedForm = customFormRepository.save(customForm);
+
+        ChatMessage chatMessage = ChatMessage.builder()
+                .chatRoom(chatRoom)
+                .sender(user)
+                .content("커스텀 폼이 생성되었습니다.")
+                .type(MessageType.CUSTOM_FORM)
+                .build();
+
+        chatMessage.setCustomForm(savedForm);
+        ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
+        chatRoom.updateLastMessageTime();
+
+        chatService.publishMessageEvent(savedMessage);
+
         return CustomFormResponse.from(savedForm);
     }
 
@@ -53,7 +72,7 @@ public class CustomFormService {
     public CustomFormResponse respondToCustomForm(Long formId, Long userId, RespondToCustomFormRequest request) {
         CustomForm customForm = findCustomFormById(formId);
         User user = userService.findUserById(userId);
-        ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getChatRoomId());
+//        ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getChatRoomId());
 
         chatRoomService.validateChatActivity(userId, request.getChatRoomId());
 
@@ -71,11 +90,25 @@ public class CustomFormService {
         }
 
         CustomForm updatedForm = customFormRepository.save(customForm);
+
+        ChatMessage responseMessage = ChatMessage.builder()
+                .chatRoom(customForm.getChatRoom())
+                .sender(user)
+                .content("커스텀 폼에 응답했습니다.")
+                .type(MessageType.CUSTOM_FORM)
+                .build();
+
+        ChatMessage savedMessage = chatMessageRepository.save(responseMessage);
+        customForm.getChatRoom().updateLastMessageTime();
+
+        // 저장된 메시지로 이벤트 발행
+        chatService.publishMessageEvent(savedMessage);
+
         return CustomFormResponse.from(updatedForm);
     }
 
     public List<CustomFormResponse> getCustomFormsByChatRoom(Long chatRoomId) {
-        ChatRoom chatRoom = chatRoomService.findChatRoomById(chatRoomId);
+//        ChatRoom chatRoom = chatRoomService.findChatRoomById(chatRoomId);
 
         List<CustomForm> customForms = customFormRepository.findByChatRoomId(chatRoomId);
         return customForms.stream().map(CustomFormResponse::from).collect(Collectors.toList());

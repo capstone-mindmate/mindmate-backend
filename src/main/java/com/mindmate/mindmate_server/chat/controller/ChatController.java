@@ -82,7 +82,7 @@ public class ChatController {
 
     /**
      * 채팅방 입장 시 메시지 조회
-     * todo: 채팅방 입장시, 이전 메시지 조회 시 커스텀 폼 존재한다면 해당 데이터를 어떻게 가져와야하는지? -> 커스텀폼 생성시 해당 아이디에 메시지를 저장하게끔? 그리고 메시지 로드시 type을 보고 커스텀폼이면 커스텀 갖고오게/
+     * todo: custom-form 답변 시 system 답변 필요하지 않나?
      */
     @GetMapping("/rooms/{roomId}/messages")
     public ResponseEntity<ChatRoomDetailResponse> getChatRoomWithMessages(

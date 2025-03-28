@@ -35,6 +35,8 @@ public class ChatMessageResponse {
     private boolean error;
     private String errorMessage;
 
+    private CustomFormResponse customForm;
+
     public static ChatMessageResponse from(ChatMessage message, Long currentUserId) {
         Map<ReactionType, Integer> reactionCounts = new HashMap<>();
         for (MessageReaction reaction : message.getMessageReactions()) {
@@ -53,6 +55,11 @@ public class ChatMessageResponse {
                     .orElse(null);
         }
 
+        CustomFormResponse customFormResponse = null;
+        if (message.isCustomForm() && message.getCustomForm() != null) {
+            customFormResponse = CustomFormResponse.from(message.getCustomForm());
+        }
+
         return ChatMessageResponse.builder()
                 .id(message.getId())
 //                .roomId(message.getChatRoom().getId())
@@ -65,6 +72,7 @@ public class ChatMessageResponse {
                 .userReaction(userReaction)
                 .filtered(message.getFilteredContent() != null)
                 .error(false)
+                .customForm(customFormResponse)
                 .build();
     }
 

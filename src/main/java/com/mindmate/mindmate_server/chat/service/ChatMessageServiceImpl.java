@@ -30,10 +30,8 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     }
 
     @Override
-    public List<ChatMessage> findByChatRoomIdOrderByIdAsc(Long roomId, int size) {
-        long totalMessages = countMessagesByChatRoomId(roomId);
-        return new ArrayList<>(chatMessageRepository.findByChatRoomIdOrderByIdAsc(
-                roomId, PageRequest.of(0, (int)Math.min(totalMessages, size))).getContent());
+    public List<ChatMessage> findAllByChatRoomIdOrderByIdAsc(Long roomId) {
+        return chatMessageRepository.findByChatRoomIdOrderByIdAsc(roomId);
     }
 
     @Override

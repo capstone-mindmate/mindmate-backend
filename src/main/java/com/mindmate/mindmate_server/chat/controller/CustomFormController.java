@@ -39,6 +39,7 @@ public class CustomFormController {
 
     /**
      * 커스텀폼 답변하기
+     * todo: 지금 질문과 답변의 순서가 일치한다는 보장으로 진행하고 있음 -> id 매핑을 해줘야 확실히 구분 가능
      */
     @PostMapping("/{formId}/respond")
     public ResponseEntity<CustomFormResponse> respondToCustomForm(@PathVariable Long formId,

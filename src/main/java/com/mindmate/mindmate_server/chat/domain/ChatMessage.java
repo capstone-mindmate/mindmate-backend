@@ -32,6 +32,10 @@ public class ChatMessage extends BaseTimeEntity {
     @OneToMany(mappedBy = "message")
     private List<MessageReaction> messageReactions = new ArrayList<>();
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "custom_form_id")
+    private CustomForm customForm;
+
 //    @Enumerated(EnumType.STRING)
 //    @Column(nullable = false)
 //    private RoleType senderRole;
@@ -61,5 +65,13 @@ public class ChatMessage extends BaseTimeEntity {
 
     public void setFilteredContent(String filteredContent) {
         this.filteredContent = filteredContent;
+    }
+
+    public boolean isCustomForm() {
+        return this.type == MessageType.CUSTOM_FORM;
+    }
+
+    public void setCustomForm(CustomForm customForm) {
+        this.customForm = customForm;
     }
 }
