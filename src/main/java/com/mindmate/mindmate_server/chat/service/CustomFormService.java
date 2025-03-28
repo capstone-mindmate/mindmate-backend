@@ -7,7 +7,6 @@ import com.mindmate.mindmate_server.chat.domain.MessageType;
 import com.mindmate.mindmate_server.chat.dto.CustomFormRequest;
 import com.mindmate.mindmate_server.chat.dto.CustomFormResponse;
 import com.mindmate.mindmate_server.chat.dto.RespondToCustomFormRequest;
-import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
 import com.mindmate.mindmate_server.chat.repository.CustomFormRepository;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.CustomFormErrorCode;
@@ -24,11 +23,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CustomFormService {
     private final CustomFormRepository customFormRepository;
-    private final ChatMessageRepository chatMessageRepository;
+//    private final ChatMessageRepository chatMessageRepository;
 
     private final UserService userService;
     private final ChatRoomService chatRoomService;
     private final ChatService chatService;
+    private final ChatMessageService chatMessageService;
 
 
     @Transactional
@@ -55,7 +55,7 @@ public class CustomFormService {
                 .build();
 
         chatMessage.setCustomForm(savedForm);
-        ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
+        ChatMessage savedMessage = chatMessageService.save(chatMessage);
         chatRoom.updateLastMessageTime();
 
         chatService.publishMessageEvent(savedMessage);
@@ -98,7 +98,7 @@ public class CustomFormService {
                 .type(MessageType.CUSTOM_FORM)
                 .build();
 
-        ChatMessage savedMessage = chatMessageRepository.save(responseMessage);
+        ChatMessage savedMessage = chatMessageService.save(responseMessage);
         customForm.getChatRoom().updateLastMessageTime();
 
         // 저장된 메시지로 이벤트 발행
