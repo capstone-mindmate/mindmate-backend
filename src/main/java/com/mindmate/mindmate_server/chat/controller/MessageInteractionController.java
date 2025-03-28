@@ -28,7 +28,7 @@ public class MessageInteractionController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long messageId,
             @RequestBody @Valid ReactionRequest request) {
-        // todo: dto 수정 or PathVariable 수정 -> 지금 중복 값임
+        // todo: dto 수정 or PathVariable 수정 -> 지금 중복 값임 + 텍스트일 때만 감정표현 가능하게?
         MessageReactionResponse response = reactionService.addReaction(principal.getUserId(), messageId, request.getReactionType());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

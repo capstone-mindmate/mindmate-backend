@@ -30,7 +30,7 @@ public class MessageReactionService {
     public MessageReactionResponse addReaction(Long userId, Long messageId, ReactionType reactionType) {
         User user = userService.findUserById(userId);
         ChatMessage chatMessage = chatMessageService.findChatMessageById(messageId);
-        ChatRoom chatRoom = chatMessage.getChatRoom();
+//        ChatRoom chatRoom = chatMessage.getChatRoom();
 
         chatRoomService.validateChatActivity(userId, chatMessage.getChatRoom().getId());
 
@@ -72,17 +72,17 @@ public class MessageReactionService {
         }
     }
 
-    @Transactional
-    public void removeReaction(Long userId, Long messageId, ReactionType reactionType) {
-        User user = userService.findUserById(userId);
-        ChatMessage chatMessage = chatMessageService.findChatMessageById(messageId);
-        ChatRoom chatRoom = chatMessage.getChatRoom();
-
-        chatRoomService.validateChatActivity(userId, chatRoom.getId());
-
-        messageReactionRepository.findByMessageIdAndUserIdAndReactionType(messageId, userId, reactionType)
-                .ifPresent(messageReactionRepository::delete);
-    }
+//    @Transactional
+//    public void removeReaction(Long userId, Long messageId, ReactionType reactionType) {
+////        User user = userService.findUserById(userId);
+//        ChatMessage chatMessage = chatMessageService.findChatMessageById(messageId);
+//        ChatRoom chatRoom = chatMessage.getChatRoom();
+//
+//        chatRoomService.validateChatActivity(userId, chatRoom.getId());
+//
+//        messageReactionRepository.findByMessageIdAndUserIdAndReactionType(messageId, userId, reactionType)
+//                .ifPresent(messageReactionRepository::delete);
+//    }
 
     @Transactional(readOnly = true)
     public List<MessageReactionResponse> getReactions(Long messageId) {
