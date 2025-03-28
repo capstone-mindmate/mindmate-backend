@@ -18,10 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,15 +39,11 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     @Override
     public Page<ChatRoomResponse> getChatRoomsForUser(Long userId, PageRequest pageRequest) {
         return chatRoomRepository.findAllByUserId(userId, pageRequest);
-//        return chatRoomRepository.findAllByParticipant(userId, pageRequest)
-//                .map(chatRoom -> ChatRoomResponse.from(chatRoom, userId));
     }
 
     @Override
     public Page<ChatRoomResponse> getChatRoomsByUserRole(Long userId, PageRequest pageRequest, String role) {
         return chatRoomRepository.findAllByUserIdAndRole(userId, role, pageRequest);
-//        return chatRoomRepository.findAllByParticipantAndRole(userId, role, pageRequest)
-//                .map(chatRoom -> ChatRoomResponse.from(chatRoom, userId));
     }
 
     @Override
@@ -116,6 +109,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
         return messages.stream()
                 .map(message -> ChatMessageResponse.from(message, userId))
+//                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 

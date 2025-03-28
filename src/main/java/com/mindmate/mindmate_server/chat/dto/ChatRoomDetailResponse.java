@@ -28,7 +28,7 @@ public class ChatRoomDetailResponse {
     public static ChatRoomDetailResponse from(ChatRoom chatRoom, List<ChatMessage> messages, User user) {
         return ChatRoomDetailResponse.builder()
                 .roomId(chatRoom.getId())
-                .matchingId(chatRoom.getMatching().getId())
+                .matchingId(chatRoom.getMatching() != null ? chatRoom.getMatching().getId() : null)
                 .createdAt(chatRoom.getCreatedAt())
                 .roomStatus(chatRoom.getChatRoomStatus())
                 .closeRequestRole(chatRoom.getClosureRequesterRole())
