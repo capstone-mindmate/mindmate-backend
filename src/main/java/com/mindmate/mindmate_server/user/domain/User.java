@@ -2,7 +2,10 @@ package com.mindmate.mindmate_server.user.domain;
 
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
+import com.mindmate.mindmate_server.chat.domain.CustomForm;
+import com.mindmate.mindmate_server.chat.domain.MessageReaction;
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
+import com.mindmate.mindmate_server.matching.domain.Matching;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +21,7 @@ import java.util.UUID;
 @Table(name = "users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@ToString(exclude = {"sentMessages", "listenerRooms", "speakerRooms"})
+@ToString(exclude = {"sentMessages"})
 public class User extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -47,21 +50,26 @@ public class User extends BaseTimeEntity {
     private LocalDateTime lastLoginAt;
     private LocalDateTime deletedAt;
 
-//    @Enumerated(EnumType.STRING)
-//    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
-//    private RoleType currentRole;
-
     @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL)
     private List<ChatMessage> sentMessages = new ArrayList<>();
 
-    @OneToMany(mappedBy = "listener") // 사용자 삭제되더라도 채팅방 값 존재
-    private List<ChatRoom> listenerRooms = new ArrayList<>();
+    @OneToMany(mappedBy = "creator")
+    private List<Matching> createdMatchings = new ArrayList<>();
 
-    @OneToMany(mappedBy = "speaker")
-    private List<ChatRoom> speakerRooms = new ArrayList<>();
-    
+    @OneToMany(mappedBy = "acceptedUser")
+    private List<Matching> acceptedMatchings = new ArrayList<>();
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     private Profile profile;
+
+    @OneToMany(mappedBy = "user")
+    private List<MessageReaction> messageReactions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "creator")
+    private List<CustomForm> createdCustomForms = new ArrayList<>();
+
+    @OneToMany(mappedBy = "responder")
+    private List<CustomForm> respondedCustomForms = new ArrayList<>();
 
     // 일일 매칭 제한 관련 필드 추가
     private int dailyCancellationCount = 0;

@@ -1,7 +1,6 @@
 package com.mindmate.mindmate_server.chat.domain;
 
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
-import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -10,6 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "chat_messages")
@@ -28,6 +29,13 @@ public class ChatMessage extends BaseTimeEntity {
     @JoinColumn(name = "sender_id")
     private User sender;
 
+    @OneToMany(mappedBy = "message")
+    private List<MessageReaction> messageReactions = new ArrayList<>();
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "custom_form_id")
+    private CustomForm customForm;
+
 //    @Enumerated(EnumType.STRING)
 //    @Column(nullable = false)
 //    private RoleType senderRole;
@@ -35,6 +43,8 @@ public class ChatMessage extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+
+    // todo: 삭제??
     private String filteredContent;
 
     @Enumerated(EnumType.STRING)
@@ -42,7 +52,6 @@ public class ChatMessage extends BaseTimeEntity {
 
     private boolean isRead;
     private LocalDateTime readAt;
-//    private LocalDateTime expiryTime;
 
     @Builder
     public ChatMessage(ChatRoom chatRoom, User sender, String content, MessageType type) {
@@ -56,5 +65,13 @@ public class ChatMessage extends BaseTimeEntity {
 
     public void setFilteredContent(String filteredContent) {
         this.filteredContent = filteredContent;
+    }
+
+    public boolean isCustomForm() {
+        return this.type == MessageType.CUSTOM_FORM;
+    }
+
+    public void setCustomForm(CustomForm customForm) {
+        this.customForm = customForm;
     }
 }

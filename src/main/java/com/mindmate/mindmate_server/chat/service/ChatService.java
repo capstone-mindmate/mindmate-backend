@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.chat.service;
 
+import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 
@@ -8,6 +9,5 @@ public interface ChatService {
 
     int markAsRead(Long userId, Long roomId);
 
-//    void updateUserStatus(Long userId, boolean isOnline, Long activeRoomId);
-
+    void publishMessageEvent(ChatMessage savedMessage);
 }

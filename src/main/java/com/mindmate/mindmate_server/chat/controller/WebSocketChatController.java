@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindmate.mindmate_server.chat.dto.*;
 import com.mindmate.mindmate_server.chat.service.ChatPresenceService;
 import com.mindmate.mindmate_server.chat.service.ChatService;
+import com.mindmate.mindmate_server.chat.service.CustomFormService;
+import com.mindmate.mindmate_server.chat.service.MessageReactionService;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,8 +30,10 @@ import java.util.Map;
 public class WebSocketChatController {
     private final ChatService chatService;
     private final ChatPresenceService chatPresenceService;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final MessageReactionService messageReactionService;
+    private final CustomFormService customFormService;
 
+    private final SimpMessagingTemplate messagingTemplate;
     private final RedisKeyManager redisKeyManager;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
@@ -38,12 +42,12 @@ public class WebSocketChatController {
      * websocket을 통한 메시지 전송
      */
     @MessageMapping("/chat.send")
-    public ChatMessageResponse sendMessage(
+    public void sendMessage(
             @Payload ChatMessageRequest request,
             Principal principal) {
         Long userId = Long.parseLong(principal.getName());
-
-        return chatService.sendMessage(userId, request);
+        ChatMessageResponse response = chatService.sendMessage(userId, request);
+        messagingTemplate.convertAndSend("/topic/chat.room." + request.getRoomId(), response);
     }
 
     /**
@@ -69,6 +73,7 @@ public class WebSocketChatController {
     /**
      * 타이핑 상태 알림??
      * 사용자가 메시지 입력 중인거 알릴건가?
+     * todo : 관련 로직 삭제
      */
     @MessageMapping("/chat.typing")
     public void notifyTyping(
@@ -117,4 +122,48 @@ public class WebSocketChatController {
         // 해당 채팅방의 모든 참가자에게 읽음 상태 전송
         messagingTemplate.convertAndSend("/topic/chat.room." + request.getRoomId() + ".read", notification);
     }
+
+    /**
+     * 채팅에 감정표현 추가
+     */
+    @MessageMapping("/chat.reaction")
+    public void handleReaction(
+            @Payload ReactionRequest request,
+            Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+
+        MessageReactionResponse response = messageReactionService.addReaction(
+                userId, request.getMessageId(), request.getReactionType()
+        );
+
+        messagingTemplate.convertAndSend(
+                "/topic/chat.room." + request.getRoomId() + ".reaction",
+                response
+        );
+    }
+
+    /**
+     * 커스텀폼 생성
+     */
+    @MessageMapping("/chat.customform.create")
+    public void createCustomForm(
+            @Payload CustomFormRequest request,
+            Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+        CustomFormResponse response = customFormService.createCustomForm(userId, request);
+        messagingTemplate.convertAndSend("/topic/chat.room." + request.getChatRoomId() + ".customform", response);
+    }
+
+    /**
+     * 커스텀폼 응답 제출
+     */
+    @MessageMapping("/chat.customform.respond")
+    public void respondToCustomForm(
+            @Payload RespondToCustomFormRequest request,
+            Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+        CustomFormResponse response = customFormService.respondToCustomForm(request.getFormId(), userId, request);
+        messagingTemplate.convertAndSend("/topic/chat.room." + response.getChatRoomId() + ".customform", response);
+    }
+
 }

@@ -1,12 +1,11 @@
 package com.mindmate.mindmate_server.chat.controller;
 
+import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
-import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
-import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
-import com.mindmate.mindmate_server.chat.dto.ChatRoomDetailResponse;
-import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
+import com.mindmate.mindmate_server.chat.dto.*;
 import com.mindmate.mindmate_server.chat.service.ChatPresenceService;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
+import com.mindmate.mindmate_server.chat.service.ChatSearchService;
 import com.mindmate.mindmate_server.chat.service.ChatService;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import jakarta.validation.Valid;
@@ -30,6 +29,7 @@ public class ChatController {
     private final ChatService chatService;
     private final ChatPresenceService chatPresenceService;
     private final ChatRoomService chatRoomService;
+    private final ChatSearchService chatSearchService;
 
     /**
      * 사용자의 모든 채팅방 목록 조회
@@ -49,28 +49,46 @@ public class ChatController {
 
     /**
      * 특정 역할로 참여 중인 채팅방 목록 조회
-     * todo: 리스너, 스피커 분리해서 받기 roletype 이ㅛㅇ안하고
+     * roleType: LISTENER, SPEAKER
      */
     @GetMapping("/rooms/role/{roleType}")
     public ResponseEntity<Page<ChatRoomResponse>> getChatRoomsByRole(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            String role) {
+            @PathVariable String roleType) {
         Page<ChatRoomResponse> rooms = chatRoomService.getChatRoomsByUserRole(
                 principal.getUserId(),
-                PageRequest.of(page, size, Sort.by("lastMessageTime").descending()), role);
+                PageRequest.of(page, size, Sort.by("lastMessageTime").descending()), roleType);
+        return ResponseEntity.ok(rooms);
+    }
+
+    /**
+     * 특정 상태의 채팅방 목록 조회
+     * status: ACTIVE, CLOSED 등
+     */
+    @GetMapping("/rooms/status/{status}")
+    public ResponseEntity<Page<ChatRoomResponse>> getChatRoomsByStatus(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @PathVariable ChatRoomStatus status) {
+        Page<ChatRoomResponse> rooms = chatRoomService.getChatRoomsByUserAndStatus(
+                principal.getUserId(),
+                PageRequest.of(page, size, Sort.by("lastMessageTime").descending()),
+                status);
         return ResponseEntity.ok(rooms);
     }
 
     /**
      * 채팅방 입장 시 메시지 조회
+     * todo: custom-form 답변 시 system 답변 필요하지 않나?
      */
     @GetMapping("/rooms/{roomId}/messages")
     public ResponseEntity<ChatRoomDetailResponse> getChatRoomWithMessages(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long roomId,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "30") int size) {
 
         ChatRoomDetailResponse response = chatRoomService.getInitialMessages(
                 principal.getUserId(), roomId, size);
@@ -89,10 +107,10 @@ public class ChatController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long roomId,
             @PathVariable Long messageId,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "30") int size) {
 
         List<ChatMessageResponse> messages = chatRoomService.getPreviousMessages(
-                roomId, messageId, size);
+                roomId, messageId, principal.getUserId(), size);
 
         return ResponseEntity.ok(messages);
     }
@@ -110,8 +128,36 @@ public class ChatController {
     }
 
     /**
-     * 채팅방 종료
-     * todo : 매칭 종료와 어떤 식으로 분리해서 처리해야 할지 고민
+     * 채팅방 내 메시지 검색
+     */
+    @GetMapping("/rooms/{roomId}/search")
+    public ResponseEntity<ChatSearchResponse> searchMessages(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long roomId,
+            @RequestParam String keyword,
+            @RequestParam(required = false) Long oldestLoadedMessageId,
+            @RequestParam(required = false) Long newestLoadedMessageId) {
+        ChatSearchResponse response = chatSearchService.searchMessages(principal.getUserId(), roomId, keyword, oldestLoadedMessageId, newestLoadedMessageId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 검색 결과 네비게이션
+     */
+    @GetMapping("/rooms/{roomId}/search/navigate")
+    public ResponseEntity<SearchNavigationResponse> navigateToSearchResult(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long roomId,
+            @RequestParam String keyword,
+            @RequestParam Long targetMessageId,
+            @RequestParam Long oldestLoadedMessageId) {
+        SearchNavigationResponse response = chatSearchService.navigateToSearchResult(
+                principal.getUserId(), roomId, keyword, targetMessageId, oldestLoadedMessageId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 채팅방 종료 요청
      */
     @PostMapping("/rooms/{roomId}/close")
     public ResponseEntity<Void> closeChatRoom(
@@ -119,17 +165,29 @@ public class ChatController {
             @PathVariable Long roomId) {
         chatRoomService.closeChatRoom(principal.getUserId(), roomId);
 
-        // 채팅방 상태 변경 알림
-//        ChatRoomStatusNotification notification = ChatRoomStatusNotification.builder()
-//                .roomId(roomId)
-//                .status("CLOSED")
-//                .updatedBy(principal.getUserId())
-//                .timestamp(LocalDateTime.now())
-//                .build();
-//
-//        messagingTemplate.convertAndSend("/topic/chat.room." + roomId + ".status", notification);
+        return ResponseEntity.ok().build();
+    }
 
+    /**
+     * 채팅방 종료 수락
+     * 매칭방 상태까지 바꿔줘야 함
+     */
+    @PostMapping("/rooms/{roomId}/close/accept")
+    public ResponseEntity<Void> acceptCloseChatRoom(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long roomId) {
+        chatRoomService.acceptCloseChatRoom(principal.getUserId(), roomId);
+        return ResponseEntity.ok().build();
+    }
 
+    /**
+     * 채팅방 종료 거절
+     */
+    @PostMapping("/rooms/{roomId}/close/reject")
+    public ResponseEntity<Void> rejectCloseChatRoom(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long roomId) {
+        chatRoomService.rejectCloseChatRoom(principal.getUserId(), roomId);
         return ResponseEntity.ok().build();
     }
 }

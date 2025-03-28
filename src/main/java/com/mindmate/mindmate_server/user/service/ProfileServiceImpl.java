@@ -73,6 +73,7 @@ public class ProfileServiceImpl implements ProfileService {
         }
 
         validateDuplicateNickname(request.getNickname());
+        // todo: 입학 연도 유효성 검사
 
         Profile profile = Profile.builder()
                 .user(user)

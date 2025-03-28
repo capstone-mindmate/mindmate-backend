@@ -7,5 +7,7 @@ public enum MessageType {
     TEXT,
     IMAGE,
     STICKER,
-    EMOTICON
+    EMOTICON,
+    CUSTOM_FORM,
+    SYSTEM // 나중에 토스트 박스?
 }
