@@ -44,16 +44,13 @@ public class ChatServiceImpl implements ChatService {
     private final ContentFilterService contentFilterService;
     private final ChatMessageService chatMessageService;
 
-    private final ChatMessageRepository chatMessageRepository;
-    private final ChatRoomRepository chatRoomRepository;
-
-    // todo: 채팅 관련 전체적으로 채팅방 상태에 따른 처리 추가해야함. 메시지 보내기 +
 
     /**
      * 필터링 + 메시지 저장 동기적 처리
      * 1. 읽음 안읽음 처리
      * 2. 알림 서비스
      * 3. 필터링 기반 토스트 박스
+     * todo: 사진 처리
      */
     @Override
     public ChatMessageResponse sendMessage(Long userId, ChatMessageRequest request) {
@@ -94,30 +91,32 @@ public class ChatServiceImpl implements ChatService {
 
         chatRoomService.validateChatActivity(userId, roomId);
 
-        Long lastMessageId = chatMessageRepository.findTopByChatRoomIdOrderByIdDesc(roomId)
+        Long lastMessageId = chatMessageService.findLatestMessageByChatRoomId(roomId)
                 .map(ChatMessage::getId)
                 .orElse(0L);
 
         chatRoom.markAsRead(user, lastMessageId);
-        chatRoomRepository.saveAndFlush(chatRoom);
+        chatRoomService.save(chatRoom);
 
         chatPresenceService.resetUnreadCount(roomId, userId);
         String key = redisKeyManager.getReadStatusKey(roomId, userId);
         redisTemplate.opsForValue().set(key, LocalDateTime.now().toString());
         redisTemplate.expire(key, 1, TimeUnit.DAYS);
 
-        Map<String, Object> readEvent = new HashMap<>();
-        readEvent.put("type", "READ_STATUS");
-        readEvent.put("roomId", roomId);
-        readEvent.put("userId", userId);
-        readEvent.put("timestamp", LocalDateTime.now());
 
-        String channel = redisKeyManager.getChatRoomChannel(roomId);
-        try {
-            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(readEvent));
-        } catch (JsonProcessingException e) {
-            log.error("Error serializing read event", e);
-        }
+        // Redis를 통한 이벤트 발행 제거 -> Kafka가 어차피 처리
+//        Map<String, Object> readEvent = new HashMap<>();
+//        readEvent.put("type", "READ_STATUS");
+//        readEvent.put("roomId", roomId);
+//        readEvent.put("userId", userId);
+//        readEvent.put("timestamp", LocalDateTime.now());
+//
+//        String channel = redisKeyManager.getChatRoomChannel(roomId);
+//        try {
+//            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(readEvent));
+//        } catch (JsonProcessingException e) {
+//            log.error("Error serializing read event", e);
+//        }
         return 0;
     }
 
@@ -130,22 +129,12 @@ public class ChatServiceImpl implements ChatService {
                 .type(request.getType())
                 .build();
 
-        ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
+        ChatMessage savedMessage = chatMessageService.save(chatMessage);
         chatRoom.updateLastMessageTime();
 
         publishMessageEvent(savedMessage);
 
-        ChatMessageResponse chatMessageResponse = ChatMessageResponse.from(savedMessage, sender.getId());
-
-//        String channel = redisKeyManager.getChatRoomChannel(chatRoom.getId());
-//        try {
-//             Redis의 Pub/Sub 기능을 사용하여 지정한 채널에 메시지를 publish
-//            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(event));
-//        } catch (JsonProcessingException e) {
-//            log.error("Error serializing message", e);
-//        }
-
-        return chatMessageResponse;
+        return ChatMessageResponse.from(savedMessage, sender.getId());
     }
 
     @Override
@@ -159,18 +148,29 @@ public class ChatServiceImpl implements ChatService {
                 .timestamp(savedMessage.getCreatedAt())
                 .build();
 
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                kafkaTemplate.send("chat-message-topic", event.getRoomId().toString(), event);
-            }
-        });
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    sendKafkaMessage(event);
+                }
+            });
+        } else {
+            // 트랜잭션이 활성화되지 않은 경우(테스트 등) 직접 전송
+            sendKafkaMessage(event);
+        }
+    }
+
+    // 테스트를 위해 추출한 메서드
+    protected void sendKafkaMessage(ChatMessageEvent event) {
+        kafkaTemplate.send("chat-message-topic", event.getRoomId().toString(), event);
     }
 
     private ChatMessageResponse handleFilteredMessage(FilteringWordCategory filteringWordCategory, ChatRoom chatRoom, User sender, ChatMessageRequest request) {
         String filteredContent = String.format(
                 "[%s 관련 부적절한 내용이 감지되었습니다]",
                 filteringWordCategory.getDescription());
+
 //        publishFilterEvent(chatRoom.getId(), sender.getId(), filteredContent);
 
         return ChatMessageResponse.filteredResponse(
@@ -187,20 +187,20 @@ public class ChatServiceImpl implements ChatService {
      * 사용하는 이유가 없는 것 같은데
      * 이벤트 기반 아키텍처나 실시간 알림의 이유?
      */
-    private void publishFilterEvent(Long roomId, Long senderId, String filteredContent) {
-        // 필터링 결과 알림 이벤트 발행 (Redis)
-        Map<String, Object> filterEvent = new HashMap<>();
-        filterEvent.put("type", "CONTENT_FILTERED");
-        filterEvent.put("roomId", roomId);
-        filterEvent.put("senderId", senderId);
-        filterEvent.put("content", filteredContent);
-        filterEvent.put("timestamp", LocalDateTime.now());
-
-        String channel = redisKeyManager.getChatRoomChannel(roomId);
-        try {
-            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(filterEvent));
-        } catch (JsonProcessingException e) {
-            log.error("Error serializing filter event", e);
-        }
-    }
+//    private void publishFilterEvent(Long roomId, Long senderId, String filteredContent) {
+//        // 필터링 결과 알림 이벤트 발행 (Redis)
+//        Map<String, Object> filterEvent = new HashMap<>();
+//        filterEvent.put("type", "CONTENT_FILTERED");
+//        filterEvent.put("roomId", roomId);
+//        filterEvent.put("senderId", senderId);
+//        filterEvent.put("content", filteredContent);
+//        filterEvent.put("timestamp", LocalDateTime.now());
+//
+//        String channel = redisKeyManager.getChatRoomChannel(roomId);
+//        try {
+//            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(filterEvent));
+//        } catch (JsonProcessingException e) {
+//            log.error("Error serializing filter event", e);
+//        }
+//    }
 }

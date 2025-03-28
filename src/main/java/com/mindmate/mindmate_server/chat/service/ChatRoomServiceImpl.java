@@ -187,4 +187,10 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         }
         chatRoom.acceptClosure();
     }
+
+    @Override
+    @Transactional
+    public ChatRoom save(ChatRoom chatRoom) {
+        return chatRoomRepository.save(chatRoom);
+    }
 }
