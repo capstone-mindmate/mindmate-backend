@@ -18,25 +18,25 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-@Slf4j
-@Service
-@Transactional
-@RequiredArgsConstructor
-public class ContentFilterConsumer {
-    private final ContentFilterService contentFilterService;
-    private final ChatMessageService chatMessageService;
-    private final ChatMessageRepository chatMessageRepository;
-
-    private final RedisTemplate<String, Object> redisTemplate;
-    private final ObjectMapper objectMapper;
-
-    // todo: 나중에 필터링 토스트 박스로 변환
-    @KafkaListener(
-            topics = "chat-message-topic",
-            groupId = "content-filter-group",
-            containerFactory = "chatMessageListenerContainerFactory"
-    )
-    public void filterContent(ConsumerRecord<String, ChatMessageEvent> record) {
+//@Slf4j
+//@Service
+//@Transactional
+//@RequiredArgsConstructor
+//public class ContentFilterConsumer {
+//    private final ContentFilterService contentFilterService;
+//    private final ChatMessageService chatMessageService;
+//    private final ChatMessageRepository chatMessageRepository;
+//
+//    private final RedisTemplate<String, Object> redisTemplate;
+//    private final ObjectMapper objectMapper;
+//
+//    // todo: 나중에 필터링 토스트 박스로 변환
+//    @KafkaListener(
+//            topics = "chat-message-topic",
+//            groupId = "content-filter-group",
+//            containerFactory = "chatMessageListenerContainerFactory"
+//    )
+//    public void filterContent(ConsumerRecord<String, ChatMessageEvent> record) {
 //        ChatMessageEvent event = record.value();
 //        log.info("Filtering content for message: {}", event);
 //
@@ -70,5 +70,5 @@ public class ContentFilterConsumer {
 //        } catch (Exception e) {
 //            log.error("Error filtering content", e);
 //        }
-    }
-}
+//    }
+//}
