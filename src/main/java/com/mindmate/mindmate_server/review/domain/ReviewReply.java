@@ -1,7 +1,6 @@
 package com.mindmate.mindmate_server.review.domain;
 
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
-import com.mindmate.mindmate_server.user.domain.Profile;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -9,24 +8,25 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "evaluations")
+@Table(name = "review_replies")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class EvaluationTag extends BaseTimeEntity {
+public class ReviewReply extends BaseTimeEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "review_id", nullable = false)
     private Review review;
 
-    @Column(nullable = false)
-    private Tag tagContent;
+    @Column(length = 200, nullable = false)
+    private String content;
 
     @Builder
-    public EvaluationTag(Review review, Tag tagContent) {
+    public ReviewReply(Review review, String content) {
         this.review = review;
-        this.tagContent = tagContent;
+        this.content = content;
     }
 }

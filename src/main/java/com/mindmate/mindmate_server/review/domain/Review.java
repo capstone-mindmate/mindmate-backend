@@ -1,6 +1,8 @@
 package com.mindmate.mindmate_server.review.domain;
 
+import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
+import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import jakarta.persistence.*;
@@ -25,42 +27,34 @@ public class Review extends BaseTimeEntity {
     @JoinColumn(name = "reviewer_id")
     private User reviewer;
 
-    @Enumerated(EnumType.STRING)
-    private RoleType reviewerRole;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reviewed_profile_id", nullable = false)
+    private Profile reviewedProfile;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewee_id")
-    private User reviewee;
+    @JoinColumn(name = "chat_room_id", nullable = false)
+    private ChatRoom chatRoom;
 
-    @Enumerated(EnumType.STRING)
-    private RoleType revieweeRole;
+    @Column(nullable = false)
+    private int rating;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "matching_id")
-//    private Matching matching;
+    @Column(length = 200)
+    private String comment;
 
-    private double rating;
+    private boolean isReported = false; // todo : 향후 확장
 
-    @Column(columnDefinition = "TEXT")
-    private String content;
+    @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<EvaluationTag> reviewTags = new ArrayList<>();
 
-    // tag를 어떤식으로 제공하지?
-//    private List<String> tags = new ArrayList<>();
-
-    private String reply;
+    @OneToOne(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
+    private ReviewReply reply; // 답글도 신고 필요할 수 있음
 
     @Builder
-    public Review(User reviewer, User reviewee, double rating,
-                  String content ) {
+    public Review(ChatRoom chatRoom, User reviewer, Profile reviewedProfile, int rating, String comment) {
+        this.chatRoom = chatRoom;
         this.reviewer = reviewer;
-        this.reviewee = reviewee;
-//        this.matching = matching;
+        this.reviewedProfile = reviewedProfile;
         this.rating = rating;
-        this.content = content;
-//        this.tags = tags;
-    }
-
-    public void addReply(String reply) {
-        this.reply = reply;
+        this.comment = comment;
     }
 }
