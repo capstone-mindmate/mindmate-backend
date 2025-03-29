@@ -22,7 +22,8 @@ public class ChatRoomDetailResponse {
     private InitiatorType closeRequestRole;
     private LocalDateTime closeRequestedAt;
     private boolean isListener;
-    // todo: 상대방 id?
+
+    // todo: 상대방 아이디/이미지 + 내 이미지/아이디 + 방 생성자?(수정 권한)
     private List<ChatMessageResponse> messages;
 
     public static ChatRoomDetailResponse from(ChatRoom chatRoom, List<ChatMessage> messages, User user) {

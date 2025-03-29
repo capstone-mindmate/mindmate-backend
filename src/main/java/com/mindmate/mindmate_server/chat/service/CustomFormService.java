@@ -68,6 +68,7 @@ public class CustomFormService {
                 .orElseThrow(() -> new CustomException(CustomFormErrorCode.CUSTOM_FORM_NOT_FOUND));
     }
 
+    // todo: 빈 답변 어떻게 처리할 것인가?
     @Transactional
     public CustomFormResponse respondToCustomForm(Long formId, Long userId, RespondToCustomFormRequest request) {
         CustomForm customForm = findCustomFormById(formId);
@@ -98,6 +99,7 @@ public class CustomFormService {
                 .type(MessageType.CUSTOM_FORM)
                 .build();
 
+        responseMessage.setCustomForm(updatedForm);
         ChatMessage savedMessage = chatMessageService.save(responseMessage);
         customForm.getChatRoom().updateLastMessageTime();
 
