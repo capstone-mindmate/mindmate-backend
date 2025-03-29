@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.review.dto;
 
+import com.mindmate.mindmate_server.review.domain.Review;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -7,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Builder
@@ -14,9 +16,46 @@ import java.util.List;
 @AllArgsConstructor
 public class ReviewResponse {
     private Long id;
-    private String content;
-    private double rating;
-//    private List<String> tags;
-    private String reply;
+    private Long chatRoomId;
+    private Long reviewerId;
+    private String reviewerNickname;
+    private String reviewerProfileImage;
+    private int rating;
+    private String comment;
+    private List<String> tags;  // 프론트에는 문자열로
+    private ReviewReplyResponse reply;
     private LocalDateTime createdAt;
+    private boolean isReported;
+
+    public ReviewResponse from(Review review) {
+        ReviewResponseBuilder response = ReviewResponse.builder()
+                .id(review.getId())
+                .chatRoomId(review.getChatRoom() != null ? review.getChatRoom().getId() : null)
+                .reviewerId(review.getReviewer() != null ? review.getReviewer().getId() : null)
+                .reviewerNickname(review.getReviewer() != null && review.getReviewer().getProfile() != null ?
+                        review.getReviewer().getProfile().getNickname() : "Unknown")
+                .reviewerProfileImage(review.getReviewer() != null && review.getReviewer().getProfile() != null ?
+                        review.getReviewer().getProfile().getProfileImage() : null)
+                .rating(review.getRating())
+                .comment(review.getComment())
+                .createdAt(review.getCreatedAt())
+                .isReported(review.isReported());
+
+        if (review.getReviewTags() != null && !review.getReviewTags().isEmpty()) {
+            List<String> tagContents = review.getReviewTags().stream()
+                    .map(reviewTag -> reviewTag.getTagContent().getContent())
+                    .collect(Collectors.toList());
+            response.tags(tagContents);
+        }
+
+        if (review.getReply() != null) {
+            response.reply(ReviewReplyResponse.builder()
+                    .id(review.getReply().getId())
+                    .content(review.getReply().getContent())
+                    .createdAt(review.getReply().getCreatedAt())
+                    .build());
+        }
+
+        return response.build();
+    }
 }
