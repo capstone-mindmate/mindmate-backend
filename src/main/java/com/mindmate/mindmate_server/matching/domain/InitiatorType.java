@@ -6,8 +6,8 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum InitiatorType {
-    SPEAKER("상담자 요청"),
-    LISTENER("리스너 요청");
+    SPEAKER("스피커"),
+    LISTENER("리스너");
 
     private final String title;
 }

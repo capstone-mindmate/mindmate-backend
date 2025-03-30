@@ -9,6 +9,7 @@ import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
 import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
+import com.mindmate.mindmate_server.matching.domain.Matching;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -107,6 +108,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
                 return chatMessageService.findRecentMessages(roomId, size);
             }
         }
+
+        @Override
+        public ChatRoom createChatRoom(User speaker, User listener, String title) {
+            log.info("chatroom 생성");
+            return null;
+        }
+
+        @Override
+        public void updateChatRoomParticipant(Long id, User speaker, User listener) {
+            log.info("chatroom 사용자 추가");
+        }
     }
 
     @Override
@@ -186,5 +198,14 @@ public class ChatRoomServiceImpl implements ChatRoomService {
             throw new CustomException(ChatErrorCode.CHAT_ROOM_CANNOT_ACCEPT_OWN);
         }
         chatRoom.acceptClosure();
+    }
+
+    @Override
+    public ChatRoom createChatRoom(Matching matching) {
+        ChatRoom chatRoom = ChatRoom.builder()
+                .matching(matching)
+                .build();
+
+        return chatRoomRepository.save(chatRoom);
     }
 }

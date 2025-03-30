@@ -5,13 +5,11 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum MatchingStatus {
-    OPEN("시작됨"),
-    REJECTED("거절됨"),
-    MATCHED("매칭됨"),
-    CLOSED("완료됨"),
-    CANCELED("취소됨");
+public enum WaitingStatus {
+
+    PENDING("대기중"),
+    ACCEPTED("수락됨"),
+    REJECTED("거절됨");
 
     private final String title;
 }
-

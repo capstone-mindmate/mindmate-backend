@@ -1,19 +1,19 @@
 package com.mindmate.mindmate_server.matching.dto;
 
 import com.mindmate.mindmate_server.matching.domain.InitiatorType;
+import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class MatchingActionRequest { // 수락, 취소, 완료
-    @NotNull(message = "프로필 ID는 필수입니다")
-    private Long profileId;
+public class AutoMatchingRequest {
 
-    @NotNull(message = "프로필 타입은 필수입니다")
-    private InitiatorType profileType;
+    private InitiatorType userRole;
+    private boolean anonymous;
+    private boolean showDepartment; // 굳이 학과를 보여줄 필요가 있나?
 }
