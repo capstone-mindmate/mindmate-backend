@@ -19,6 +19,8 @@ import com.mindmate.mindmate_server.user.repository.ProfileRepository;
 import com.mindmate.mindmate_server.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -152,6 +154,29 @@ public class ReviewServiceImpl implements ReviewService{
     @Transactional(readOnly = true)
     public Page<ReviewResponse> getProfileReviews(Long profileId, int page, int size, String sortType){
 
+        Profile profile = profileRepository.findById(profileId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+
+        Pageable pageable;
+        Page<Review> reviews;
+
+        switch (sortType) {
+            case "highest_rating":
+                pageable = PageRequest.of(page, size);
+                reviews = reviewRepository.findByReviewedProfileOrderByRatingDesc(profile, pageable);
+                break;
+            case "lowest_rating":
+                pageable = PageRequest.of(page, size);
+                reviews = reviewRepository.findByReviewedProfileOrderByRatingAsc(profile, pageable);
+                break;
+            case "latest":
+            default:
+                pageable = PageRequest.of(page, size);
+                reviews = reviewRepository.findByReviewedProfileOrderByCreatedAtDesc(profile, pageable);
+                break;
+        }
+
+        return reviews.map(ReviewResponse::from);
         // sortType -> 인기/최신?? (별점 높은거랑 낮은거?)
     } // 전부(리뷰+답글 다 포함) .. 흠 전체 세세하게 주기 vs 간략하게 주기
     // -> 전부 줄 필요가 있나?

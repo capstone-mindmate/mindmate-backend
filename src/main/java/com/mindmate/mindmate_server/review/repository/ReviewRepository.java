@@ -27,4 +27,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Review> findByChatRoom(ChatRoom chatRoom);
 
     boolean existsByChatRoomAndReviewer(ChatRoom chatRoom, User reviewer);
+
+
 }
