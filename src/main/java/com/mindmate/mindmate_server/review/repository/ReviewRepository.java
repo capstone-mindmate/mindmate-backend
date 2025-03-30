@@ -34,9 +34,11 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     Page<Review> findByReviewedProfileOrderByCreatedAtDesc(Profile profile, Pageable pageable);
 
     // (높은 별점)
+    @EntityGraph(attributePaths = {"reviewTags", "reply"})
     Page<Review> findByReviewedProfileOrderByRatingDesc(Profile profile, Pageable pageable);
 
     // (낮은 별점)
+    @EntityGraph(attributePaths = {"reviewTags", "reply"})
     Page<Review> findByReviewedProfileOrderByRatingAsc(Profile profile, Pageable pageable);
 
 

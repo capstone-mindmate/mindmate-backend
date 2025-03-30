@@ -90,5 +90,5 @@ public class Profile extends BaseTimeEntity {
 
     public void updateAvgRating(double rating){
         this.avgRating = (this.avgRating*counselingCount + rating)/(counselingCount+1);
-    }
+    } // 리뷰달 때 동시성 이슈 생길수도 있나?
 }

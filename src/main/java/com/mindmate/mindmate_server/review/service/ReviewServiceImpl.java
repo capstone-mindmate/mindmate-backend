@@ -8,6 +8,7 @@ import com.mindmate.mindmate_server.review.domain.Review;
 import com.mindmate.mindmate_server.review.domain.Tag;
 import com.mindmate.mindmate_server.review.domain.TagType;
 import com.mindmate.mindmate_server.review.dto.*;
+import com.mindmate.mindmate_server.review.repository.ReviewRedisRepository;
 import com.mindmate.mindmate_server.review.repository.ReviewRepository;
 import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.User;
@@ -33,6 +34,7 @@ public class ReviewServiceImpl implements ReviewService{
     private final ChatRoomRepository chatRoomRepository;
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
+    private final ReviewRedisRepository reviewRedisRepository;
 
     @Override
     @Transactional
@@ -100,6 +102,8 @@ public class ReviewServiceImpl implements ReviewService{
                         throw new CustomException(ReviewErrorCode.INVALID_REVIEW_TAGS);
                     }
                     review.addTag(tag);
+
+                    reviewRedisRepository.incrementTagCount(reviewedProfile.getId(), tagContent);
                 } catch (IllegalArgumentException e) {
                     throw new CustomException(ReviewErrorCode.INVALID_REVIEW_TAGS);
                 }
@@ -109,6 +113,8 @@ public class ReviewServiceImpl implements ReviewService{
         // profile 업뎃
         reviewedProfile.incrementCounselingCount();
         reviewedProfile.updateAvgRating(request.getRating());
+
+        reviewRedisRepository.deleteReviewSummaryCache(reviewedProfile.getId());
 
         return ReviewResponse.from(review);
     }
@@ -136,6 +142,8 @@ public class ReviewServiceImpl implements ReviewService{
 
         review.addReply(request.getContent());
         reviewRepository.save(review);
+
+        reviewRedisRepository.deleteReviewSummaryCache(userProfile.getId());
 
         return ReviewResponse.from(review);
     }
@@ -224,20 +232,35 @@ public class ReviewServiceImpl implements ReviewService{
     @Override
     @Transactional(readOnly = true)
     public ProfileReviewSummaryResponse getProfileReviewSummary(Long profileId) {
+
+        ProfileReviewSummaryResponse cachedSummary = reviewRedisRepository.getReviewSummary(profileId);
+
+        if (cachedSummary != null) {
+            return cachedSummary;
+        }
+
         Profile profile = profileRepository.findById(profileId)
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
 
         double avgRating = profile.getAvgRating(); //reviewRepository.getAverageRatingByProfile(profile);
-
         long totalReviews = reviewRepository.countByReviewedProfile(profile);
 
-        List<Object[]> tagCountResults = reviewRepository.countAllTagsByProfile(profile);
-        Map<String, Integer> tagCounts = new HashMap<>();
+        Map<String, Integer> tagCounts;
+        Map<String, Integer> cachedTagCounts = reviewRedisRepository.getTagCounts(profileId);
+        // redis 조회하고 없으면 db
+        if (cachedTagCounts != null && !cachedTagCounts.isEmpty()) {
+            tagCounts = cachedTagCounts;
+        } else {
+            List<Object[]> tagCountResults = reviewRepository.countAllTagsByProfile(profile);
+            tagCounts = new HashMap<>();
 
-        for (Object[] result : tagCountResults) {
-            String tagContent = (String) result[0];
-            Integer count = ((Long) result[1]).intValue();
-            tagCounts.put(tagContent, count);
+            for (Object[] result : tagCountResults) {
+                String tagContent = (String) result[0];
+                Integer count = ((Long) result[1]).intValue();
+                tagCounts.put(tagContent, count);
+            }
+
+            reviewRedisRepository.saveTagCounts(profileId, tagCounts);
         }
 
         // 최근 리뷰 5개만 -> 이건 나중에 설정
@@ -251,12 +274,16 @@ public class ReviewServiceImpl implements ReviewService{
                 .map(ReviewListResponse::from)
                 .collect(Collectors.toList());
 
-        return ProfileReviewSummaryResponse.builder()
+        ProfileReviewSummaryResponse summaryResponse = ProfileReviewSummaryResponse.builder()
                 .averageRating(avgRating)
                 .totalReviews((int) totalReviews)
                 .tagCounts(tagCounts)
                 .recentReviews(recentReviewResponses)
                 .build();
+
+        reviewRedisRepository.saveReviewSummary(profileId, summaryResponse);
+
+        return summaryResponse;
     }
 
 }

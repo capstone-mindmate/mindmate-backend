@@ -29,7 +29,6 @@ public class ReviewController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestBody ReviewRequest request) {
 
-        log.info("Create review request: {}", request);
         ReviewResponse response = reviewService.createReview(userPrincipal.getUserId(), request);
         return ResponseEntity.ok(response);
     }
@@ -39,7 +38,6 @@ public class ReviewController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestBody ReviewReplyRequest request) {
 
-        log.info("Create review reply request: {}", request);
         ReviewResponse response = reviewService.createReviewReply(userPrincipal.getUserId(), request);
         return ResponseEntity.ok(response);
     }
