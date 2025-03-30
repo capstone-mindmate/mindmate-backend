@@ -57,4 +57,16 @@ public class Review extends BaseTimeEntity {
         this.rating = rating;
         this.comment = comment;
     }
+
+    public void addTag(Tag tag) {
+        EvaluationTag reviewTag = EvaluationTag.builder()
+                .review(this)
+                .tagContent(tag)
+                .build();
+        this.reviewTags.add(reviewTag);
+    }
+
+    public void setReply(ReviewReply reply) {
+        this.reply = reply;
+    }
 }

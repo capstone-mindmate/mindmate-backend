@@ -3,6 +3,8 @@ package com.mindmate.mindmate_server.review.domain;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import java.util.Arrays;
+
 @Getter
 @RequiredArgsConstructor
 public enum Tag {
@@ -22,4 +24,10 @@ public enum Tag {
     private final TagType type;
     private final String content;
 
+    public static Tag fromContent(String content) {
+        return Arrays.stream(values())
+                .filter(tag -> tag.getContent().equals(content))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Invalid tag content: " + content));
+    }
 }

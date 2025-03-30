@@ -96,7 +96,7 @@ public class Profile extends BaseTimeEntity {
         this.nickname = nickname;
     }
 
-    private void updateAvgRating(double rating){
+    public void updateAvgRating(double rating){
         this.avgRating = (this.avgRating*counselingCount + rating)/(counselingCount+1);
     }
 }

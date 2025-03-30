@@ -27,7 +27,7 @@ public class ReviewResponse {
     private LocalDateTime createdAt;
     private boolean isReported;
 
-    public ReviewResponse from(Review review) {
+    public static ReviewResponse from(Review review) {
         ReviewResponseBuilder response = ReviewResponse.builder()
                 .id(review.getId())
                 .chatRoomId(review.getChatRoom() != null ? review.getChatRoom().getId() : null)
