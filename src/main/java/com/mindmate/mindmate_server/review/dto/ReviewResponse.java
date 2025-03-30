@@ -48,11 +48,11 @@ public class ReviewResponse {
             response.tags(tagContents);
         }
 
-        if (review.getReply() != null) {
+        if (review.hasReply()) {
             response.reply(ReviewReplyResponse.builder()
-                    .id(review.getReply().getId())
-                    .content(review.getReply().getContent())
-                    .createdAt(review.getReply().getCreatedAt())
+                    .reviewId(review.getId())
+                    .content(review.getReplyContent())
+                    .createdAt(review.getReplyCreatedAt())
                     .build());
         }
 

@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.review.controller;
 
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
+import com.mindmate.mindmate_server.review.dto.ProfileReviewSummaryResponse;
 import com.mindmate.mindmate_server.review.dto.ReviewReplyRequest;
 import com.mindmate.mindmate_server.review.dto.ReviewRequest;
 import com.mindmate.mindmate_server.review.dto.ReviewResponse;
@@ -78,5 +79,13 @@ public class ReviewController {
 
         boolean canReview = reviewService.canReview(userPrincipal.getUserId(), chatRoomId);
         return ResponseEntity.ok(Map.of("canReview", canReview));
+    }
+
+    @GetMapping("/profile/{profileId}/summary")
+    public ResponseEntity<ProfileReviewSummaryResponse> getProfileReviewSummary(
+            @PathVariable Long profileId) {
+
+        ProfileReviewSummaryResponse summary = reviewService.getProfileReviewSummary(profileId);
+        return ResponseEntity.ok(summary);
     }
 }

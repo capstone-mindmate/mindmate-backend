@@ -29,7 +29,7 @@ public class ReviewListResponse {
                         .map(tag -> tag.getTagContent().getContent())
                         .collect(Collectors.toList()))
                 .createdAt(review.getCreatedAt())
-                .hasReply(review.getReply() != null)
+                .hasReply(review.getReplyContent() != null)
                 .build();
     }
 }

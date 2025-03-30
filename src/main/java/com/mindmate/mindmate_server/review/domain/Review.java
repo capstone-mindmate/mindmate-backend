@@ -2,6 +2,8 @@ package com.mindmate.mindmate_server.review.domain;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
+import com.mindmate.mindmate_server.global.exception.CustomException;
+import com.mindmate.mindmate_server.global.exception.ReviewErrorCode;
 import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
@@ -11,6 +13,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,8 +49,10 @@ public class Review extends BaseTimeEntity {
     @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EvaluationTag> reviewTags = new ArrayList<>();
 
-    @OneToOne(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
-    private ReviewReply reply; // 답글도 신고 필요할 수 있음
+    @Column(length = 200)
+    private String replyContent;
+
+    private LocalDateTime replyCreatedAt; // 필요?
 
     @Builder
     public Review(ChatRoom chatRoom, User reviewer, Profile reviewedProfile, int rating, String comment) {
@@ -66,7 +71,15 @@ public class Review extends BaseTimeEntity {
         this.reviewTags.add(reviewTag);
     }
 
-    public void setReply(ReviewReply reply) {
-        this.reply = reply;
+    public void addReply(String content) {
+        if (this.replyContent != null) {
+            throw new CustomException(ReviewErrorCode.REPLY_ALREADY_EXISTS);
+        }
+        this.replyContent = content;
+        this.replyCreatedAt = LocalDateTime.now();
+    }
+
+    public boolean hasReply() {
+        return this.replyContent != null;
     }
 }

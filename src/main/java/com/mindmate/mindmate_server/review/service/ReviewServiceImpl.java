@@ -5,13 +5,9 @@ import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
 import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.exception.*;
 import com.mindmate.mindmate_server.review.domain.Review;
-import com.mindmate.mindmate_server.review.domain.ReviewReply;
 import com.mindmate.mindmate_server.review.domain.Tag;
 import com.mindmate.mindmate_server.review.domain.TagType;
-import com.mindmate.mindmate_server.review.dto.ReviewReplyRequest;
-import com.mindmate.mindmate_server.review.dto.ReviewRequest;
-import com.mindmate.mindmate_server.review.dto.ReviewResponse;
-import com.mindmate.mindmate_server.review.repository.ReviewReplyRepository;
+import com.mindmate.mindmate_server.review.dto.*;
 import com.mindmate.mindmate_server.review.repository.ReviewRepository;
 import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.User;
@@ -24,7 +20,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -35,7 +33,6 @@ public class ReviewServiceImpl implements ReviewService{
     private final ChatRoomRepository chatRoomRepository;
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
-    private final ReviewReplyRepository reviewReplyRepository;
 
     @Override
     @Transactional
@@ -133,17 +130,12 @@ public class ReviewServiceImpl implements ReviewService{
             throw new CustomException(ReviewErrorCode.NOT_AUTHORIZED_TO_REPLY);
         }
 
-        if (review.getReply() != null) {
+        if (review.hasReply()) {
             throw new CustomException(ReviewErrorCode.REPLY_ALREADY_EXISTS);
         }
 
-        ReviewReply reply = ReviewReply.builder()
-                .review(review)
-                .content(request.getContent())
-                .build();
-
-        reviewReplyRepository.save(reply);
-        review.setReply(reply);
+        review.addReply(request.getContent());
+        reviewRepository.save(review);
 
         return ReviewResponse.from(review);
     }
@@ -229,5 +221,42 @@ public class ReviewServiceImpl implements ReviewService{
         return !reviewRepository.existsByChatRoomAndReviewer(chatRoom, user);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public ProfileReviewSummaryResponse getProfileReviewSummary(Long profileId) {
+        Profile profile = profileRepository.findById(profileId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+
+        double avgRating = profile.getAvgRating(); //reviewRepository.getAverageRatingByProfile(profile);
+
+        long totalReviews = reviewRepository.countByReviewedProfile(profile);
+
+        List<Object[]> tagCountResults = reviewRepository.countAllTagsByProfile(profile);
+        Map<String, Integer> tagCounts = new HashMap<>();
+
+        for (Object[] result : tagCountResults) {
+            String tagContent = (String) result[0];
+            Integer count = ((Long) result[1]).intValue();
+            tagCounts.put(tagContent, count);
+        }
+
+        // 최근 리뷰 5개만 -> 이건 나중에 설정
+        Page<Review> reviewsPage = reviewRepository.findByReviewedProfileOrderByCreatedAtDesc(
+                profile,
+                PageRequest.of(0, 5)
+        );
+        List<Review> recentReviews = reviewsPage.getContent();
+
+        List<ReviewListResponse> recentReviewResponses = recentReviews.stream()
+                .map(ReviewListResponse::from)
+                .collect(Collectors.toList());
+
+        return ProfileReviewSummaryResponse.builder()
+                .averageRating(avgRating)
+                .totalReviews((int) totalReviews)
+                .tagCounts(tagCounts)
+                .recentReviews(recentReviewResponses)
+                .build();
+    }
 
 }

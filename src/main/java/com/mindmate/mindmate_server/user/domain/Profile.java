@@ -44,10 +44,6 @@ public class Profile extends BaseTimeEntity {
     private int totalResponseTime = 0;
     private int responseTimeCount = 0;
 
-    // 평가 태그
-    @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<EvaluationTag> evaluationTags = new ArrayList<>();
-
     private double avgRating = 0;
 
     @Builder
@@ -74,10 +70,6 @@ public class Profile extends BaseTimeEntity {
         this.avgResponseTime = this.responseTimeCount > 0
                 ? this.totalResponseTime / this.responseTimeCount
                 : 0;
-    }
-
-    public void addEvaluationTag(EvaluationTag tag) {
-        this.evaluationTags.add(tag);
     }
 
     public void updateDepartment(String department) {

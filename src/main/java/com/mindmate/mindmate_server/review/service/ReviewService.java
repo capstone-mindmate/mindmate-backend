@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.review.service;
 
+import com.mindmate.mindmate_server.review.dto.ProfileReviewSummaryResponse;
 import com.mindmate.mindmate_server.review.dto.ReviewReplyRequest;
 import com.mindmate.mindmate_server.review.dto.ReviewRequest;
 import com.mindmate.mindmate_server.review.dto.ReviewResponse;
@@ -21,4 +22,6 @@ public interface ReviewService {
     List<ReviewResponse> getChatRoomReviews(Long chatRoomId);
 
     boolean canReview(Long userId, Long chatRoomId);
+
+    ProfileReviewSummaryResponse getProfileReviewSummary(Long profileId);
 }
