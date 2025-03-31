@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -38,12 +39,12 @@ public class ChatServiceImpl implements ChatService {
     private final ObjectMapper objectMapper;
     private final RedisKeyManager redisKeyManager;
 
+    private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomService chatRoomService;
     private final UserService userService;
     private final ChatPresenceService chatPresenceService;
     private final ContentFilterService contentFilterService;
     private final ChatMessageService chatMessageService;
-
 
     /**
      * 필터링 + 메시지 저장 동기적 처리
@@ -53,6 +54,7 @@ public class ChatServiceImpl implements ChatService {
      * todo: 사진 처리
      */
     @Override
+//    @Transactional(propagation = Propagation.REQUIRED)
     public ChatMessageResponse sendMessage(Long userId, ChatMessageRequest request) {
         try {
             ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getRoomId());

@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Set;
 
+
 public interface ProfileService {
 
     /**
@@ -45,11 +46,6 @@ public interface ProfileService {
      * 평균 응답 시간 업데이트
      */
     void updateResponseTime(Long userId, Integer responseTime);
-
-    /**
-     * 평가 태그 추가
-     */
-    void addEvaluationTags(Long userId, Set<String> tags);
 
     // 인기 프로필??
 }

@@ -54,12 +54,12 @@ public class ProfileController {
         return ResponseEntity.ok(response);
     }
 
-    // 평가태그 추가
-    @PostMapping("/users/{userId}/tags")
-    public ResponseEntity<Void> addEvaluationTags(
-            @PathVariable Long userId,
-            @RequestBody Set<String> tags) {
-        profileService.addEvaluationTags(userId, tags);
-        return ResponseEntity.ok().build();
-    }
+//    // 평가태그 추가
+//    @PostMapping("/users/{userId}/tags")
+//    public ResponseEntity<Void> addEvaluationTags(
+//            @PathVariable Long userId,
+//            @RequestBody Set<String> tags) {
+//        profileService.addEvaluationTags(userId, tags);
+//        return ResponseEntity.ok().build();
+//    }
 }

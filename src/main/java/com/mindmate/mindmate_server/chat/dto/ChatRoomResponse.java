@@ -43,8 +43,11 @@ public class ChatRoomResponse {
         Long unreadCount = isListener ? chatRoom.getListenerUnreadCount() : chatRoom.getSpeakerUnreadCount();
         String userRole = isListener ? "LISTENER" : "SPEAKER";
 
+<<<<<<< HEAD
         boolean isCreator = chatRoom.getMatching().getCreator().equals(user);
 
+=======
+>>>>>>> f6e6cce (matching을 위해 chating 코드 가져옴)
         String lastMessage = null;
         if (!chatRoom.getMessages().isEmpty()) {
             lastMessage = chatRoom.getMessages().get(chatRoom.getMessages().size() - 1).getContent();
@@ -61,8 +64,11 @@ public class ChatRoomResponse {
                 .oppositeName(oppositeName)
                 .oppositeImage(oppositeImage)
                 .userRole(userRole)
+<<<<<<< HEAD
                 .isCreator(isCreator)
                 .matchingTitle(chatRoom.getMatching().getTitle())
+=======
+>>>>>>> f6e6cce (matching을 위해 chating 코드 가져옴)
                 .build();
     }
 }

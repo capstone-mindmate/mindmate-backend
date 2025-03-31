@@ -1,11 +1,14 @@
 package com.mindmate.mindmate_server.user.domain;
 
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
+import com.mindmate.mindmate_server.review.domain.EvaluationTag;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -18,7 +21,7 @@ public class Profile extends BaseTimeEntity {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JoinColumn(name = "user_id", unique = true) // nullable = false,
     private User user;
 
     private String profileImage;
@@ -42,9 +45,10 @@ public class Profile extends BaseTimeEntity {
     private int responseTimeCount = 0;
 
     // 평가 태그
-    @ElementCollection
-    @CollectionTable(name = "profile_evaluation_tags", joinColumns = @JoinColumn(name = "profile_id"))
-    private Set<String> evaluationTags = new HashSet<>();
+    @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<EvaluationTag> evaluationTags = new ArrayList<>();
+
+    private double avgRating = 0;
 
     @Builder
     public Profile(User user, String nickname, String department, Integer entranceTime, boolean graduation, String profileImage) {
@@ -72,7 +76,7 @@ public class Profile extends BaseTimeEntity {
                 : 0;
     }
 
-    public void addEvaluationTag(String tag) {
+    public void addEvaluationTag(EvaluationTag tag) {
         this.evaluationTags.add(tag);
     }
 
@@ -90,5 +94,9 @@ public class Profile extends BaseTimeEntity {
 
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    private void updateAvgRating(double rating){
+        this.avgRating = (this.avgRating*counselingCount + rating)/(counselingCount+1);
     }
 }

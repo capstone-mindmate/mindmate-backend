@@ -33,6 +33,7 @@ public class ChatController {
 
     /**
      * 사용자의 모든 채팅방 목록 조회
+     * todo: 채팅방 상태에 따른 목록 조회를 따로 api 뺼건지, 프론트에서 어차피 값 있으니까 렌더링만 바꿔서 보여줄지
      */
     @GetMapping("/rooms")
     public ResponseEntity<Page<ChatRoomResponse>> getChatRooms(
@@ -77,6 +78,7 @@ public class ChatController {
                 principal.getUserId(),
                 PageRequest.of(page, size, Sort.by("lastMessageTime").descending()),
                 status);
+
         return ResponseEntity.ok(rooms);
     }
 

@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.global.config;
 
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
+import com.mindmate.mindmate_server.matching.dto.MatchingAcceptedEvent;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -79,7 +80,7 @@ public class KafkaConfig {
      * Matching Producer 설정
      */
     @Bean
-    public ProducerFactory<String, String> matchingProducerFactory() {
+    public ProducerFactory<String, MatchingAcceptedEvent> matchingProducerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -87,35 +88,29 @@ public class KafkaConfig {
         return new DefaultKafkaProducerFactory<>(props);
     }
 
-    /**
-     * Matching Consumer 설정
-     */
     @Bean
-    public ConsumerFactory<String, String> matchingConsumerFactory() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "mindmate-matching");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        return new DefaultKafkaConsumerFactory<>(props);
-    }
-
-    /**
-     * Matching Kafka Template
-     */
-    @Bean
-    public KafkaTemplate<String, String> matchingKafkaTemplate() {
+    public KafkaTemplate<String, MatchingAcceptedEvent> matchingKafkaTemplate() {
         return new KafkaTemplate<>(matchingProducerFactory());
     }
 
-    /**
-     * Matching Listener Container Factory
-     */
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, String> matchingListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(matchingConsumerFactory());
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+    public ConsumerFactory<String, MatchingAcceptedEvent> consumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "matching-group");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        return new DefaultKafkaConsumerFactory<>(props);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, MatchingAcceptedEvent> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, MatchingAcceptedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory());
+        factory.setConcurrency(3);
+
         return factory;
     }
 
@@ -138,22 +133,11 @@ public class KafkaConfig {
      * Kafka 토픽 설정 - 매칭 이벤트
      */
     @Bean
-    public NewTopic matchingEventsTopic() {
-        return TopicBuilder.name("matching-events")
+    public NewTopic matchingAcceptedTopic() {
+        return TopicBuilder.name("matching-accepted")
                 .partitions(3)
                 .replicas(1)
-                .compact()
                 .build();
     }
 
-    /**
-     * Kafka 토픽 설정 - 매칭 큐
-     */
-    @Bean
-    public NewTopic matchingQueueTopic() {
-        return TopicBuilder.name("matching-queue")
-                .partitions(3)
-                .replicas(1)
-                .build();
-    }
 }
