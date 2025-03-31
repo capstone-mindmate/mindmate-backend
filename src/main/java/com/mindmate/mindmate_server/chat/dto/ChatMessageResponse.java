@@ -64,7 +64,7 @@ public class ChatMessageResponse {
                 .id(message.getId())
 //                .roomId(message.getChatRoom().getId())
                 .senderId(message.getSender().getId())
-                .senderName(message.getSender().getProfile().getNickname())
+                .senderName(message.getSender().getProfile() != null ? message.getSender().getProfile().getNickname() : "Unknown")
                 .content(message.getFilteredContent() != null ? message.getFilteredContent() : message.getContent())
                 .type(message.getType())
                 .createdAt(message.getCreatedAt())

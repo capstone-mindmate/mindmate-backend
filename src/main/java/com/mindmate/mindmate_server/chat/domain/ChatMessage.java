@@ -32,7 +32,7 @@ public class ChatMessage extends BaseTimeEntity {
     @OneToMany(mappedBy = "message")
     private List<MessageReaction> messageReactions = new ArrayList<>();
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "custom_form_id")
     private CustomForm customForm;
 

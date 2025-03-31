@@ -22,7 +22,7 @@ public class UnreadCountConsumer {
     private final ChatService chatService;
     private final UserService userService;
 
-    private final ChatRoomRepository chatRoomRepository;
+//    private final ChatRoomRepository chatRoomRepository;
 
     @KafkaListener(
             topics = "chat-message-topic",
@@ -59,7 +59,8 @@ public class UnreadCountConsumer {
                 }
 
                 // 변경사항 저장
-                chatRoomRepository.saveAndFlush(chatRoom);
+//                chatRoomRepository.saveAndFlush(chatRoom);
+                chatRoomService.save(chatRoom);
 
                 log.info("Incremented unread count for recipient {} in room {}", recipient.getId(), event.getRoomId());
             }

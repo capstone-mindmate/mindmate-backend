@@ -1,17 +1,12 @@
 package com.mindmate.mindmate_server.chat.service;
 
-import com.mindmate.mindmate_server.chat.domain.ChatRoom;
-import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
-import com.mindmate.mindmate_server.user.domain.RoleType;
-import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -27,7 +22,6 @@ public class ChatPresenceService {
     private final RedisKeyManager redisKeyManager;
 
     private final UserService userService;
-    private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomService chatRoomService;
     /**
      * Redis 값 관리 정리
@@ -119,28 +113,29 @@ public class ChatPresenceService {
     }
 
     // db 관련은 여기서 처리하지 않도록 설정
-    @Transactional
-    public void incrementUnreadCount(Long roomId, Long userId) {
-        ChatRoom chatRoom = chatRoomService.findChatRoomById(roomId);
-        // Redis 업데이트
-        String unreadKey = redisKeyManager.getUnreadCountKey(roomId, userId);
-        Long count = redisTemplate.opsForValue().increment(unreadKey);
-        User user = userService.findUserById(userId);
-
-        // WebSocket 알림
-        notifyUnreadCount(roomId, userId, count);
-
-        log.info("Before increase: {}", chatRoom.getListenerUnreadCount());
-        // DB 업데이트 (트랜잭션 내에서)
-        chatRoom.increaseUnreadCount(user);
-//            chatRoom.increaseUnreadCountForSpeaker();
-//        } else {
-//            chatRoom.increaseUnreadCountForListener();
-//        }
-
-        chatRoomRepository.saveAndFlush(chatRoom);
-        log.info("Incremented unread count for user {} in room {} to {}", userId, roomId, count);
-    }
+//    @Transactional
+//    public void incrementUnreadCount(Long roomId, Long userId) {
+//        ChatRoom chatRoom = chatRoomService.findChatRoomById(roomId);
+//        // Redis 업데이트
+//        String unreadKey = redisKeyManager.getUnreadCountKey(roomId, userId);
+//        Long count = redisTemplate.opsForValue().increment(unreadKey);
+//        User user = userService.findUserById(userId);
+//
+//        // WebSocket 알림
+//        notifyUnreadCount(roomId, userId, count);
+//
+//        log.info("Before increase: {}", chatRoom.getListenerUnreadCount());
+//        // DB 업데이트 (트랜잭션 내에서)
+//        chatRoom.increaseUnreadCount(user);
+////            chatRoom.increaseUnreadCountForSpeaker();
+////        } else {
+////            chatRoom.increaseUnreadCountForListener();
+////        }
+//
+////        chatRoomRepository.saveAndFlush(chatRoom);
+//        chatRoomService.save(chatRoom);
+//        log.info("Incremented unread count for user {} in room {} to {}", userId, roomId, count);
+//    }
 
     public void resetUnreadCount(Long roomId, Long userId) {
         String unreadKey = redisKeyManager.getUnreadCountKey(roomId, userId);

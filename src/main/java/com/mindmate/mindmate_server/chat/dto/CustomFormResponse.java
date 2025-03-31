@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,23 +29,25 @@ public class CustomFormResponse {
     private List<CustomFormItemDTO> items;
 
     public static CustomFormResponse from(CustomForm form) {
-        String creatorName = form.getCreator().getProfile().getNickname();
-        String responderName = form.getResponder() != null ?
+        String creatorName = form.getCreator() != null && form.getCreator().getProfile() != null ?
+                form.getCreator().getProfile().getNickname() : "Unknown";
+
+        String responderName = form.getResponder() != null && form.getResponder().getProfile() != null ?
                 form.getResponder().getProfile().getNickname() : null;
 
         return CustomFormResponse.builder()
                 .id(form.getId())
                 .chatRoomId(form.getChatRoom().getId())
-                .creatorId(form.getCreator().getId())
+                .creatorId(form.getCreator() != null ? form.getCreator().getId() : null)
                 .creatorName(creatorName)
                 .responderId(form.getResponder() != null ? form.getResponder().getId() : null)
                 .responderName(responderName)
                 .isAnswered(form.isAnswered())
                 .createdAt(form.getCreatedAt())
                 .respondedAt(form.getAnsweredAt())
-                .items(form.getItems().stream()
+                .items(form.getItems() != null ? form.getItems().stream()
                         .map(CustomFormItemDTO::from)
-                        .collect(Collectors.toList()))
+                        .collect(Collectors.toList()) : Collections.emptyList())
                 .build();
     }
 }

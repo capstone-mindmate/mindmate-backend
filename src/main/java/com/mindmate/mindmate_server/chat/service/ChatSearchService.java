@@ -4,8 +4,6 @@ import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 import com.mindmate.mindmate_server.chat.dto.ChatSearchResponse;
 import com.mindmate.mindmate_server.chat.dto.SearchNavigationResponse;
-import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
-import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,9 +15,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ChatSearchService {
-    private final ChatMessageRepository chatMessageRepository;
+    private final ChatMessageService chatMessageService;
     private final ChatRoomService chatRoomService;
-    private final UserService userService;
 
     @Transactional(readOnly = true)
     public ChatSearchResponse searchMessages(
@@ -27,7 +24,7 @@ public class ChatSearchService {
             Long oldestLoadedMessageId, Long newestLoadedMessageId) {
         chatRoomService.validateChatActivity(userId, roomId);
 
-        List<Long> matchedMessageIds = chatMessageRepository.findMessageIdsByKeyword(roomId, keyword);
+        List<Long> matchedMessageIds = chatMessageService.findMessageIdsByKeyword(roomId, keyword);
 
         Long firstVisibleMatchId = null;
         if (oldestLoadedMessageId != null && newestLoadedMessageId != null) {
@@ -52,8 +49,9 @@ public class ChatSearchService {
         chatRoomService.validateChatActivity(userId, roomId);
         List<ChatMessageResponse> additionalMessages = Collections.emptyList();
 
+        // 현재 로드된 메시지들보다 이전에 존재
         if (targetMessageId < oldestLoadedMessageId) {
-            List<ChatMessage> messages = chatMessageRepository.findByRoomIdAndIdBetween(
+            List<ChatMessage> messages = chatMessageService.findByRoomIdAndIdBetween(
                     roomId, targetMessageId, oldestLoadedMessageId - 1);
 
             additionalMessages = messages.stream()
@@ -61,7 +59,7 @@ public class ChatSearchService {
                     .collect(Collectors.toList());
         }
 
-        List<Long> matchedIds = chatMessageRepository.findMessageIdsByKeyword(roomId, keyword);
+        List<Long> matchedIds = chatMessageService.findMessageIdsByKeyword(roomId, keyword);
         int currentIdx = matchedIds.indexOf(targetMessageId);
 
         return SearchNavigationResponse.builder()
