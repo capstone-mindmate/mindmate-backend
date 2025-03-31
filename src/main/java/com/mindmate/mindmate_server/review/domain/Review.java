@@ -1,6 +1,10 @@
 package com.mindmate.mindmate_server.review.domain;
 
+import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
+import com.mindmate.mindmate_server.global.exception.CustomException;
+import com.mindmate.mindmate_server.global.exception.ReviewErrorCode;
+import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import jakarta.persistence.*;
@@ -9,6 +13,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,42 +30,56 @@ public class Review extends BaseTimeEntity {
     @JoinColumn(name = "reviewer_id")
     private User reviewer;
 
-    @Enumerated(EnumType.STRING)
-    private RoleType reviewerRole;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reviewed_profile_id", nullable = false)
+    private Profile reviewedProfile;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewee_id")
-    private User reviewee;
+    @JoinColumn(name = "chat_room_id", nullable = false)
+    private ChatRoom chatRoom;
 
-    @Enumerated(EnumType.STRING)
-    private RoleType revieweeRole;
+    @Column(nullable = false)
+    private int rating;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "matching_id")
-//    private Matching matching;
+    @Column(length = 200)
+    private String comment;
 
-    private double rating;
+    private boolean isReported = false; // todo : 향후 확장
 
-    @Column(columnDefinition = "TEXT")
-    private String content;
+    @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<EvaluationTag> reviewTags = new ArrayList<>();
 
-    // tag를 어떤식으로 제공하지?
-//    private List<String> tags = new ArrayList<>();
+    @Column(length = 200)
+    private String replyContent;
 
-    private String reply;
+    private LocalDateTime replyCreatedAt; // 필요?
 
     @Builder
-    public Review(User reviewer, User reviewee, double rating,
-                  String content ) {
+    public Review(ChatRoom chatRoom, User reviewer, Profile reviewedProfile, int rating, String comment) {
+        this.chatRoom = chatRoom;
         this.reviewer = reviewer;
-        this.reviewee = reviewee;
-//        this.matching = matching;
+        this.reviewedProfile = reviewedProfile;
         this.rating = rating;
-        this.content = content;
-//        this.tags = tags;
+        this.comment = comment;
     }
 
-    public void addReply(String reply) {
-        this.reply = reply;
+    public void addTag(Tag tag) {
+        EvaluationTag reviewTag = EvaluationTag.builder()
+                .review(this)
+                .tagContent(tag)
+                .build();
+        this.reviewTags.add(reviewTag);
+    }
+
+    public void addReply(String content) {
+        if (this.replyContent != null) {
+            throw new CustomException(ReviewErrorCode.REPLY_ALREADY_EXISTS);
+        }
+        this.replyContent = content;
+        this.replyCreatedAt = LocalDateTime.now();
+    }
+
+    public boolean hasReply() {
+        return this.replyContent != null;
     }
 }

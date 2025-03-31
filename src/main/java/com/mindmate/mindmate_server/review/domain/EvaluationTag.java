@@ -18,29 +18,15 @@ public class EvaluationTag extends BaseTimeEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "profile_id")
-    private Profile profile;
+    @JoinColumn(name = "review_id", nullable = false)
+    private Review review;
 
     @Column(nullable = false)
-    private String tagContent;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TagType tagType;
-
-    @Column(nullable = false)
-    private Long chatRoomId;
-
-    @Column(nullable = false)
-    private Long evaluatorId;
+    private Tag tagContent;
 
     @Builder
-    public EvaluationTag(Profile profile, String tagContent, TagType tagType,
-                         Long chatRoomId, Long evaluatorId) {
-        this.profile = profile;
+    public EvaluationTag(Review review, Tag tagContent) {
+        this.review = review;
         this.tagContent = tagContent;
-        this.tagType = tagType;
-        this.chatRoomId = chatRoomId;
-        this.evaluatorId = evaluatorId;
     }
 }

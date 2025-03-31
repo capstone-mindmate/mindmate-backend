@@ -44,10 +44,6 @@ public class Profile extends BaseTimeEntity {
     private int totalResponseTime = 0;
     private int responseTimeCount = 0;
 
-    // 평가 태그
-    @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<EvaluationTag> evaluationTags = new ArrayList<>();
-
     private double avgRating = 0;
 
     @Builder
@@ -76,10 +72,6 @@ public class Profile extends BaseTimeEntity {
                 : 0;
     }
 
-    public void addEvaluationTag(EvaluationTag tag) {
-        this.evaluationTags.add(tag);
-    }
-
     public void updateDepartment(String department) {
         this.department = department;
     }
@@ -96,7 +88,7 @@ public class Profile extends BaseTimeEntity {
         this.nickname = nickname;
     }
 
-    private void updateAvgRating(double rating){
+    public void updateAvgRating(double rating){
         this.avgRating = (this.avgRating*counselingCount + rating)/(counselingCount+1);
-    }
+    } // 리뷰달 때 동시성 이슈 생길수도 있나?
 }

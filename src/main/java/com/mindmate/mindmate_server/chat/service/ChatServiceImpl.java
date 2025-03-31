@@ -45,7 +45,6 @@ public class ChatServiceImpl implements ChatService {
     private final ChatPresenceService chatPresenceService;
     private final ContentFilterService contentFilterService;
     private final ChatMessageService chatMessageService;
-
     /**
      * 필터링 + 메시지 저장 동기적 처리
      * 1. 읽음 안읽음 처리

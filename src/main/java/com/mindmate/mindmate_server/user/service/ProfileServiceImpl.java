@@ -162,7 +162,8 @@ public class ProfileServiceImpl implements ProfileService {
                 PageRequest.of(0, 5)
         );
 
-        return mapReviews(recentReviews);
+//        return mapReviews(recentReviews);
+        return null;
     }
 
     // 사용자 평균 평점 계산
@@ -193,17 +194,17 @@ public class ProfileServiceImpl implements ProfileService {
                 .build();
     }
 
-    private List<ReviewResponse> mapReviews(List<Review> reviews) {
-        return reviews.stream()
-                .map(review -> ReviewResponse.builder()
-                        .id(review.getId())
-                        .content(review.getContent())
-                        .rating(review.getRating())
-                        .reply(review.getReply())
-                        .createdAt(review.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
-    }
+//    private List<ReviewResponse> mapReviews(List<Review> reviews) {
+//        return reviews.stream()
+//                .map(review -> ReviewResponse.builder()
+//                        .id(review.getId())
+//                        .tags(review.getReviewTags().stream().map(r->r.getTagContent().getContent()).collect(Collectors.toList()))
+//                        .rating(review.getRating())
+//                        .reply(review.getReply())
+//                        .createdAt(review.getCreatedAt())
+//                        .build())
+//                .collect(Collectors.toList());
+//    }
 
     // 프로필 검색은 필요없?
 }

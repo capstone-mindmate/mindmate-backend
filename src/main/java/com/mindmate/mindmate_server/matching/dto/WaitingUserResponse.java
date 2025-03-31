@@ -3,6 +3,7 @@ package com.mindmate.mindmate_server.matching.dto;
 import com.mindmate.mindmate_server.matching.domain.WaitingStatus;
 import com.mindmate.mindmate_server.matching.domain.WaitingUser;
 import com.mindmate.mindmate_server.review.domain.EvaluationTag;
+import com.mindmate.mindmate_server.review.domain.Tag;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,7 +28,7 @@ public class WaitingUserResponse {
     private String waitingUserProfileImage;
     private String message;
     private WaitingStatus status;
-    private List<String> evaluationTags;
+    private List<Tag> evaluationTags;
     private LocalDateTime createdAt;
 
     public static WaitingUserResponse of(WaitingUser waitingUser) {
@@ -45,9 +46,9 @@ public class WaitingUserResponse {
             department = waitingUser.getWaitingUser().getProfile().getDepartment();
         }
 
-        List<String> tagNames = waitingUser.getWaitingUser().getProfile().getEvaluationTags().stream()
-                .map(EvaluationTag::getTagContent)
-                .toList();
+//        List<Tag> tagNames = waitingUser.getWaitingUser().getProfile().getEvaluationTags().stream()
+//                .map(EvaluationTag::getTagContent)
+//                .toList();
 
         return WaitingUserResponse.builder()
                 .id(waitingUser.getId())
@@ -61,7 +62,7 @@ public class WaitingUserResponse {
                 .message(waitingUser.getMessage())
 //                .status(waitingUser.getStatus())
                 .createdAt(waitingUser.getCreatedAt())
-                .evaluationTags(tagNames)
+//                .evaluationTags(tagNames)
                 .build();
     }
 }

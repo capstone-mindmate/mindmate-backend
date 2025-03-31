@@ -14,6 +14,7 @@ public enum ChatErrorCode implements ErrorCode {
     CHAT_ROOM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 채팅방에 접근 권한이 없습니다"),
     CHAT_ROOM_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "채팅방 생성에 실패했습니다"),
     CHAT_ROOM_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 존재하는 채팅방입니다"),
+    CHAT_ROOM_NOT_CLOSED(HttpStatus.BAD_REQUEST, "채팅이 종료되지 않았습니다."),
 
     // 메시지 관련 오류
     MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "메시지를 찾을 수 없습니다"),
