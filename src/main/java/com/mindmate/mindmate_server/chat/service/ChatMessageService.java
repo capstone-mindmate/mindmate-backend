@@ -21,4 +21,10 @@ public interface ChatMessageService {
     List<ChatMessage> findRecentMessages(Long roomId, int size);
 
     List<ChatMessage> findPreviousMessages(Long roomId, Long messageId, int size);
+
+    ChatMessage save(ChatMessage chatMessage);
+
+    List<Long> findMessageIdsByKeyword(Long roomId, String keyword);
+
+    List<ChatMessage> findByRoomIdAndIdBetween(Long roomId, Long targetMessageId, Long lastMessageId);
 }

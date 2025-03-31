@@ -7,6 +7,7 @@ import com.mindmate.mindmate_server.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -67,4 +68,22 @@ public class ChatMessageServiceImpl implements ChatMessageService {
         return messages;
     }
 
+    @Override
+    @Transactional
+    public ChatMessage save(ChatMessage chatMessage) {
+        return chatMessageRepository.save(chatMessage);
+    }
+
+    @Override
+    public List<Long> findMessageIdsByKeyword(Long roomId, String keyword) {
+        if (roomId == null || keyword == null || keyword.trim().isEmpty()) {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_INVALID_PARAMETERS);
+        }
+        return chatMessageRepository.findMessageIdsByKeyword(roomId, keyword);
+    }
+
+    @Override
+    public List<ChatMessage> findByRoomIdAndIdBetween(Long roomId, Long targetMessageId, Long lastMessageId) {
+        return chatMessageRepository.findByRoomIdAndIdBetween(roomId, targetMessageId, lastMessageId);
+    }
 }
