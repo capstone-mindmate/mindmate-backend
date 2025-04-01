@@ -37,10 +37,10 @@ public class Report extends BaseTimeEntity {
     private ReportTarget reportTarget;
 
     @Column(nullable = false)
-    private String targetId;
+    private Long targetId;
 
     @Builder
-    public Report(User reporter, User reportedUser, ReportReason reportReason, String additionalComment, ReportTarget reportTarget, String targetId) {
+    public Report(User reporter, User reportedUser, ReportReason reportReason, String additionalComment, ReportTarget reportTarget, Long targetId) {
         this.reporter = reporter;
         this.reportedUser = reportedUser;
         this.reportReason = reportReason;

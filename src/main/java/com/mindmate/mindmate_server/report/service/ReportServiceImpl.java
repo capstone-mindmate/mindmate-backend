@@ -1,7 +1,9 @@
 package com.mindmate.mindmate_server.report.service;
 
+import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ReportErrorCode;
+import com.mindmate.mindmate_server.matching.service.MatchingService;
 import com.mindmate.mindmate_server.report.domain.Report;
 import com.mindmate.mindmate_server.report.domain.ReportTarget;
 import com.mindmate.mindmate_server.report.dto.ReportRequest;
@@ -13,12 +15,21 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+
 @Service
 @RequiredArgsConstructor
 public class ReportServiceImpl implements ReportService {
     private final UserService userService;
+    private final MatchingService matchingService;
+    private final ChatRoomService chatRoomService;
 
     private final ReportRepository reportRepository;
+
+    public static final long REPORT_COUNT_WEAK_THRESHOLD = 5;
+    public static final long REPORT_COUNT_STRONG_THRESHOLD = 10;
+    public static final long REPORT_COUNT_WEAK_SUSPEND = 3;
+    public static final long REPORT_COUNT_STRONG_SUSPEND = 30;
 
 
     /**
@@ -32,6 +43,8 @@ public class ReportServiceImpl implements ReportService {
         User reportedUser = userService.findUserById(request.getReportedUserId());
 
         checkDuplicateReport(reporter, reportedUser, request.getReportTarget(), request.getTargetId());
+        validateReportRequest(reporter.getId(), reportedUser.getId());
+        validateTargetExists(request.getReportTarget(), request.getTargetId());
 
         Report report = Report.builder()
                 .reporter(reporter)
@@ -45,11 +58,38 @@ public class ReportServiceImpl implements ReportService {
         Report savedReport = reportRepository.save(report);
 
         reportedUser.incrementReportCount();
+        checkReportThreshold(reportedUser);
         userService.save(reportedUser);
 
         return new ReportResponse(savedReport.getId(), "신고가 접수되었습니다.");
     }
 
+    private void checkReportThreshold(User reportedUser) {
+        if (reportedUser.getReportCount() >= REPORT_COUNT_STRONG_THRESHOLD) {
+            reportedUser.suspend(Duration.ofDays(REPORT_COUNT_STRONG_SUSPEND));
+        } else if (reportedUser.getReportCount() >= REPORT_COUNT_WEAK_THRESHOLD) {
+            reportedUser.suspend(Duration.ofDays(REPORT_COUNT_WEAK_SUSPEND));
+        }
+    }
+
+    private void validateTargetExists(ReportTarget reportTarget, Long targetId) {
+        switch (reportTarget) {
+            case MATCHING:
+                matchingService.findMatchingById(targetId);
+                break;
+            case CHATROOM:
+                chatRoomService.findChatRoomById(targetId);
+                break;
+            case PROFILE:
+                break;
+        }
+    }
+
+    private void validateReportRequest(Long reporterId, Long reportedUserId) {
+        if (reporterId.equals(reportedUserId)) {
+            throw new CustomException(ReportErrorCode.SELF_REPORT_NOT_ALLOWED);
+        }
+    }
 
     @Override
     public Report findReportById(Long reportId) {
@@ -58,7 +98,7 @@ public class ReportServiceImpl implements ReportService {
 
     }
 
-    private void checkDuplicateReport(User reporter, User reportedUser, ReportTarget target, String targetId) {
+    private void checkDuplicateReport(User reporter, User reportedUser, ReportTarget target, Long targetId) {
         boolean exists = reportRepository.existsByReporterAndReportedUserAndReportTargetAndTargetId(
                 reporter, reportedUser, target, targetId);
 

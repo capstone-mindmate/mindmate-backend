@@ -21,5 +21,5 @@ public class ReportRequest {
     private ReportTarget reportTarget;
 
     @NotNull
-    private String targetId;
+    private Long targetId;
 }
