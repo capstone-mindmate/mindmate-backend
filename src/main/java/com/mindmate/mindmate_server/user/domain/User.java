@@ -148,10 +148,13 @@ public class User extends BaseTimeEntity {
         this.suspensionEndTime = LocalDateTime.now().plus(duration);
     }
 
-    // todo: 이거를 어떻게 확인하고 관리하지? cron으로 하기에는 모든 사용자가 값이 다른데?
     public void unsuspend() {
         this.currentRole = RoleType.ROLE_PROFILE;
         this.suspensionEndTime = null;
+    }
+
+    public void setReportCount(int reportCount) {
+        this.reportCount = reportCount;
     }
 
     private void checkAndResetLimits() {
