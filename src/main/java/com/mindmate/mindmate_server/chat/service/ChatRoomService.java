@@ -5,6 +5,7 @@ import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomDetailResponse;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
+import com.mindmate.mindmate_server.matching.domain.Matching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 
@@ -31,4 +32,6 @@ public interface ChatRoomService {
     void acceptCloseChatRoom(Long userId, Long roomId);
 
     ChatRoom save(ChatRoom chatRoom);
+
+    ChatRoom createChatRoom(Matching matching);
 }

@@ -87,45 +87,6 @@ public class ChatRoom extends BaseTimeEntity {
         log.info("Current speakerUnreadCount: {}", speakerUnreadCount);
     }
 
-    public User getListener() {
-        if (matching.getCreatorRole() == InitiatorType.LISTENER) {
-            return matching.getCreator();
-        } else {
-            return matching.getAcceptedUser();
-        }
-    }
-
-    public User getSpeaker() {
-        if (matching.getCreatorRole() == InitiatorType.SPEAKER) {
-            return matching.getCreator();
-        } else {
-            return matching.getAcceptedUser();
-        }
-    }
-
-    public boolean isListener(User user) {
-        return getListener().equals(user);
-    }
-
-    public boolean isSpeaker(User user) {
-        return getSpeaker().equals(user);
-    }
-
-    public void markAsRead(User user, Long messageId) {
-        if (isListener(user)) {
-            markAsReadForListener(messageId);
-        } else if (isSpeaker(user)) {
-            markAsReadForSpeaker(messageId);
-        }
-    }
-
-    public void increaseUnreadCount(User sender) {
-        if (isSpeaker(sender)) {
-            increaseUnreadCountForListener();
-        } else if (isListener(sender)) {
-            increaseUnreadCountForSpeaker();
-        }
-    }
 
     public User getListener() {
         if (matching.getCreatorRole() == InitiatorType.LISTENER) {
