@@ -23,9 +23,7 @@ public class ReviewResponse {
     private int rating;
     private String comment;
     private List<String> tags;  // 프론트에는 문자열로
-    private ReviewReplyResponse reply;
     private LocalDateTime createdAt;
-    private boolean isReported;
 
     public static ReviewResponse from(Review review) {
         ReviewResponseBuilder response = ReviewResponse.builder()
@@ -38,22 +36,13 @@ public class ReviewResponse {
                         review.getReviewer().getProfile().getProfileImage() : null)
                 .rating(review.getRating())
                 .comment(review.getComment())
-                .createdAt(review.getCreatedAt())
-                .isReported(review.isReported());
+                .createdAt(review.getCreatedAt());
 
         if (review.getReviewTags() != null && !review.getReviewTags().isEmpty()) {
             List<String> tagContents = review.getReviewTags().stream()
                     .map(reviewTag -> reviewTag.getTagContent().getContent())
                     .collect(Collectors.toList());
             response.tags(tagContents);
-        }
-
-        if (review.hasReply()) {
-            response.reply(ReviewReplyResponse.builder()
-                    .reviewId(review.getId())
-                    .content(review.getReplyContent())
-                    .createdAt(review.getReplyCreatedAt())
-                    .build());
         }
 
         return response.build();

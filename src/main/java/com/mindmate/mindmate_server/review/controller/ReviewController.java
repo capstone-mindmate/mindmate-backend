@@ -2,7 +2,6 @@ package com.mindmate.mindmate_server.review.controller;
 
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import com.mindmate.mindmate_server.review.dto.ProfileReviewSummaryResponse;
-import com.mindmate.mindmate_server.review.dto.ReviewReplyRequest;
 import com.mindmate.mindmate_server.review.dto.ReviewRequest;
 import com.mindmate.mindmate_server.review.dto.ReviewResponse;
 import com.mindmate.mindmate_server.review.service.ReviewService;
