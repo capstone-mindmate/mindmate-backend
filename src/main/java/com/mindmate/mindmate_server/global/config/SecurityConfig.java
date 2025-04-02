@@ -76,7 +76,7 @@ public class SecurityConfig {
                             ).permitAll() // 향후 수정 (api 접근, role 별 접근 등)
                         .requestMatchers("/api/profile/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
                         .requestMatchers("/api/chat/**", "/ws/**").hasAnyAuthority("ROLE_PROFILE", "ROLE_ADMIN")
-                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+//                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN") 나중에 admin 접근 제한 시 사용
                         .anyRequest().authenticated())
 //                .addFilterBefore(new RequestLoggingFilter(), UsernamePasswordAuthenticationFilter.class) // 모든 요청 로깅
 //                .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class) // 초당 50개 요청 제한

@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.matching.service;
 
 import com.mindmate.mindmate_server.matching.domain.InitiatorType;
+import com.mindmate.mindmate_server.matching.domain.Matching;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import com.mindmate.mindmate_server.matching.dto.*;
 import org.springframework.data.domain.Page;
@@ -34,4 +35,6 @@ public interface MatchingService {
     Page<MatchingResponse> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant);
 
     void closeMatching(Long userId, Long matchingId);
+
+    Matching findMatchingById(Long matchingId);
 }

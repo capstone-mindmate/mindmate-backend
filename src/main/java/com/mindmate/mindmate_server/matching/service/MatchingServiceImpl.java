@@ -395,4 +395,10 @@ public class MatchingServiceImpl implements MatchingService{
         // 채팅이 끝나면 상담횟수 +1 (리스너 역할에만?)
     }
 
+    @Override
+    public Matching findMatchingById(Long matchingId) {
+        return matchingRepository.findById(matchingId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+    }
+
 }
