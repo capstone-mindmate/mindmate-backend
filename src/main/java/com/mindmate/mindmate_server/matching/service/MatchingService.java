@@ -30,7 +30,7 @@ public interface MatchingService {
 
     Page<MatchingResponse> searchMatchings(Pageable pageable, MatchingSearchRequest request);
 
-    List<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId);
+    Page<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId, Pageable pageable);
 
     Page<MatchingResponse> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant);
 

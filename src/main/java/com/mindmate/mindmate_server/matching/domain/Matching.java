@@ -19,7 +19,10 @@ import java.util.List;
 import java.util.Set;
 
 @Entity
-@Table(name = "matchings")
+@Table(name = "matchings", indexes = {
+        @Index(name = "idx_matching_status_category", columnList = "status,category"),
+        @Index(name = "idx_matching_status_creatorRole", columnList = "status,creator_role")
+})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Matching extends BaseTimeEntity {
