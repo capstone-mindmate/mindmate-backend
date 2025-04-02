@@ -32,15 +32,6 @@ public class ReviewController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/reply")
-    public ResponseEntity<ReviewResponse> createReviewReply(
-            @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @RequestBody ReviewReplyRequest request) {
-
-        ReviewResponse response = reviewService.createReviewReply(userPrincipal.getUserId(), request);
-        return ResponseEntity.ok(response);
-    }
-
     @GetMapping("/chat-room/{chatRoomId}")
     public ResponseEntity<List<ReviewResponse>> getChatRoomReviews(
             @PathVariable Long chatRoomId) {

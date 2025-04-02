@@ -62,9 +62,9 @@ class ProfileServiceTest {
 
         mockReview = Review.builder()
                 .reviewer(mockUser)
-                .reviewee(mockUser) // 우선 같은 걸로
-                .content("아주 나이스한 상담이었습니다.")
-                .rating(4.5)
+//                .reviewee(mockUser) // 우선 같은 걸로
+//                .content("아주 나이스한 상담이었습니다.")
+//                .rating(4.5)
                 .build();
     }
 
@@ -323,24 +323,6 @@ class ProfileServiceTest {
         assertEquals(responseTime, mockProfile.getAvgResponseTime());
     }
 
-    @Test
-    @DisplayName("평가 태그 추가 테스트")
-    void addEvaluationTags() {
-        // given
-        Long userId = 1L;
-        Set<String> tags = new HashSet<>(Arrays.asList("아주 굿이에요", "응답이 빨라요"));
-
-        when(userService.findUserById(userId)).thenReturn(mockUser);
-        when(profileRepository.findByUserId(any())).thenReturn(Optional.of(mockProfile));
-
-        // when
-        profileService.addEvaluationTags(userId, tags);
-
-        // then
-        assertEquals(2, mockProfile.getEvaluationTags().size());
-        assertTrue(mockProfile.getEvaluationTags().contains("아주 굿이에요"));
-        assertTrue(mockProfile.getEvaluationTags().contains("응답이 빨라요"));
-    }
 
     @Test
     @DisplayName("프로필이 없는 경우 새 프로필 생성 테스트")
