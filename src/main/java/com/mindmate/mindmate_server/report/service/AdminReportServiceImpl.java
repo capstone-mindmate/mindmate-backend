@@ -24,7 +24,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class AdminServiceImpl implements AdminReportService {
+public class AdminReportServiceImpl implements AdminReportService {
     private final ReportRepository reportRepository;
     private final UserService userService;
     private final ReportService reportService;

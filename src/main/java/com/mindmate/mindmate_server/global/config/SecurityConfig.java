@@ -74,6 +74,7 @@ public class SecurityConfig {
                             "/swagger-resources/**",
                             "/v3/api-docs/**"
                             ).permitAll() // 향후 수정 (api 접근, role 별 접근 등)
+                        .requestMatchers("/api/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
                         .requestMatchers("/api/profile/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
                         .requestMatchers("/api/chat/**", "/ws/**").hasAnyAuthority("ROLE_PROFILE", "ROLE_ADMIN")
 //                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN") 나중에 admin 접근 제한 시 사용
