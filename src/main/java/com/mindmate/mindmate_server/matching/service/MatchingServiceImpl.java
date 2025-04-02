@@ -49,7 +49,7 @@ public class MatchingServiceImpl implements MatchingService{
                 .creator(user)
                 .title(request.getTitle())
                 .description(request.getDescription())
-                .categories(request.getMatchingCategories())
+                .category(request.getCategory())
                 .creatorRole(request.getCreatorRole())
                 .anonymous(request.isAnonymous())
                 .allowRandom(request.isAllowRandom())
@@ -200,16 +200,14 @@ public class MatchingServiceImpl implements MatchingService{
     }
 
     @Override
-//    @Transactional
+    @Transactional
     public MatchingDetailResponse updateMatching(Long userId, Long matchingId, MatchingUpdateRequest request) {
 
-        log.info("시작");
         User user = userService.findUserById(userId);
 
         Matching matching = matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
 
-        log.info("중간");
         if (!matching.isCreator(user)) {
             throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
         }
@@ -218,17 +216,15 @@ public class MatchingServiceImpl implements MatchingService{
             throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
         }
 
-        log.info("시작1");
         matching.updateMatchingInfo(
                 request.getTitle(),
                 request.getDescription(),
-                request.getMatchingCategories(),
+                request.getCategory(),
                 request.isAnonymous(),
                 request.isAllowRandom(),
                 request.isShowDepartment()
         );
 
-        log.info("끝");
         return MatchingDetailResponse.of(matching);
     }
 

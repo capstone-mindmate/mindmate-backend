@@ -37,14 +37,8 @@ public class Matching extends BaseTimeEntity {
     @Column(length = 100)
     private String description;
 
-    @ElementCollection
-    @CollectionTable(
-            name = "matching_categories",
-            joinColumns = @JoinColumn(name = "matching_id")
-    )
     @Enumerated(EnumType.STRING)
-    @Column(name = "category")
-    private Set<MatchingCategory> categories = new HashSet<>();
+    private MatchingCategory category;
 
     @Enumerated(EnumType.STRING)
     private MatchingStatus status;
@@ -70,7 +64,7 @@ public class Matching extends BaseTimeEntity {
     private List<WaitingUser> waitingUsers = new ArrayList<>();
 
     @Builder
-    public Matching(User creator, String title, String description, Set<MatchingCategory> categories, InitiatorType creatorRole, boolean anonymous, boolean allowRandom, boolean showDepartment) {
+    public Matching(User creator, String title, String description, MatchingCategory category, InitiatorType creatorRole, boolean anonymous, boolean allowRandom, boolean showDepartment) {
         this.creator = creator;
         this.title = title;
         this.description = description;
@@ -78,10 +72,7 @@ public class Matching extends BaseTimeEntity {
         this.anonymous = anonymous;
         this.allowRandom = allowRandom;
         this.showDepartment = showDepartment;
-
-        if (categories != null && !categories.isEmpty()) {
-            this.categories.addAll(categories);
-        }
+        this.category = category;
 
         this.status = MatchingStatus.OPEN;
     }
@@ -127,17 +118,12 @@ public class Matching extends BaseTimeEntity {
         return this.waitingUsers.size();
     }
 
-    public void updateMatchingInfo(String title, String description, Set<MatchingCategory> categories,
+    public void updateMatchingInfo(String title, String description, MatchingCategory category,
                                    boolean anonymous, boolean allowRandom, boolean showDepartment) {
 
         this.title = title;
         this.description = description;
-
-        this.categories.clear();
-        if (categories != null && !categories.isEmpty()) {
-            this.categories.addAll(categories);
-        }
-
+        this.category = category;
         this.anonymous = anonymous;
         this.allowRandom = allowRandom;
         this.showDepartment = showDepartment;

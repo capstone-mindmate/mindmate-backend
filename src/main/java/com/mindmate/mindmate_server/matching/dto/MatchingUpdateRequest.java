@@ -23,7 +23,7 @@ public class MatchingUpdateRequest {
     private String description;
 
     @NotNull(message = "카테고리는 필수 입력 항목입니다")
-    private Set<MatchingCategory> matchingCategories;
+    private MatchingCategory category;
 
     private boolean isAnonymous;
     private boolean allowRandom;

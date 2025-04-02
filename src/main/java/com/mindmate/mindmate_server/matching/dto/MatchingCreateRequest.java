@@ -25,7 +25,7 @@ public class MatchingCreateRequest {
     private String description;
 
     @NotNull(message = "고민 카테고리 선택은 필수입니다")
-    private Set<MatchingCategory> matchingCategories;
+    private MatchingCategory category;
 
     @NotNull(message = "역할 유형은 필수입니다")
     private InitiatorType creatorRole;
