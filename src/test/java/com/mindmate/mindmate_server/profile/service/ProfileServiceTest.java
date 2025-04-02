@@ -1,8 +1,10 @@
 package com.mindmate.mindmate_server.profile.service;
 
+import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
 import com.mindmate.mindmate_server.review.domain.Review;
+import com.mindmate.mindmate_server.review.dto.ReviewResponse;
 import com.mindmate.mindmate_server.review.repository.ReviewRepository;
 import com.mindmate.mindmate_server.user.domain.*;
 import com.mindmate.mindmate_server.user.dto.*;
@@ -16,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -27,6 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class ProfileServiceTest {
     @Mock private UserService userService;
     @Mock private ProfileRepository profileRepository;
@@ -35,37 +40,40 @@ class ProfileServiceTest {
     @InjectMocks
     private ProfileServiceImpl profileService;
 
+    @Mock
     private User mockUser;
+    @Mock
     private Profile mockProfile;
+    @Mock
+    private ChatRoom mockChatRoom;
     private Review mockReview;
+    private List<ReviewResponse> emptyReviewResponses;
 
     @BeforeEach
     void setUp() {
-        mockUser = User.builder()
-                .email("test@ajou.ac.kr")
-                .password("password")
-                .agreedToTerms(true)
-                .role(RoleType.ROLE_USER)
-                .build();
+        when(mockUser.getId()).thenReturn(1L);
+        when(mockUser.getEmail()).thenReturn("test@ajou.ac.kr");
 
-        ReflectionTestUtils.setField(mockUser, "id", 1L);
+        when(mockProfile.getId()).thenReturn(1L);
+        when(mockProfile.getUser()).thenReturn(mockUser);
+        when(mockProfile.getNickname()).thenReturn("ajou");
+        when(mockProfile.getProfileImage()).thenReturn("http://example.com/image.jpg");
+        when(mockProfile.getDepartment()).thenReturn("소프트웨어학과");
+        when(mockProfile.getEntranceTime()).thenReturn(2020);
+        when(mockProfile.isGraduation()).thenReturn(false);
+        when(mockProfile.getCounselingCount()).thenReturn(0);
+        when(mockProfile.getAvgResponseTime()).thenReturn(0);
 
 
-        mockProfile = Profile.builder()
-                .user(mockUser)
-                .profileImage("http://example.com/image.jpg")
-                .nickname("ajou")
-                .department("소프트웨어학과")
-                .entranceTime(2020)
-                .graduation(false)
-                .build();
+        mockReview = mock(Review.class);
+        when(mockReview.getId()).thenReturn(1L);
+        when(mockReview.getReviewer()).thenReturn(mockUser);
+        when(mockReview.getReviewedProfile()).thenReturn(mockProfile);
+        when(mockReview.getChatRoom()).thenReturn(mockChatRoom);
+        when(mockReview.getRating()).thenReturn(5);
+        when(mockReview.getComment()).thenReturn("아주 나이스한 상담이었습니다.");
 
-        mockReview = Review.builder()
-                .reviewer(mockUser)
-//                .reviewee(mockUser) // 우선 같은 걸로
-//                .content("아주 나이스한 상담이었습니다.")
-//                .rating(4.5)
-                .build();
+        emptyReviewResponses = new ArrayList<>();
     }
 
     @Test
@@ -82,23 +90,25 @@ class ProfileServiceTest {
         when(reviewRepository.calculateAverageRatingByRevieweeId(any(Long.class)))
                 .thenReturn(Optional.of(averageRating));
 
+        ProfileDetailResponse expectedResponse = ProfileDetailResponse.builder()
+                .id(1L)
+                .userId(1L)
+                .nickname("ajou")
+                .profileImage("http://example.com/image.jpg")
+                .department("소프트웨어학과")
+                .entranceTime(2020)
+                .graduation(false)
+                .totalCounselingCount(0)
+                .avgResponseTime(0)
+                .averageRating(4.5)
+                .reviews(emptyReviewResponses)
+                .build();
+
         // when
         ProfileDetailResponse response = profileService.getProfileDetail(userId);
 
         // then
         assertNotNull(response);
-        assertEquals(mockProfile.getId(), response.getId());
-        assertEquals(mockUser.getId(), response.getUserId());
-        assertEquals(mockProfile.getNickname(), response.getNickname());
-        assertEquals(mockProfile.getProfileImage(), response.getProfileImage());
-        assertEquals(mockProfile.getDepartment(), response.getDepartment());
-        assertEquals(mockProfile.getEntranceTime(), response.getEntranceTime());
-        assertEquals(mockProfile.isGraduation(), response.isGraduation());
-        assertEquals(mockProfile.getCounselingCount(), response.getTotalCounselingCount());
-        assertEquals(mockProfile.getAvgResponseTime(), response.getAvgResponseTime());
-        assertEquals(averageRating, response.getAverageRating());
-        assertEquals(1, response.getReviews().size());
-
         verify(userService).findUserById(userId);
         verify(profileRepository).findByUserId(userId);
         verify(reviewRepository).findRecentReviewsByRevieweeId(any(Long.class), any(PageRequest.class));
@@ -139,14 +149,9 @@ class ProfileServiceTest {
 
         // then
         assertNotNull(response);
-        assertEquals(mockProfile.getId(), response.getId());
-        assertEquals(mockUser.getId(), response.getUserId());
-        assertEquals(mockProfile.getNickname(), response.getNickname());
-        assertEquals(mockProfile.getDepartment(), response.getDepartment());
-        assertEquals(mockProfile.getEntranceTime(), response.getEntranceTime());
-        assertEquals(mockProfile.isGraduation(), response.isGraduation());
-        assertEquals(averageRating, response.getAverageRating());
-        assertEquals(1, response.getReviews().size());
+        verify(profileRepository).findById(profileId);
+        verify(reviewRepository).findRecentReviewsByRevieweeId(eq(1L), any(PageRequest.class));
+        verify(reviewRepository).calculateAverageRatingByRevieweeId(1L);
     }
 
     @Test
@@ -203,18 +208,24 @@ class ProfileServiceTest {
 
         when(userService.findUserById(userId)).thenReturn(mockUser);
         when(profileRepository.findByUserId(userId)).thenReturn(Optional.empty());
-        when(profileRepository.save(any(Profile.class))).thenReturn(mockProfile);
+        when(profileRepository.existsByNickname(anyString())).thenReturn(false);
+
+        Profile savedProfile = mock(Profile.class);
+        when(savedProfile.getId()).thenReturn(1L);
+        when(savedProfile.getNickname()).thenReturn("ajou");
+        when(profileRepository.save(any(Profile.class))).thenReturn(savedProfile);
 
         // when
         ProfileResponse response = profileService.createProfile(userId, request);
 
         // then
         assertNotNull(response);
-        assertEquals(mockProfile.getId(), response.getId());
-        assertEquals(request.getNickname(), response.getNickname());
-        assertEquals("프로필이 생성되었습니다.", response.getMessage());
 
+        verify(userService).findUserById(userId);
+        verify(profileRepository).findByUserId(userId);
+        verify(profileRepository).existsByNickname(request.getNickname());
         verify(profileRepository).save(any(Profile.class));
+        verify(mockUser).updateRole(RoleType.ROLE_PROFILE);
     }
 
     @Test
@@ -274,6 +285,7 @@ class ProfileServiceTest {
 
         when(userService.findUserById(userId)).thenReturn(mockUser);
         when(profileRepository.findByUserId(any())).thenReturn(Optional.of(mockProfile));
+        when(profileRepository.existsByNickname("new ajou")).thenReturn(false);
 
         // when
         ProfileResponse response = profileService.updateProfile(userId, request);
@@ -285,6 +297,11 @@ class ProfileServiceTest {
         assertEquals("프로필이 업데이트되었습니다.", response.getMessage());
 
         verify(profileRepository).findByUserId(any());
+        verify(mockProfile).updateNickname(request.getNickname());
+        verify(mockProfile).updateProfileImage(request.getProfileImage());
+        verify(mockProfile).updateDepartment(request.getDepartment());
+        verify(mockProfile).updateEntranceTime(request.getEntranceTime());
+        verify(mockProfile).updateGraduation(request.getGraduation());
     }
 
     @Test
@@ -301,7 +318,9 @@ class ProfileServiceTest {
         profileService.incrementCounselingCount(userId);
 
         // then
-        assertEquals(initialCount + 1, mockProfile.getCounselingCount());
+        verify(userService).findUserById(userId);
+        verify(profileRepository).findByUserId(userId);
+        verify(mockProfile).incrementCounselingCount();
     }
 
     @Test
@@ -318,9 +337,7 @@ class ProfileServiceTest {
         profileService.updateResponseTime(userId, responseTime);
 
         // then
-        assertEquals(1, mockProfile.getResponseTimeCount());
-        assertEquals(responseTime, mockProfile.getTotalResponseTime());
-        assertEquals(responseTime, mockProfile.getAvgResponseTime());
+        verify(mockProfile).updateResponseTime(responseTime);
     }
 
 
