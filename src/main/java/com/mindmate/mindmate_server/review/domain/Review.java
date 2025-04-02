@@ -44,15 +44,8 @@ public class Review extends BaseTimeEntity {
     @Column(length = 200)
     private String comment;
 
-    private boolean isReported = false; // todo : 향후 확장
-
     @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EvaluationTag> reviewTags = new ArrayList<>();
-
-    @Column(length = 200)
-    private String replyContent;
-
-    private LocalDateTime replyCreatedAt; // 필요?
 
     @Builder
     public Review(ChatRoom chatRoom, User reviewer, Profile reviewedProfile, int rating, String comment) {
@@ -69,17 +62,5 @@ public class Review extends BaseTimeEntity {
                 .tagContent(tag)
                 .build();
         this.reviewTags.add(reviewTag);
-    }
-
-    public void addReply(String content) {
-        if (this.replyContent != null) {
-            throw new CustomException(ReviewErrorCode.REPLY_ALREADY_EXISTS);
-        }
-        this.replyContent = content;
-        this.replyCreatedAt = LocalDateTime.now();
-    }
-
-    public boolean hasReply() {
-        return this.replyContent != null;
     }
 }

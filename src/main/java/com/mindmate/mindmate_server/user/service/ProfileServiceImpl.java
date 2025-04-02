@@ -17,8 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -133,7 +131,8 @@ public class ProfileServiceImpl implements ProfileService {
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
     }
 
-    private Profile findProfileById(Long profileId) {
+    @Override
+    public Profile findProfileById(Long profileId) {
         return profileRepository.findById(profileId)
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
     }

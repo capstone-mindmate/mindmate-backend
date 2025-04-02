@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.user.service;
 
 import com.mindmate.mindmate_server.auth.dto.TokenResponse;
+import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.dto.*;
 import org.springframework.data.domain.Page;
@@ -48,4 +49,7 @@ public interface ProfileService {
     void updateResponseTime(Long userId, Integer responseTime);
 
     // 인기 프로필??
+
+
+    Profile findProfileById(Long profileId);
 }

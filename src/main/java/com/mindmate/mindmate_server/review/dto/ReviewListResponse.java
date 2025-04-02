@@ -17,7 +17,6 @@ public class ReviewListResponse {
     private String comment;
     private List<String> tags;
     private LocalDateTime createdAt;
-    private boolean hasReply; // 그냥 있는지만 보여주기?
 
     public static ReviewListResponse from(Review review) {
         return ReviewListResponse.builder()
@@ -29,7 +28,6 @@ public class ReviewListResponse {
                         .map(tag -> tag.getTagContent().getContent())
                         .collect(Collectors.toList()))
                 .createdAt(review.getCreatedAt())
-                .hasReply(review.getReplyContent() != null)
                 .build();
     }
 }

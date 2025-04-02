@@ -2,7 +2,6 @@ package com.mindmate.mindmate_server.review.controller;
 
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import com.mindmate.mindmate_server.review.dto.ProfileReviewSummaryResponse;
-import com.mindmate.mindmate_server.review.dto.ReviewReplyRequest;
 import com.mindmate.mindmate_server.review.dto.ReviewRequest;
 import com.mindmate.mindmate_server.review.dto.ReviewResponse;
 import com.mindmate.mindmate_server.review.service.ReviewService;
@@ -30,15 +29,6 @@ public class ReviewController {
             @RequestBody ReviewRequest request) {
 
         ReviewResponse response = reviewService.createReview(userPrincipal.getUserId(), request);
-        return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/reply")
-    public ResponseEntity<ReviewResponse> createReviewReply(
-            @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @RequestBody ReviewReplyRequest request) {
-
-        ReviewResponse response = reviewService.createReviewReply(userPrincipal.getUserId(), request);
         return ResponseEntity.ok(response);
     }
 
