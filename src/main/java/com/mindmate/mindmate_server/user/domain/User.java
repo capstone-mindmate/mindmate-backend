@@ -10,6 +10,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -76,6 +77,10 @@ public class User extends BaseTimeEntity {
     private int dailyRejectionCount = 0;
     private LocalDate lastActionResetDate;
 
+    // 신고 관련 데이터 처리
+    private int reportCount = 0;
+    private LocalDateTime suspensionEndTime;
+
     @Builder
     public User(String email, String password, boolean agreedToTerms, RoleType role) {
         this.email = email;
@@ -132,6 +137,24 @@ public class User extends BaseTimeEntity {
 
         dailyRejectionCount++;
         return true;
+    }
+
+    public void incrementReportCount() {
+        this.reportCount++;
+    }
+
+    public void suspend(Duration duration) {
+        this.currentRole = RoleType.ROLE_SUSPENDED;
+        this.suspensionEndTime = LocalDateTime.now().plus(duration);
+    }
+
+    public void unsuspend() {
+        this.currentRole = RoleType.ROLE_PROFILE;
+        this.suspensionEndTime = null;
+    }
+
+    public void setReportCount(int reportCount) {
+        this.reportCount = reportCount;
     }
 
     private void checkAndResetLimits() {
