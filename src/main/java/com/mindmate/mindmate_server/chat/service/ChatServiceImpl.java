@@ -39,7 +39,6 @@ public class ChatServiceImpl implements ChatService {
     private final ObjectMapper objectMapper;
     private final RedisKeyManager redisKeyManager;
 
-    private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomService chatRoomService;
     private final UserService userService;
     private final ChatPresenceService chatPresenceService;
@@ -50,7 +49,8 @@ public class ChatServiceImpl implements ChatService {
      * 1. 읽음 안읽음 처리
      * 2. 알림 서비스
      * 3. 필터링 기반 토스트 박스
-     * todo: 사진 처리
+     * todo: 평균 응답 속도, 사진 처리, Redis/Kafka 장애 대처(재시도 매커니즘같은)
+     *
      */
     @Override
 //    @Transactional(propagation = Propagation.REQUIRED)
@@ -185,23 +185,23 @@ public class ChatServiceImpl implements ChatService {
 
     /**
      * todo: 굳이 redis 통해 이벤트 발행해야 하나??
-     * 사용하는 이유가 없는 것 같은데
-     * 이벤트 기반 아키텍처나 실시간 알림의 이유?
+     * 모니터링이나 관리자 알림 등
+     * 짧은 시간동아 ㄴ반복적인 위반을 감지하면 따로 조치를 한다든가
      */
-//    private void publishFilterEvent(Long roomId, Long senderId, String filteredContent) {
-//        // 필터링 결과 알림 이벤트 발행 (Redis)
-//        Map<String, Object> filterEvent = new HashMap<>();
-//        filterEvent.put("type", "CONTENT_FILTERED");
-//        filterEvent.put("roomId", roomId);
-//        filterEvent.put("senderId", senderId);
-//        filterEvent.put("content", filteredContent);
-//        filterEvent.put("timestamp", LocalDateTime.now());
-//
-//        String channel = redisKeyManager.getChatRoomChannel(roomId);
-//        try {
-//            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(filterEvent));
-//        } catch (JsonProcessingException e) {
-//            log.error("Error serializing filter event", e);
-//        }
-//    }
+    private void publishFilterEvent(Long roomId, Long senderId, String filteredContent) {
+        // 필터링 결과 알림 이벤트 발행 (Redis)
+        Map<String, Object> filterEvent = new HashMap<>();
+        filterEvent.put("type", "CONTENT_FILTERED");
+        filterEvent.put("roomId", roomId);
+        filterEvent.put("senderId", senderId);
+        filterEvent.put("content", filteredContent);
+        filterEvent.put("timestamp", LocalDateTime.now());
+
+        String channel = redisKeyManager.getChatRoomChannel(roomId);
+        try {
+            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(filterEvent));
+        } catch (JsonProcessingException e) {
+            log.error("Error serializing filter event", e);
+        }
+    }
 }

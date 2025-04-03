@@ -50,7 +50,7 @@ public class ChatPresenceService {
         status.put("online", isOnline);
         status.put("activeRoomId", activeRoomId);
         status.put("lastActive", LocalDateTime.now().toString());
-        status.put("status", isOnline ? "ONLINE" : "OFFLINE");  // ONLINE, AWAY 등
+        status.put("status", isOnline ? "ONLINE" : "OFFLINE");
 
         redisTemplate.opsForHash().putAll(statusKey, status);
 
@@ -155,22 +155,4 @@ public class ChatPresenceService {
                 unreadData
         );
     }
-
-//    public String getUserStatus(Long userId) {
-//        String statusKey = redisKeyManager.getUserStatusKey(userId);
-//        Boolean isOnline = (Boolean) redisTemplate.opsForHash().get(statusKey, "online");
-//        return Boolean.TRUE.equals(isOnline) ? "ONLINE" : "OFFLINE";
-//    }
-
-//        public void sendNotification(Long userId, Object notification) {
-//        messagingTemplate.convertAndSendToUser(
-//                userId.toString(),
-//                "/queue/notification",
-//                notification
-//        );
-//    }
-//
-//    public boolean shouldIncrementUnreadCount(Long userId, Long roomId) {
-//        return !isUserActiveInRoom(userId, roomId);
-//    }
 }
