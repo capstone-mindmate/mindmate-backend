@@ -69,14 +69,15 @@ public class MatchingController {
         return ResponseEntity.ok(updatedMatching);
     }
 
-    @GetMapping("/{matchingId}/waitingUsers")
-    public ResponseEntity<List<WaitingUserResponse>> getWaitingUsers(
+    @GetMapping("/matchings/{matchingId}/waiting-users")
+    public ResponseEntity<Page<WaitingUserResponse>> getWaitingUsers(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @PathVariable Long matchingId) {
-        List<WaitingUserResponse> waitingUsers = matchingService.getWaitingUsers(userPrincipal.getUserId(), matchingId);
+            @PathVariable Long matchingId,
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        Long userId = userPrincipal.getUserId();
+        Page<WaitingUserResponse> waitingUsers = matchingService.getWaitingUsers(userId, matchingId, pageable);
         return ResponseEntity.ok(waitingUsers);
     }
-
     @PostMapping("/{matchingId}/accept/{waitingId}")
     public ResponseEntity<Long> acceptMatching(
             @AuthenticationPrincipal UserPrincipal userPrincipal,

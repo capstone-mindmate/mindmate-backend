@@ -16,7 +16,7 @@ public class MatchingDetailResponse {
     private Long id;
     private String title;
     private String description;
-    private Set<MatchingCategory> categories;
+    private MatchingCategory category;
     private MatchingStatus status;
     private LocalDateTime createdAt;
     private int waitingCount;
@@ -62,7 +62,7 @@ public class MatchingDetailResponse {
                 .id(matching.getId())
                 .title(matching.getTitle())
                 .description(matching.getDescription())
-                .categories(matching.getCategories())
+                .category(matching.getCategory())
                 .status(matching.getStatus())
                 .createdAt(matching.getCreatedAt())
                 .waitingCount(matching.getWaitingUsersCount())

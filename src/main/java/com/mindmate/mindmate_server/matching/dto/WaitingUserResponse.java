@@ -28,7 +28,7 @@ public class WaitingUserResponse {
     private String waitingUserProfileImage;
     private String message;
     private WaitingStatus status;
-    private List<Tag> evaluationTags;
+//    private List<Tag> evaluationTags; // 이걸 보여줘야되나
     private LocalDateTime createdAt;
 
     public static WaitingUserResponse of(WaitingUser waitingUser) {

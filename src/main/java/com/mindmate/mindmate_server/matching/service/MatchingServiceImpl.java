@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class MatchingServiceImpl implements MatchingService{
+public class MatchingServiceImpl implements MatchingService {
 
     private final MatchingRepository matchingRepository;
     private final WaitingUserRepository waitingUserRepository;
@@ -49,7 +49,7 @@ public class MatchingServiceImpl implements MatchingService{
                 .creator(user)
                 .title(request.getTitle())
                 .description(request.getDescription())
-                .categories(request.getMatchingCategories())
+                .category(request.getCategory())
                 .creatorRole(request.getCreatorRole())
                 .anonymous(request.isAnonymous())
                 .allowRandom(request.isAllowRandom())
@@ -113,26 +113,9 @@ public class MatchingServiceImpl implements MatchingService{
 
     @Override @Transactional
     public Long acceptMatching(Long userId, Long matchingId, Long waitingId) {
-        User creator = userService.findUserById(userId);
+        Matching matching = validateOpenMatching(userId, matchingId);
+        WaitingUser waitingUser = validateWaitingUser(waitingId, matchingId);
 
-        Matching matching = matchingRepository.findById(matchingId)
-                .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
-
-        // 매칭방 소유자 확인
-        if (!matching.isCreator(creator)) {
-            throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
-        }
-
-        if (!matching.isOpen()) {
-            throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
-        }
-
-        WaitingUser waitingUser = waitingUserRepository.findById(waitingId)
-                .orElseThrow(() -> new CustomException(MatchingErrorCode.WAITING_NOT_FOUND));
-
-        if (!waitingUser.getMatching().getId().equals(matchingId)) {
-            throw new CustomException(MatchingErrorCode.INVALID_MATCHING_WAITING);
-        }
         waitingUser.accept();
 
         // 매칭 완료 처리ㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇ
@@ -158,6 +141,8 @@ public class MatchingServiceImpl implements MatchingService{
         }
 
         matchingRepository.save(matching);
+
+        redisMatchingService.cleanupMatchingKeys(matching);
         return matching.getId();
     }
 
@@ -175,8 +160,6 @@ public class MatchingServiceImpl implements MatchingService{
 
         Matching matching = matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
-
-        redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
 
         // 자동 매칭 신청
         WaitingUser waitingUser = WaitingUser.builder()
@@ -196,39 +179,26 @@ public class MatchingServiceImpl implements MatchingService{
             throw new CustomException(MatchingErrorCode.AUTO_MATCHING_FAILED);
         }
 
+        redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
+
         return matching.getChatRoom().getId();
     }
 
     @Override
-//    @Transactional
+    @Transactional
     public MatchingDetailResponse updateMatching(Long userId, Long matchingId, MatchingUpdateRequest request) {
 
-        log.info("시작");
-        User user = userService.findUserById(userId);
+        Matching matching = validateOpenMatching(userId, matchingId);
 
-        Matching matching = matchingRepository.findById(matchingId)
-                .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
-
-        log.info("중간");
-        if (!matching.isCreator(user)) {
-            throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
-        }
-
-        if (!matching.isOpen()) {
-            throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
-        }
-
-        log.info("시작1");
         matching.updateMatchingInfo(
                 request.getTitle(),
                 request.getDescription(),
-                request.getMatchingCategories(),
+                request.getCategory(),
                 request.isAnonymous(),
                 request.isAllowRandom(),
                 request.isShowDepartment()
         );
 
-        log.info("끝");
         return MatchingDetailResponse.of(matching);
     }
 
@@ -299,54 +269,34 @@ public class MatchingServiceImpl implements MatchingService{
 
     @Override
     public Page<MatchingResponse> searchMatchings(Pageable pageable, MatchingSearchRequest request) {
-        Page<Matching> matchings;
-        MatchingStatus status = MatchingStatus.OPEN;
-        String keyword = request.getKeyword() != null ? request.getKeyword().trim() : "";
-
-        if (keyword.isEmpty()) {
-            return getMatchings(pageable, request.getCategory(), request.getDepartment(), request.getRequiredRole());
-        }
-
-        if (request.getCategory() != null || request.getDepartment() != null || request.getRequiredRole() != null) {
-            InitiatorType targetCreatorRole = null;
-
-            if (request.getRequiredRole() != null) {
-                targetCreatorRole = request.getRequiredRole() == InitiatorType.SPEAKER
-                        ? InitiatorType.LISTENER
-                        : InitiatorType.SPEAKER;
-            }
-
-            matchings = matchingRepository.searchByKeywordWithFilters(
-                    status,
-                    keyword,
-                    request.getCategory(),
-                    request.getDepartment(),
-                    targetCreatorRole,
-                    pageable
-            );
-        } else {
-            matchings = matchingRepository.searchByKeyword(status, keyword, pageable);
-        }
+        Page<Matching> matchings = matchingRepository.searchMatchingsWithFilters(
+                MatchingStatus.OPEN,
+                request.getKeyword(),
+                request.getCategory(),
+                request.getDepartment(),
+                request.getRequiredRole() != null
+                        ? (request.getRequiredRole() == InitiatorType.SPEAKER ? InitiatorType.LISTENER : InitiatorType.SPEAKER)
+                        : null,
+                pageable
+        );
 
         return matchings.map(MatchingResponse::of);
     }
 
     @Override
-    public List<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId) {
+    public Page<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId, Pageable pageable) {
         User user = userService.findUserById(userId);
 
-        Matching Matching = matchingRepository.findById(matchingId)
+        Matching matching = matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
 
         // 매칭방 소유자 확인
-        if (!Matching.isCreator(user)) {
+        if (!matching.isCreator(user)) {
             throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
         }
 
-        List<WaitingUser> waitingUsers = waitingUserRepository.findByMatchingWithWaitingUserProfile(Matching);
-        return waitingUsers.stream()
-                .map(WaitingUserResponse::of)
-                .collect(Collectors.toList());
+        Page<WaitingUser> waitingUsers = waitingUserRepository.findByMatchingWithWaitingUserProfile(matching, pageable);
+        return waitingUsers.map(WaitingUserResponse::of);
     }
 
     @Override
@@ -393,12 +343,48 @@ public class MatchingServiceImpl implements MatchingService{
         redisMatchingService.decrementUserActiveMatchingCount(userId);
         redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
         // 채팅이 끝나면 상담횟수 +1 (리스너 역할에만?)
+
+        redisMatchingService.cleanupMatchingKeys(matching);
     }
 
     @Override
     public Matching findMatchingById(Long matchingId) {
         return matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+    }
+
+    private Matching validateMatchingOwnership(Long userId, Long matchingId) {
+        User user = userService.findUserById(userId);
+
+        Matching matching = matchingRepository.findById(matchingId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+
+        if (!matching.isCreator(user)) {
+            throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
+        }
+
+        return matching;
+    }
+
+    private Matching validateOpenMatching(Long userId, Long matchingId) {
+        Matching matching = validateMatchingOwnership(userId, matchingId);
+
+        if (!matching.isOpen()) {
+            throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
+        }
+
+        return matching;
+    }
+
+    private WaitingUser validateWaitingUser(Long waitingId, Long matchingId) {
+        WaitingUser waitingUser = waitingUserRepository.findById(waitingId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.WAITING_NOT_FOUND));
+
+        if (!waitingUser.getMatching().getId().equals(matchingId)) {
+            throw new CustomException(MatchingErrorCode.INVALID_MATCHING_WAITING);
+        }
+
+        return waitingUser;
     }
 
 }

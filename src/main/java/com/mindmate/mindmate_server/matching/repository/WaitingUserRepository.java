@@ -4,6 +4,8 @@ import com.mindmate.mindmate_server.matching.domain.Matching;
 import com.mindmate.mindmate_server.matching.domain.MatchingStatus;
 import com.mindmate.mindmate_server.matching.domain.WaitingUser;
 import com.mindmate.mindmate_server.user.domain.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,5 +25,5 @@ public interface WaitingUserRepository extends JpaRepository<WaitingUser, Long> 
             "JOIN FETCH u.profile p " +
             "WHERE ma.matching = :matching " +
             "ORDER BY ma.createdAt DESC")
-    List<WaitingUser> findByMatchingWithWaitingUserProfile(@Param("matching") Matching matching);
+    Page<WaitingUser> findByMatchingWithWaitingUserProfile(@Param("matching") Matching matching, Pageable pageable);
 }

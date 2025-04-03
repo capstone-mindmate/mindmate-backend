@@ -24,13 +24,13 @@ public interface MatchingService {
     void cancelWaiting(Long userId, Long waitingUserId);
 
     Page<MatchingResponse> getMatchings(Pageable pageable, MatchingCategory category,
-                                        String department, InitiatorType requiredRole);
+                                                        String department, InitiatorType requiredRole);
 
     MatchingDetailResponse getMatchingDetail(Long matchingId);
 
     Page<MatchingResponse> searchMatchings(Pageable pageable, MatchingSearchRequest request);
 
-    List<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId);
+    Page<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId, Pageable pageable);
 
     Page<MatchingResponse> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant);
 

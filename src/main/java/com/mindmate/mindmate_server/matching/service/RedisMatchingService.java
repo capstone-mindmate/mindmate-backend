@@ -17,8 +17,10 @@ public class RedisMatchingService {
     private final static String USER_ACTIVE_MATCHING_COUNT = "user:%d:activeMatchings";
 
     public void addMatchingToAvailableSet(Matching matching) {
-        String setKey = String.format(MATCHING_SET_KEY, matching.getCreatorRole());
+        String setKey = buildKey(MATCHING_SET_KEY, matching.getCreatorRole());
         redisTemplate.opsForSet().add(setKey, matching.getId().toString());
+
+        setExpiry(setKey, 24);
     }
 
     public Long getRandomMatching(InitiatorType userRole) {
@@ -38,27 +40,46 @@ public class RedisMatchingService {
     }
 
     public void removeMatchingFromAvailableSet(Long matchingId, InitiatorType creatorRole) {
-        String setKey = String.format(MATCHING_SET_KEY, creatorRole);
+        String setKey = buildKey(MATCHING_SET_KEY, creatorRole);
         redisTemplate.opsForSet().remove(setKey, matchingId.toString());
     }
 
     // 매칭 가능한 방 수??
 
     public void incrementUserActiveMatchingCount(Long userId) {
-        String key = String.format(USER_ACTIVE_MATCHING_COUNT, userId);
+        String key = buildKey(USER_ACTIVE_MATCHING_COUNT, userId);
         redisTemplate.opsForValue().increment(key);
-        redisTemplate.expire(key, 24, TimeUnit.HOURS);
+        setExpiry(key, 24);
     }
 
     public void decrementUserActiveMatchingCount(Long userId) {
-        String key = String.format(USER_ACTIVE_MATCHING_COUNT, userId);
+        String key = buildKey(USER_ACTIVE_MATCHING_COUNT, userId);
         redisTemplate.opsForValue().decrement(key);
     }
 
     public int getUserActiveMatchingCount(Long userId) {
-        String key = String.format(USER_ACTIVE_MATCHING_COUNT, userId);
+        String key = buildKey(USER_ACTIVE_MATCHING_COUNT, userId);
         Object count = redisTemplate.opsForValue().get(key);
         return count != null ? Integer.parseInt(count.toString()) : 0;
     }
+
+    private String buildKey(String pattern, Object... args) {
+        return String.format(pattern, args);
+    }
+
+    private void setExpiry(String key, int hours) {
+        redisTemplate.expire(key, hours, TimeUnit.HOURS);
+    }
+
+
+    public void cleanupMatchingKeys(Matching matching) {
+
+        if (!matching.isOpen()) {
+            String setKey = buildKey(MATCHING_SET_KEY, matching.getCreatorRole());
+            redisTemplate.opsForSet().remove(setKey, matching.getId());
+        }
+    }
+
+    // 사용자 로그아웃 or 세션 종료될 때 count 캐시 지우는 것도?
 
 }

@@ -16,7 +16,7 @@ public class MatchingEventConsumer {
     private final WaitingUserRepository waitingUserRepository;
     private final RedisMatchingService redisMatchingService;
 
-    @KafkaListener(topics = "matching-accepted", groupId = "matching-gruop")
+    @KafkaListener(topics = "matching-accepted", groupId = "matching-group")
     @Transactional
     public void handleMatchingAccepted(MatchingAcceptedEvent event){
         event.getPendingWaitingUserIds().forEach(waitingUserId -> {
