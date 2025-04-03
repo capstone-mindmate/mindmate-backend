@@ -1,7 +1,7 @@
 package com.mindmate.mindmate_server.chat.service;
 
+import com.mindmate.mindmate_server.chat.dto.ChatEventType;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
-import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -20,9 +20,8 @@ public class ChatPresenceService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final SimpMessagingTemplate messagingTemplate;
     private final RedisKeyManager redisKeyManager;
+    private final ChatEventPublisher eventPublisher;
 
-    private final UserService userService;
-    private final ChatRoomService chatRoomService;
     /**
      * Redis 값 관리 정리
      * [사용자 상태]
@@ -60,8 +59,7 @@ public class ChatPresenceService {
             redisTemplate.expire(statusKey, 30, TimeUnit.MINUTES);
         }
 
-        String channel = redisKeyManager.getUserStatusChannel(userId);
-        redisTemplate.convertAndSend(channel, status);
+        eventPublisher.publishUserEvent(userId, ChatEventType.USER_STATUS, status);
     }
 
     public Long getActiveRoom(Long userId) {
@@ -111,31 +109,6 @@ public class ChatPresenceService {
         log.info("Incremented unread count in Redis for user {} in room {} to {}", userId, roomId, count);
         return count;
     }
-
-    // db 관련은 여기서 처리하지 않도록 설정
-//    @Transactional
-//    public void incrementUnreadCount(Long roomId, Long userId) {
-//        ChatRoom chatRoom = chatRoomService.findChatRoomById(roomId);
-//        // Redis 업데이트
-//        String unreadKey = redisKeyManager.getUnreadCountKey(roomId, userId);
-//        Long count = redisTemplate.opsForValue().increment(unreadKey);
-//        User user = userService.findUserById(userId);
-//
-//        // WebSocket 알림
-//        notifyUnreadCount(roomId, userId, count);
-//
-//        log.info("Before increase: {}", chatRoom.getListenerUnreadCount());
-//        // DB 업데이트 (트랜잭션 내에서)
-//        chatRoom.increaseUnreadCount(user);
-////            chatRoom.increaseUnreadCountForSpeaker();
-////        } else {
-////            chatRoom.increaseUnreadCountForListener();
-////        }
-//
-////        chatRoomRepository.saveAndFlush(chatRoom);
-//        chatRoomService.save(chatRoom);
-//        log.info("Incremented unread count for user {} in room {} to {}", userId, roomId, count);
-//    }
 
     public void resetUnreadCount(Long roomId, Long userId) {
         String unreadKey = redisKeyManager.getUnreadCountKey(roomId, userId);

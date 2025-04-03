@@ -496,27 +496,67 @@ function handleReactionEvent(message) {
         console.log("Reaction data:", data);
 
         // MessageReactionResponse 구조에 맞게 처리
-        if (data.messageId && data.userId && data.reactionType) {
+        if (data.messageId) {
             const messageId = data.messageId;
             const messageElement = document.querySelector(`.message-container[data-message-id="${messageId}"]`);
 
             if (messageElement) {
-                const reactionType = data.reactionType;
-                const reactionButton = messageElement.querySelector(`.reaction-button[onclick*="${reactionType}"]`);
-
-                if (reactionButton) {
-                    const countSpan = reactionButton.querySelector('.reaction-count');
-                    let count = parseInt(countSpan.textContent || '0');
-
-                    if (data.userId == userId) {
-                        messageElement.querySelectorAll('.reaction-button').forEach(btn => btn.classList.remove('active'));
-                        reactionButton.classList.add('active');
+                // 사용자가 감정표현을 제거한 경우 (id가 null인 경우)
+                if (data.id === null && data.userId == userId) {
+                    // 해당 타입의 버튼에서 active 클래스 제거
+                    const reactionType = data.reactionType;
+                    const reactionButton = messageElement.querySelector(`.reaction-button[onclick*="${reactionType}"]`);
+                    
+                    if (reactionButton) {
+                        reactionButton.classList.remove('active');
+                        // 카운트 감소
+                        const countSpan = reactionButton.querySelector('.reaction-count');
+                        let count = parseInt(countSpan.textContent || '0');
+                        count = Math.max(0, count - 1);
+                        countSpan.textContent = count > 0 ? count : '';
                     }
-
-                    count += 1;
-                    countSpan.textContent = count > 0 ? count : '';
-                    logMessage(`${data.userName}님이 메시지 ${messageId}에 ${reactionType} 반응을 추가했습니다`, "info");
                 }
+                // 새 감정표현 추가 또는 변경
+                else if (data.id !== null) {
+                    const reactionType = data.reactionType;
+                    
+                    // 현재 사용자의 반응인 경우, 이전 active 상태 제거 및 새 버튼 active 설정
+                    if (data.userId == userId) {
+                        // 이전에 active 상태였던 버튼 찾기
+                        const previousActive = messageElement.querySelector('.reaction-button.active');
+                        if (previousActive) {
+                            // 이전 버튼의 active 제거 및 카운트 감소
+                            previousActive.classList.remove('active');
+                            const prevCountSpan = previousActive.querySelector('.reaction-count');
+                            let prevCount = parseInt(prevCountSpan.textContent || '0');
+                            prevCount = Math.max(0, prevCount - 1);
+                            prevCountSpan.textContent = prevCount > 0 ? prevCount : '';
+                        }
+                        
+                        // 새 버튼 active 설정
+                        const reactionButton = messageElement.querySelector(`.reaction-button[onclick*="${reactionType}"]`);
+                        if (reactionButton) {
+                            reactionButton.classList.add('active');
+                            // 카운트 증가
+                            const countSpan = reactionButton.querySelector('.reaction-count');
+                            let count = parseInt(countSpan.textContent || '0');
+                            count += 1;
+                            countSpan.textContent = count > 0 ? count : '';
+                        }
+                    }
+                    // 다른 사용자의 반응인 경우, 해당 버튼의 카운트만 증가
+                    else {
+                        const reactionButton = messageElement.querySelector(`.reaction-button[onclick*="${reactionType}"]`);
+                        if (reactionButton) {
+                            const countSpan = reactionButton.querySelector('.reaction-count');
+                            let count = parseInt(countSpan.textContent || '0');
+                            count += 1;
+                            countSpan.textContent = count > 0 ? count : '';
+                        }
+                    }
+                }
+                
+                logMessage(`${data.userName || '사용자'}님이 메시지 ${messageId}에 ${data.reactionType} 반응을 ${data.id === null ? '제거' : '추가'}했습니다`, "info");
             } else {
                 logMessage(`메시지 ID ${messageId}에 대한 요소를 찾을 수 없습니다`, "warning");
                 fetchMessages(); // 메시지 목록 새로고침
@@ -528,6 +568,7 @@ function handleReactionEvent(message) {
         console.error("Error processing reaction:", e);
     }
 }
+
 
 // 커스텀폼 이벤트 핸들러
 function handleCustomFormEvent(message) {

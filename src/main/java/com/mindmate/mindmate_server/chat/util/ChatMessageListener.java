@@ -3,6 +3,7 @@ package com.mindmate.mindmate_server.chat.util;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindmate.mindmate_server.chat.dto.ChatEventType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;
@@ -30,7 +31,6 @@ public class ChatMessageListener implements MessageListener {
         try {
             String channel = new String(message.getChannel());
             String payload = new String(message.getBody());
-
             log.debug("Received Redis message on channel: {}", channel);
 
             if (channel.startsWith("chat:room:")) {
@@ -49,62 +49,60 @@ public class ChatMessageListener implements MessageListener {
      */
     private void handleChatRoomMessage(String channel, String payload) throws JsonProcessingException {
         String roomId = channel.split(":")[2];
-        log.info("Processing message for room {}: {}", roomId, payload);
 
         try {
-            JsonNode eventNode = objectMapper.readTree(payload);
-            // 이중 직렬화 문제 해결을 위한 추가 처리
-            if (eventNode.isTextual()) {
-                // 문자열인 경우 한 번 더 파싱 시도
-                try {
-                    eventNode = objectMapper.readTree(eventNode.asText());
-                    log.info("Successfully parsed nested JSON: {}", eventNode);
-                } catch (Exception e) {
-                    log.warn("Failed to parse as nested JSON, proceeding with original: {}", e.getMessage());
-                }
-            }
+            JsonNode eventNode = parseJsonSafely(payload);
 
             if (eventNode.has("type")) {
                 String eventType = eventNode.get("type").asText();
-                log.info("Event type detected: {}", eventType);
+                String destination = getDestinationByEventType(roomId, eventType);
+                String data = objectMapper.writeValueAsString(eventNode.get("data"));
+                messagingTemplate.convertAndSend(destination, data);
 
-                switch (eventType) {
-                    case "READ_STATUS":
-                        messagingTemplate.convertAndSend(
-                                "/topic/chat.room." + roomId + ".read",
-                                objectMapper.writeValueAsString(eventNode.get("data"))
-                        );
-                        break;
-                    case "REACTION":
-                        messagingTemplate.convertAndSend(
-                                "/topic/chat.room." + roomId + ".reaction",
-                                objectMapper.writeValueAsString(eventNode.get("data"))
-                        );
-                        break;
-                    case "CUSTOM_FORM":
-                    case "CUSTOM_FORM_RESPONSE":
-                        messagingTemplate.convertAndSend(
-                                "/topic/chat.room." + roomId + ".customform",
-                                objectMapper.writeValueAsString(eventNode.get("data"))
-                        );
-                        break;
-                    case "MESSAGE":
-                        messagingTemplate.convertAndSend(
-                                "/topic/chat.room." + roomId,
-                                objectMapper.writeValueAsString(eventNode.get("data"))
-                        );
-                        break;
-                    default:
-                        messagingTemplate.convertAndSend("/topic/chat.room." + roomId, payload);
-                        break;
-                }
             } else {
                 log.info("No event type found, sending to main channel: /topic/chat.room.{}", roomId);
                 messagingTemplate.convertAndSend("/topic/chat.room." + roomId, payload);
             }
         } catch (Exception e) {
-            log.error("Error parsing message: {}", e.getMessage());
-            messagingTemplate.convertAndSend("/topic/chat.room." + roomId, payload);
+            log.error("Error handling chat room message: {}", e.getMessage());
+        }
+    }
+
+    private JsonNode parseJsonSafely(String payload) throws JsonProcessingException {
+        JsonNode eventNode = objectMapper.readTree(payload);
+
+        // 이중 직렬화 문제 해결을 위한 추가 처리
+        if (eventNode.isTextual()) {
+            try {
+                return objectMapper.readTree(eventNode.asText());
+            } catch (Exception e) {
+                log.warn("Failed to parse as nested JSON: {}", e.getMessage());
+            }
+        }
+
+        return eventNode;
+    }
+
+    private String getDestinationByEventType(String roomId, String eventType) {
+        try {
+            ChatEventType type = ChatEventType.valueOf(eventType);
+
+            switch (type) {
+                case MESSAGE:
+                    return "/topic/chat.room." + roomId;
+                case READ_STATUS:
+                    return "/topic/chat.room." + roomId + ".read";
+                case REACTION:
+                    return "/topic/chat.room." + roomId + ".reaction";
+                case CUSTOM_FORM:
+                case CUSTOM_FORM_RESPONSE:
+                    return "/topic/chat.room." + roomId + ".customform";
+                default:
+                    return "/topic/chat.room." + roomId;
+            }
+        } catch (IllegalArgumentException e) {
+            log.warn("Unknown event type: {}", eventType);
+            return "/topic/chat.room." + roomId;
         }
     }
 
@@ -114,10 +112,12 @@ public class ChatMessageListener implements MessageListener {
     /**
      * 사용자 상태 메시지: 상태 변경 알림 전송
      */
-    private void handleUserStatusMessage(String channel, String payload) throws JsonProcessingException {
-        String userId = channel.split(":")[2];
-
-        // 사용자 상태 변경 알림
-        messagingTemplate.convertAndSend("/topic/user/" + userId + "/status", payload);
+    private void handleUserStatusMessage(String channel, String payload) {
+        try {
+            String userId = channel.split(":")[2];
+            messagingTemplate.convertAndSend("/topic/user/" + userId + "/status", payload);
+        } catch (Exception e) {
+            log.error("Error handling user status message: {}", e.getMessage());
+        }
     }
 }
