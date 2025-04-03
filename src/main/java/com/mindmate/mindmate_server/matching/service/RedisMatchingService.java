@@ -73,10 +73,10 @@ public class RedisMatchingService {
 
 
     public void cleanupMatchingKeys(Matching matching) {
-        String setKey = buildKey(MATCHING_SET_KEY, matching.getCreatorRole());
 
         if (!matching.isOpen()) {
-            redisTemplate.delete(setKey);
+            String setKey = buildKey(MATCHING_SET_KEY, matching.getCreatorRole());
+            redisTemplate.opsForSet().remove(setKey, matching.getId());
         }
     }
 

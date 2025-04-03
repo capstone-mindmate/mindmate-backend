@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class MatchingServiceImpl implements MatchingService{
+public class MatchingServiceImpl implements MatchingService {
 
     private final MatchingRepository matchingRepository;
     private final WaitingUserRepository waitingUserRepository;
@@ -161,8 +161,6 @@ public class MatchingServiceImpl implements MatchingService{
         Matching matching = matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
 
-        redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
-
         // 자동 매칭 신청
         WaitingUser waitingUser = WaitingUser.builder()
                 .waitingUser(user)
@@ -180,6 +178,8 @@ public class MatchingServiceImpl implements MatchingService{
             log.error("자동 매칭 수락 실패: {}", e.getMessage());
             throw new CustomException(MatchingErrorCode.AUTO_MATCHING_FAILED);
         }
+
+        redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
 
         return matching.getChatRoom().getId();
     }

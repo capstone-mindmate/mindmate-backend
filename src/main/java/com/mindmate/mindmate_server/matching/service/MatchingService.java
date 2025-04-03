@@ -24,7 +24,7 @@ public interface MatchingService {
     void cancelWaiting(Long userId, Long waitingUserId);
 
     Page<MatchingResponse> getMatchings(Pageable pageable, MatchingCategory category,
-                                        String department, InitiatorType requiredRole);
+                                                        String department, InitiatorType requiredRole);
 
     MatchingDetailResponse getMatchingDetail(Long matchingId);
 
