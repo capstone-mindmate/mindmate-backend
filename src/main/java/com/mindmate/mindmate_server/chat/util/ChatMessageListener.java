@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 public class ChatMessageListener implements MessageListener {
     private final SimpMessagingTemplate messagingTemplate;
     private final ObjectMapper objectMapper;
+    private final WebSocketDestinationResolver webSocketDestinationResolver;
 
     /**
      * Redis 채널에서 메시지 수신
@@ -55,7 +56,7 @@ public class ChatMessageListener implements MessageListener {
 
             if (eventNode.has("type")) {
                 String eventType = eventNode.get("type").asText();
-                String destination = getDestinationByEventType(roomId, eventType);
+                String destination = webSocketDestinationResolver.getDestinationByEventType(roomId, eventType);
                 String data = objectMapper.writeValueAsString(eventNode.get("data"));
                 messagingTemplate.convertAndSend(destination, data);
 
@@ -82,31 +83,6 @@ public class ChatMessageListener implements MessageListener {
 
         return eventNode;
     }
-
-    private String getDestinationByEventType(String roomId, String eventType) {
-        try {
-            ChatEventType type = ChatEventType.valueOf(eventType);
-
-            switch (type) {
-                case MESSAGE:
-                    return "/topic/chat.room." + roomId;
-                case READ_STATUS:
-                    return "/topic/chat.room." + roomId + ".read";
-                case REACTION:
-                    return "/topic/chat.room." + roomId + ".reaction";
-                case CUSTOM_FORM:
-                case CUSTOM_FORM_RESPONSE:
-                    return "/topic/chat.room." + roomId + ".customform";
-                default:
-                    return "/topic/chat.room." + roomId;
-            }
-        } catch (IllegalArgumentException e) {
-            log.warn("Unknown event type: {}", eventType);
-            return "/topic/chat.room." + roomId;
-        }
-    }
-
-
 
 
     /**
