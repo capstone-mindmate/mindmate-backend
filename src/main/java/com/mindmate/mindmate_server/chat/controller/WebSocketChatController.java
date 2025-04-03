@@ -40,18 +40,35 @@ public class WebSocketChatController {
 
     /**
      * websocket을 통한 메시지 전송
+     * 1. 메시지 필터링/DB 저장 (동기)
+     * 2. Redis Pub/Sub으로 실시간 메시지 전달
+     * 3. Kafka로 비동기 처리 이벤트 발행
      */
     @MessageMapping("/chat.send")
-    public void sendMessage(
-            @Payload ChatMessageRequest request,
-            Principal principal) {
+    public void sendMessage(@Payload ChatMessageRequest request, Principal principal) {
         Long userId = Long.parseLong(principal.getName());
         ChatMessageResponse response = chatService.sendMessage(userId, request);
-        messagingTemplate.convertAndSend("/topic/chat.room." + request.getRoomId(), response);
+
+        String channel = redisKeyManager.getChatRoomChannel(request.getRoomId());
+        try {
+            Map<String, Object> messageEvent = new HashMap<>();
+            messageEvent.put("type", "MESSAGE");
+            messageEvent.put("data", response);
+
+            String messageJson = objectMapper.writeValueAsString(messageEvent);
+            log.info("Publishing to Redis channel {}: {}", channel, messageJson);
+
+            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(messageEvent));
+        } catch (JsonProcessingException e) {
+            log.error("메시지 전송 Redis 퍼블리싱 과정 중 에러가 발생했습니다.");
+            messagingTemplate.convertAndSend("/topic/chat.room." + request.getRoomId(), response);
+        }
     }
+
 
     /**
      * 사용자 상태 업데이트
+     * Redis에 상태 저장 및 Pub/Sub 알림
      */
     @MessageMapping("/presence")
     public void updatePresence(
@@ -59,6 +76,7 @@ public class WebSocketChatController {
             Principal principal) {
         Long userId = Long.parseLong(principal.getName());
         boolean isOnline = "ONLINE".equals(presenceRequest.getStatus());
+
         chatPresenceService.updateUserStatus(
                 userId,
                 isOnline,
@@ -71,39 +89,9 @@ public class WebSocketChatController {
     }
 
     /**
-     * 타이핑 상태 알림??
-     * 사용자가 메시지 입력 중인거 알릴건가?
-     * todo : 관련 로직 삭제
-     */
-    @MessageMapping("/chat.typing")
-    public void notifyTyping(
-            @Payload TypingRequest request,
-            Principal principal) {
-        Long userId = Long.parseLong(principal.getName());
-
-//         타이핑 상태 정보 생성
-        TypingNotification notification = TypingNotification.builder()
-                .roomId(request.getRoomId())
-                .userId(userId)
-                .typing(request.isTyping())
-                .build();
-        String channel = redisKeyManager.getChatRoomChannel(request.getRoomId());
-        try {
-            Map<String, Object> typingEvent = new HashMap<>();
-            typingEvent.put("type", "TYPING_STATUS");
-            typingEvent.put("data", notification);
-
-            // Spring 메시징 기능을 사용하여 Websocket을 통해 클라이언트에게 메시지 전송
-            // 전송 객체를 websocket 메시지 형식으로 변환 + destination으로 전송 + 지정 주제를 구독하고 있는 모든 클라이언트에게 메시지 브로드캐스트
-            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(typingEvent));
-        } catch (JsonProcessingException e) {
-            log.error("Error serializing typing event", e);
-        }
-    }
-
-    /**
      * 읽음 상태 업데이트 (WebSocket)
-     * - 실시간으로 메시지 읽음 상태 업데이트
+     * 1. DB 업데이트 및 Redis 캐시 갱신
+     * 2. Redis Pub/Sub으로 실시간 읽음 상태 알림 -> 읽음 UI 처리?
      */
     @MessageMapping("/chat.read")
     public void markAsRead(
@@ -119,12 +107,22 @@ public class WebSocketChatController {
                 .timestamp(LocalDateTime.now())
                 .build();
 
-        // 해당 채팅방의 모든 참가자에게 읽음 상태 전송
-        messagingTemplate.convertAndSend("/topic/chat.room." + request.getRoomId() + ".read", notification);
+        String channel = redisKeyManager.getChatRoomChannel(request.getRoomId());
+        try {
+            Map<String, Object> readEvent = new HashMap<>();
+            readEvent.put("type", "READ_STATUS");
+            readEvent.put("data", notification);
+
+            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(readEvent));
+        } catch (JsonProcessingException e) {
+            log.error("읽음 상태 Reids 퍼블리싱 과정 중 에러가 발생했습니다.");
+            messagingTemplate.convertAndSend("/topic/chat.room." + request.getRoomId() + ".read", notification);
+        }
     }
 
     /**
      * 채팅에 감정표현 추가
+     * Redis Pub/Sub을 통해 실시간 반응 전달
      */
     @MessageMapping("/chat.reaction")
     public void handleReaction(
@@ -136,14 +134,22 @@ public class WebSocketChatController {
                 userId, request.getMessageId(), request.getReactionType()
         );
 
-        messagingTemplate.convertAndSend(
-                "/topic/chat.room." + request.getRoomId() + ".reaction",
-                response
-        );
+        String channel = redisKeyManager.getChatRoomChannel(request.getRoomId());
+        try {
+            Map<String, Object> reactionEvent = new HashMap<>();
+            reactionEvent.put("type", "REACTION");
+            reactionEvent.put("data", response);
+
+            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(reactionEvent));
+        } catch (JsonProcessingException e) {
+            log.error("감정 표현 반응 이벤트 Redis 퍼블리싱 과정 중 에러가 발생했습니다.", e);
+            messagingTemplate.convertAndSend("/topic/chat.room." + request.getRoomId() + ".reaction", response);
+        }
     }
 
     /**
      * 커스텀폼 생성
+     * Redis Pub/Sub으로 실시간 폼 전달
      */
     @MessageMapping("/chat.customform.create")
     public void createCustomForm(
@@ -151,11 +157,22 @@ public class WebSocketChatController {
             Principal principal) {
         Long userId = Long.parseLong(principal.getName());
         CustomFormResponse response = customFormService.createCustomForm(userId, request);
-        messagingTemplate.convertAndSend("/topic/chat.room." + request.getChatRoomId() + ".customform", response);
+
+        String channel = redisKeyManager.getChatRoomChannel(request.getChatRoomId());
+        try {
+            Map<String, Object> formEvent = new HashMap<>();
+            formEvent.put("type", "CUSTOM_FORM");
+            formEvent.put("data", response);
+            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(formEvent));
+        } catch (JsonProcessingException e) {
+            log.error("커스텀폼 Redis 퍼블리싱 과정 중 에러가 발생했습니다.", e);
+            messagingTemplate.convertAndSend("/topic/chat.room." + request.getChatRoomId() + ".customform", response);
+        }
     }
 
     /**
      * 커스텀폼 응답 제출
+     * Redis Pub/Sub을 통한 실시간 응답 전달
      */
     @MessageMapping("/chat.customform.respond")
     public void respondToCustomForm(
@@ -163,7 +180,17 @@ public class WebSocketChatController {
             Principal principal) {
         Long userId = Long.parseLong(principal.getName());
         CustomFormResponse response = customFormService.respondToCustomForm(request.getFormId(), userId, request);
-        messagingTemplate.convertAndSend("/topic/chat.room." + response.getChatRoomId() + ".customform", response);
-    }
 
+        String channel = redisKeyManager.getChatRoomChannel(response.getChatRoomId());
+        try {
+            Map<String, Object> formResponseEvent = new HashMap<>();
+            formResponseEvent.put("type", "CUSTOM_FORM_RESPONSE");
+            formResponseEvent.put("data", response);
+
+            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(formResponseEvent));
+        } catch (JsonProcessingException e) {
+            log.error("커스텀폼 응답 Redis 퍼블리싱 과정 중 에러가 발생했습니다.", e);
+            messagingTemplate.convertAndSend("/topic/chat.room." + response.getChatRoomId() + ".customform", response);
+        }
+    }
 }
