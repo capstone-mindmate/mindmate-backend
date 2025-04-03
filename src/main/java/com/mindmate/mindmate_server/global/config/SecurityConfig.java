@@ -94,7 +94,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:8080",
-                "http://localhost:49170",
+                "http://localhost:63342",
                 "ws://localhost:8080",
                 "wss://localhost:8080"
         ));

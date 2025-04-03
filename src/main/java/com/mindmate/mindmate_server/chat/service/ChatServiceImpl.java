@@ -1,15 +1,12 @@
 package com.mindmate.mindmate_server.chat.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.domain.FilteringWordCategory;
+import com.mindmate.mindmate_server.chat.dto.ChatEventType;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
-import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
-import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
@@ -18,14 +15,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -36,10 +30,9 @@ import java.util.concurrent.TimeUnit;
 public class ChatServiceImpl implements ChatService {
     private final KafkaTemplate<String, ChatMessageEvent> kafkaTemplate;
     private final RedisTemplate<String, Object> redisTemplate;
-    private final ObjectMapper objectMapper;
     private final RedisKeyManager redisKeyManager;
+    private final ChatEventPublisher eventPublisher;
 
-    private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomService chatRoomService;
     private final UserService userService;
     private final ChatPresenceService chatPresenceService;
@@ -50,7 +43,8 @@ public class ChatServiceImpl implements ChatService {
      * 1. 읽음 안읽음 처리
      * 2. 알림 서비스
      * 3. 필터링 기반 토스트 박스
-     * todo: 사진 처리
+     * todo: 평균 응답 속도, 사진 처리, Redis/Kafka 장애 대처(재시도 매커니즘같은)
+     *
      */
     @Override
 //    @Transactional(propagation = Propagation.REQUIRED)
@@ -103,21 +97,6 @@ public class ChatServiceImpl implements ChatService {
         String key = redisKeyManager.getReadStatusKey(roomId, userId);
         redisTemplate.opsForValue().set(key, LocalDateTime.now().toString());
         redisTemplate.expire(key, 1, TimeUnit.DAYS);
-
-
-        // Redis를 통한 이벤트 발행 제거 -> Kafka가 어차피 처리
-//        Map<String, Object> readEvent = new HashMap<>();
-//        readEvent.put("type", "READ_STATUS");
-//        readEvent.put("roomId", roomId);
-//        readEvent.put("userId", userId);
-//        readEvent.put("timestamp", LocalDateTime.now());
-//
-//        String channel = redisKeyManager.getChatRoomChannel(roomId);
-//        try {
-//            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(readEvent));
-//        } catch (JsonProcessingException e) {
-//            log.error("Error serializing read event", e);
-//        }
         return 0;
     }
 
@@ -172,36 +151,15 @@ public class ChatServiceImpl implements ChatService {
                 "[%s 관련 부적절한 내용이 감지되었습니다]",
                 filteringWordCategory.getDescription());
 
-//        publishFilterEvent(chatRoom.getId(), sender.getId(), filteredContent);
-
-        return ChatMessageResponse.filteredResponse(
+        ChatMessageResponse response = ChatMessageResponse.filteredResponse(
                 chatRoom.getId(),
                 sender.getId(),
                 sender.getProfile().getNickname(),
                 filteredContent,
                 request.getType()
         );
-    }
 
-    /**
-     * todo: 굳이 redis 통해 이벤트 발행해야 하나??
-     * 사용하는 이유가 없는 것 같은데
-     * 이벤트 기반 아키텍처나 실시간 알림의 이유?
-     */
-//    private void publishFilterEvent(Long roomId, Long senderId, String filteredContent) {
-//        // 필터링 결과 알림 이벤트 발행 (Redis)
-//        Map<String, Object> filterEvent = new HashMap<>();
-//        filterEvent.put("type", "CONTENT_FILTERED");
-//        filterEvent.put("roomId", roomId);
-//        filterEvent.put("senderId", senderId);
-//        filterEvent.put("content", filteredContent);
-//        filterEvent.put("timestamp", LocalDateTime.now());
-//
-//        String channel = redisKeyManager.getChatRoomChannel(roomId);
-//        try {
-//            redisTemplate.convertAndSend(channel, objectMapper.writeValueAsString(filterEvent));
-//        } catch (JsonProcessingException e) {
-//            log.error("Error serializing filter event", e);
-//        }
-//    }
+        eventPublisher.publishChatRoomEvent(chatRoom.getId(), ChatEventType.CONTENT_FILTERED, response);
+        return response;
+    }
 }
