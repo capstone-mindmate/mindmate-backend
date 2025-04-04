@@ -34,7 +34,7 @@ public interface MatchingService {
 
     Page<MatchingResponse> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant);
 
-    void closeMatching(Long userId, Long matchingId);
+    void cancelMatching(Long userId, Long matchingId);
 
     Matching findMatchingById(Long matchingId);
 }

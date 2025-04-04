@@ -62,7 +62,7 @@ public class WaitingUser extends BaseTimeEntity {
     }
 
     public boolean isAutoMatching() {
-        return this.matchingType == MatchingType.AUTO_FORMAT;
+        return this.matchingType == MatchingType.AUTO_RANDOM;
     }
 
 }
