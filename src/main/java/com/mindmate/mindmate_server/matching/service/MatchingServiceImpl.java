@@ -16,6 +16,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -118,31 +120,34 @@ public class MatchingServiceImpl implements MatchingService {
 
         waitingUser.accept();
 
-        // 매칭 완료 처리ㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇ
         matching.acceptMatching(waitingUser.getWaitingUser());
         matchingRepository.save(matching);
 
-        // 대기자는 비동기로 처리
         List<Long> pendingWaitingUserIds = waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching)
                 .stream()
                 .filter(app -> !app.getId().equals(waitingId) && app.getStatus() == WaitingStatus.PENDING)
                 .map(WaitingUser::getId)
                 .collect(Collectors.toList());
 
-        if (!pendingWaitingUserIds.isEmpty()) {
-            MatchingAcceptedEvent event = MatchingAcceptedEvent.builder()
-                    .matchingId(matchingId)
-                    .creatorId(userId)
-                    .acceptedUserId(waitingUser.getWaitingUser().getId())
-                    .pendingWaitingUserIds(pendingWaitingUserIds)
-                    .build();
-
-            matchingEventProducer.publishMatchingAccepted(event);
-        }
-
-        matchingRepository.save(matching);
-
         redisMatchingService.cleanupMatchingKeys(matching);
+
+        if (!pendingWaitingUserIds.isEmpty()) {
+            final Long acceptedUserId = waitingUser.getWaitingUser().getId();
+
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    MatchingAcceptedEvent event = MatchingAcceptedEvent.builder()
+                            .matchingId(matchingId)
+                            .creatorId(userId)
+                            .acceptedUserId(waitingUser.getWaitingUser().getId())
+                            .pendingWaitingUserIds(pendingWaitingUserIds)
+                            .build();
+
+                    matchingEventProducer.publishMatchingAccepted(event);
+                }
+            });
+        }
         return matching.getId();
     }
 
