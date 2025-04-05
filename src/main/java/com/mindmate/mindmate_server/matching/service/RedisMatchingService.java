@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.matching.service;
 
 import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import com.mindmate.mindmate_server.matching.domain.Matching;
+import com.mindmate.mindmate_server.matching.repository.MatchingRepository;
 import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.User;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RedisMatchingService {
     private final StringRedisTemplate redisTemplate;
-    private final MatchingService matchingService;
+    private final MatchingRepository matchingRepository;
 
     private static final String MATCHING_SET_KEY = "matching:available:%s";
     private final static String USER_ACTIVE_MATCHING_COUNT = "user:%d:activeMatchings";
@@ -111,45 +112,18 @@ public class RedisMatchingService {
         }
 
         Map<Long, Double> scoredMatches = new HashMap<>();
-        Profile userProfile = user.getProfile();
 
         for (String candidateId : candidateIds) {
             try {
                 Long matchingId = Long.valueOf(candidateId);
-                Matching matching = matchingService.findMatchingById(matchingId);
+                Matching matching =  matchingRepository.findById(matchingId).orElse(null);
 
                 if (matching == null || !matching.isOpen() || !matching.isAllowRandom()) {
                     redisTemplate.opsForSet().remove(setKey, candidateId);
                     continue;
                 }
 
-                double score = 0.0;
-
-                // 가중치 계산
-                if (userProfile != null) {
-                    User creator = matching.getCreator();
-                    Profile creatorProfile = creator.getProfile();
-
-                    if (creatorProfile != null) {
-                        // 점수는 임의로 설정했음
-                        if (!userProfile.getDepartment().isEmpty() &&
-                                userProfile.getDepartment().equals(creatorProfile.getDepartment())) {
-                            score += 20.0;
-                        }
-
-                        else if (!userProfile.getDepartment().isEmpty() &&
-                                !creatorProfile.getDepartment().isEmpty() &&
-                                isSameCollege(userProfile.getDepartment(), creatorProfile.getDepartment())) {
-                            score += 15.0;
-                        }
-
-                        int yearDiff = Math.abs(userProfile.getEntranceTime() - creatorProfile.getEntranceTime());
-                        score += Math.max(0, 20 - yearDiff * 5); // 차이가 클수록 감점
-                    }
-                }
-
-                score += Math.random() * 10;
-
+                double score = calculateMatchingScore(user, matching);
                 scoredMatches.put(matchingId, score);
             } catch (Exception e) {
                 log.error("계산 오류: {}", candidateId, e);
@@ -167,6 +141,36 @@ public class RedisMatchingService {
 
         int randomIndex = (int)(Math.random() * topMatches.size());
         return topMatches.get(randomIndex).getKey();
+    }
+
+    private double calculateMatchingScore(User user, Matching matching) {
+
+        double score = 0.0;
+        Profile userProfile = user.getProfile();
+
+        if (userProfile != null) {
+            User creator = matching.getCreator();
+            Profile creatorProfile = creator.getProfile();
+
+            if (creatorProfile != null) {
+                if (!userProfile.getDepartment().isEmpty() &&
+                        userProfile.getDepartment().equals(creatorProfile.getDepartment())) {
+                    score += 20.0;
+                }
+                else if (!userProfile.getDepartment().isEmpty() &&
+                        !creatorProfile.getDepartment().isEmpty() &&
+                        isSameCollege(userProfile.getDepartment(), creatorProfile.getDepartment())) {
+                    score += 15.0;
+                }
+
+                int yearDiff = Math.abs(userProfile.getEntranceTime() - creatorProfile.getEntranceTime());
+                score += Math.max(0, 20 - yearDiff * 5);
+            }
+        }
+
+        score += Math.random() * 10;
+
+        return score;
     }
 
     private boolean isSameCollege(String dept1, String dept2) {

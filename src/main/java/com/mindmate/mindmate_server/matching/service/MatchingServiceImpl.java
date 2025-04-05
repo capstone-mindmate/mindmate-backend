@@ -149,10 +149,14 @@ public class MatchingServiceImpl implements MatchingService {
     @Override @Transactional
     public Long autoMatchApply(Long userId, AutoMatchingRequest request) {
         InitiatorType userRole = request.getUserRole();
-
         User user = userService.findUserById(userId);
 
-        Long matchingId = redisMatchingService.getRandomMatching(userRole);
+        int activeRoomCount = redisMatchingService.getUserActiveMatchingCount(userId);
+        if (activeRoomCount >= 3) {
+            throw new CustomException(MatchingErrorCode.MATCHING_LIMIT_EXCEED);
+        }
+
+        Long matchingId = redisMatchingService.getRandomMatching(user, userRole);
 
         if (matchingId == null) {
             throw new CustomException(MatchingErrorCode.NO_MATCHING_AVAILABLE);
