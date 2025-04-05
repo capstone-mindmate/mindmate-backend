@@ -36,6 +36,8 @@ public class MatchingServiceImpl implements MatchingService {
 
     private final MatchingEventProducer matchingEventProducer;
 
+    private static final int  MAX_ACTIVE_MATCHINGS = 3;
+
     // 매칭 생성 -> + 채팅 생성
     @Override @Transactional
     public MatchingCreateResponse createMatching(Long userId, MatchingCreateRequest request) {
@@ -43,7 +45,7 @@ public class MatchingServiceImpl implements MatchingService {
 
         // 활성화된 매칭 수 카운트
         int activeRoomCount = redisMatchingService.getUserActiveMatchingCount(userId);
-        if (activeRoomCount >= 3) {
+        if (activeRoomCount >= MAX_ACTIVE_MATCHINGS) {
             throw new CustomException(MatchingErrorCode.MATCHING_LIMIT_EXCEED);
         }
 
@@ -58,13 +60,13 @@ public class MatchingServiceImpl implements MatchingService {
                 .showDepartment(request.isShowDepartment())
                 .build();
 
-        matchingRepository.save(matching);
+        Matching saved = matchingRepository.save(matching);
 
         ChatRoom chatRoom = chatRoomService.createChatRoom(matching);
 
         matching.setChatRoom(chatRoom);
 
-        Long matchingId = matchingRepository.save(matching).getId();
+        Long matchingId = saved.getId();
 
         if(request.isAllowRandom()){
             redisMatchingService.addMatchingToAvailableSet(matching);
@@ -132,21 +134,7 @@ public class MatchingServiceImpl implements MatchingService {
         redisMatchingService.cleanupMatchingKeys(matching);
 
         if (!pendingWaitingUserIds.isEmpty()) {
-            final Long acceptedUserId = waitingUser.getWaitingUser().getId();
-
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    MatchingAcceptedEvent event = MatchingAcceptedEvent.builder()
-                            .matchingId(matchingId)
-                            .creatorId(userId)
-                            .acceptedUserId(waitingUser.getWaitingUser().getId())
-                            .pendingWaitingUserIds(pendingWaitingUserIds)
-                            .build();
-
-                    matchingEventProducer.publishMatchingAccepted(event);
-                }
-            });
+            publishAcceptEventAfterCommit(matching, waitingUser, pendingWaitingUserIds);
         }
         return matching.getId();
     }
@@ -157,7 +145,7 @@ public class MatchingServiceImpl implements MatchingService {
         User user = userService.findUserById(userId);
 
         int activeRoomCount = redisMatchingService.getUserActiveMatchingCount(userId);
-        if (activeRoomCount >= 3) {
+        if (activeRoomCount >= MAX_ACTIVE_MATCHINGS) {
             throw new CustomException(MatchingErrorCode.MATCHING_LIMIT_EXCEED);
         }
 
@@ -395,5 +383,22 @@ public class MatchingServiceImpl implements MatchingService {
 
         return waitingUser;
     }
+
+    private void publishAcceptEventAfterCommit(Matching matching, WaitingUser waitingUser, List<Long> others) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                matchingEventProducer.publishMatchingAccepted(
+                        MatchingAcceptedEvent.builder()
+                                .matchingId(matching.getId())
+                                .creatorId(matching.getCreator().getId())
+                                .acceptedUserId(waitingUser.getWaitingUser().getId())
+                                .pendingWaitingUserIds(others)
+                                .build()
+                );
+            }
+        });
+    }
+
 
 }

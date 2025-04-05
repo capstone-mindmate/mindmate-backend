@@ -34,8 +34,7 @@ public class MatchingEventConsumer {
                     log.info("거절 완료: waitingUserId={}", waitingUserId);
                 }
             } catch (Exception e) {
-                log.error("거절 실패: waitingUserId={}, error={}",
-                        waitingUserId, e.getMessage());
+                log.error("거절 실패: waitingUserId={}", waitingUserId, e);
             }
         });
     }
