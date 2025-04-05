@@ -12,6 +12,7 @@ import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -26,6 +28,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -77,6 +81,8 @@ class MatchingServiceImplTest {
     private ChatRoom chatRoom;
 
     private LocalDateTime now = LocalDateTime.now();
+
+    private MockedStatic<TransactionSynchronizationManager> mockedStatic;
 
     @BeforeEach
     void setUp() {
@@ -141,6 +147,21 @@ class MatchingServiceImplTest {
         when(waitingUser.getStatus()).thenReturn(WaitingStatus.PENDING);
         when(waitingUser.isOwner(eq(applicant))).thenReturn(true);
         when(waitingUser.isOwner(eq(creator))).thenReturn(false);
+
+        mockedStatic = mockStatic(TransactionSynchronizationManager.class);
+        mockedStatic.when(() -> TransactionSynchronizationManager.registerSynchronization(any(TransactionSynchronization.class)))
+                .thenAnswer(invocation -> {
+                    TransactionSynchronization synchronization = invocation.getArgument(0);
+                    synchronization.afterCommit();
+                    return null;
+                });
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (mockedStatic != null) {
+            mockedStatic.close();
+        }
     }
 
     @Nested
@@ -177,7 +198,7 @@ class MatchingServiceImplTest {
             verify(userService).findUserById(1L);
             verify(redisMatchingService).getUserActiveMatchingCount(1L);
             verify(chatRoomService).createChatRoom(any(Matching.class));
-            verify(matchingRepository, times(2)).save(any(Matching.class));
+            verify(matchingRepository, times(1)).save(any(Matching.class));
             verify(redisMatchingService).incrementUserActiveMatchingCount(1L);
         }
 
@@ -269,7 +290,7 @@ class MatchingServiceImplTest {
             when(closedMatching.getCreator()).thenReturn(creator);
             when(closedMatching.isCreator(any(User.class))).thenReturn(false);
             when(closedMatching.isOpen()).thenReturn(false);
-            when(closedMatching.getStatus()).thenReturn(MatchingStatus.CLOSED);
+            when(closedMatching.getStatus()).thenReturn(MatchingStatus.CANCELED);
 
             given(userService.findUserById(2L)).willReturn(applicant);
             given(matchingRepository.findById(2L)).willReturn(Optional.of(closedMatching));
@@ -341,8 +362,8 @@ class MatchingServiceImplTest {
             verify(matchingRepository).findById(1L);
             verify(waitingUserRepository).findById(1L);
             verify(waitingUserRepository).findByMatchingOrderByCreatedAtDesc(matching);
-            verify(matchingEventProducer).publishMatchingAccepted(any(MatchingAcceptedEvent.class));
             verify(matching).acceptMatching(applicant);
+            verify(matchingEventProducer).publishMatchingAccepted(any(MatchingAcceptedEvent.class));
             verify(redisMatchingService).cleanupMatchingKeys(matching);
         }
 
@@ -400,6 +421,103 @@ class MatchingServiceImplTest {
 
             verify(matchingRepository).findById(1L);
             verify(waitingUserRepository).findById(2L);
+        }
+    }
+
+    @Nested
+    @DisplayName("자동 매칭 신청 테스트")
+    class AutoMatchApplyTest {
+
+        @Test
+        @DisplayName("자동 매칭 신청 성공")
+        void autoMatchApplySuccess() {
+            // given
+            AutoMatchingRequest request = new AutoMatchingRequest(
+                    InitiatorType.LISTENER,
+                    false,
+                    true
+            );
+
+            MatchingServiceImpl spyMatchingService = spy(matchingService);
+
+            given(userService.findUserById(2L)).willReturn(applicant);
+            given(redisMatchingService.getUserActiveMatchingCount(2L)).willReturn(0);
+            given(redisMatchingService.getRandomMatching(eq(applicant), eq(InitiatorType.LISTENER)))
+                    .willReturn(1L);
+            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+            WaitingUser autoWaitingUser = mock(WaitingUser.class);
+            when(autoWaitingUser.getId()).thenReturn(1L);
+            when(autoWaitingUser.getWaitingUser()).thenReturn(applicant);
+            when(autoWaitingUser.getMatching()).thenReturn(matching);
+            when(autoWaitingUser.getMatchingType()).thenReturn(MatchingType.AUTO_RANDOM);
+            when(autoWaitingUser.isAnonymous()).thenReturn(false);
+
+            given(waitingUserRepository.save(any(WaitingUser.class))).willReturn(autoWaitingUser);
+
+            doReturn(1L).when(spyMatchingService).acceptMatching(1L, 1L, 1L);
+
+            // when
+            Long chatRoomId = spyMatchingService.autoMatchApply(2L, request);
+
+            // then
+            assertThat(chatRoomId).isEqualTo(1L); // ChatRoom ID 반환 확인
+
+            verify(userService).findUserById(2L);
+            verify(redisMatchingService).getUserActiveMatchingCount(2L);
+            verify(redisMatchingService).getRandomMatching(applicant, InitiatorType.LISTENER);
+            verify(matchingRepository).findById(1L);
+            verify(waitingUserRepository).save(any(WaitingUser.class));
+            verify(spyMatchingService).acceptMatching(anyLong(), anyLong(), anyLong());
+            verify(redisMatchingService).removeMatchingFromAvailableSet(1L, InitiatorType.SPEAKER);
+        }
+
+        @Test
+        @DisplayName("활성 매칭 수 초과 시 예외 발생")
+        void autoMatchExceedActiveMatchings() {
+            // given
+            AutoMatchingRequest request = new AutoMatchingRequest(
+                    InitiatorType.LISTENER,
+                    false,
+                    true
+            );
+
+            given(userService.findUserById(2L)).willReturn(applicant);
+            given(redisMatchingService.getUserActiveMatchingCount(2L)).willReturn(3);
+
+            // when & then
+            assertThatThrownBy(() -> matchingService.autoMatchApply(2L, request))
+                    .isInstanceOf(CustomException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.MATCHING_LIMIT_EXCEED);
+
+            verify(userService).findUserById(2L);
+            verify(redisMatchingService).getUserActiveMatchingCount(2L);
+            verify(redisMatchingService, never()).getRandomMatching(any(), any());
+        }
+
+        @Test
+        @DisplayName("매칭 가능한 상대가 없을 때 예외 발생")
+        void autoMatchNoMatchingAvailable() {
+            // given
+            AutoMatchingRequest request = new AutoMatchingRequest(
+                    InitiatorType.LISTENER,
+                    false,
+                    true
+            );
+
+            given(userService.findUserById(2L)).willReturn(applicant);
+            given(redisMatchingService.getUserActiveMatchingCount(2L)).willReturn(0);
+            given(redisMatchingService.getRandomMatching(eq(applicant), eq(InitiatorType.LISTENER)))
+                    .willReturn(null);
+
+            // when & then
+            assertThatThrownBy(() -> matchingService.autoMatchApply(2L, request))
+                    .isInstanceOf(CustomException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.NO_MATCHING_AVAILABLE);
+
+            verify(userService).findUserById(2L);
+            verify(redisMatchingService).getUserActiveMatchingCount(2L);
+            verify(redisMatchingService).getRandomMatching(applicant, InitiatorType.LISTENER);
         }
     }
 
@@ -484,15 +602,15 @@ class MatchingServiceImplTest {
                     false
             );
 
-            Matching closedMatching = mock(Matching.class);
-            when(closedMatching.getId()).thenReturn(2L);
-            when(closedMatching.getCreator()).thenReturn(creator);
-            when(closedMatching.isCreator(creator)).thenReturn(true);
-            when(closedMatching.isOpen()).thenReturn(false);
-            when(closedMatching.getStatus()).thenReturn(MatchingStatus.CLOSED);
+            Matching canceledMatching = mock(Matching.class);
+            when(canceledMatching.getId()).thenReturn(2L);
+            when(canceledMatching.getCreator()).thenReturn(creator);
+            when(canceledMatching.isCreator(creator)).thenReturn(true);
+            when(canceledMatching.isOpen()).thenReturn(false);
+            when(canceledMatching.getStatus()).thenReturn(MatchingStatus.CANCELED);
 
             given(userService.findUserById(1L)).willReturn(creator);
-            given(matchingRepository.findById(2L)).willReturn(Optional.of(closedMatching));
+            given(matchingRepository.findById(2L)).willReturn(Optional.of(canceledMatching));
 
             // when & then
             assertThatThrownBy(() -> matchingService.updateMatching(1L, 2L, request))
@@ -891,12 +1009,12 @@ class MatchingServiceImplTest {
     }
 
     @Nested
-    @DisplayName("매칭 종료 테스트")
-    class CloseMatchingTest {
+    @DisplayName("매칭 취소 테스트")
+    class CancelMatchingTest {
 
         @Test
-        @DisplayName("매칭 종료 성공")
-        void closeMatchingSuccess() {
+        @DisplayName("매칭 취소 성공")
+        void cancelMatchingSuccess() {
             // given
             List<WaitingUser> waitingUsers = new ArrayList<>();
             waitingUsers.add(waitingUser);
@@ -907,28 +1025,28 @@ class MatchingServiceImplTest {
                     .willReturn(waitingUsers);
 
             // when
-            matchingService.closeMatching(1L, 1L);
+            matchingService.cancelMatching(1L, 1L);
 
             // then
             verify(userService).findUserById(1L);
             verify(matchingRepository).findById(1L);
             verify(waitingUserRepository).findByMatchingOrderByCreatedAtDesc(matching);
             verify(waitingUser).reject();
-            verify(matching).closeMatching();
+            verify(matching).cancelMatching();
             verify(redisMatchingService).decrementUserActiveMatchingCount(1L);
             verify(redisMatchingService).removeMatchingFromAvailableSet(1L, InitiatorType.SPEAKER);
             verify(redisMatchingService).cleanupMatchingKeys(matching);
         }
 
         @Test
-        @DisplayName("매칭 소유자가 아닌 사용자가 종료 시 예외 발생")
-        void closeMatchingNotOwner() {
+        @DisplayName("매칭 소유자가 아닌 사용자가 취소 시 예외 발생")
+        void cancelMatchingNotOwner() {
             // given
             given(userService.findUserById(2L)).willReturn(applicant);
             given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
 
             // when & then
-            assertThatThrownBy(() -> matchingService.closeMatching(2L, 1L))
+            assertThatThrownBy(() -> matchingService.cancelMatching(2L, 1L))
                     .isInstanceOf(CustomException.class)
                     .hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.NOT_MATCHING_OWNER);
 
@@ -938,22 +1056,22 @@ class MatchingServiceImplTest {
         }
 
         @Test
-        @DisplayName("이미 닫힌 매칭 종료 시 예외 발생")
-        void closeAlreadyClosed() {
+        @DisplayName("이미 닫힌 매칭 취소 시 예외 발생")
+        void cancelAlreadyCanceled() {
             // given
-            Matching closedMatching = mock(Matching.class);
-            when(closedMatching.getId()).thenReturn(2L);
-            when(closedMatching.getCreator()).thenReturn(creator);
-            when(closedMatching.getCreatorRole()).thenReturn(InitiatorType.SPEAKER);
-            when(closedMatching.isCreator(creator)).thenReturn(true);
-            when(closedMatching.isOpen()).thenReturn(false);
-            when(closedMatching.getStatus()).thenReturn(MatchingStatus.CLOSED);
+            Matching canceledMatching = mock(Matching.class);
+            when(canceledMatching.getId()).thenReturn(2L);
+            when(canceledMatching.getCreator()).thenReturn(creator);
+            when(canceledMatching.getCreatorRole()).thenReturn(InitiatorType.SPEAKER);
+            when(canceledMatching.isCreator(creator)).thenReturn(true);
+            when(canceledMatching.isOpen()).thenReturn(false);
+            when(canceledMatching.getStatus()).thenReturn(MatchingStatus.CANCELED);
 
             given(userService.findUserById(1L)).willReturn(creator);
-            given(matchingRepository.findById(2L)).willReturn(Optional.of(closedMatching));
+            given(matchingRepository.findById(2L)).willReturn(Optional.of(canceledMatching));
 
             // when & then
-            assertThatThrownBy(() -> matchingService.closeMatching(1L, 2L))
+            assertThatThrownBy(() -> matchingService.cancelMatching(1L, 2L))
                     .isInstanceOf(CustomException.class)
                     .hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.MATCHING_ALREADY_CLOSED);
 

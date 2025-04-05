@@ -23,12 +23,14 @@ public class RedisMatchingService {
 
     private static final String MATCHING_SET_KEY = "matching:available:%s";
     private final static String USER_ACTIVE_MATCHING_COUNT = "user:%d:activeMatchings";
+    private static final int DEFAULT_EXPIRY_HOURS = 24;
+
 
     public void addMatchingToAvailableSet(Matching matching) {
         String setKey = buildKey(MATCHING_SET_KEY, matching.getCreatorRole());
         redisTemplate.opsForSet().add(setKey, matching.getId().toString());
 
-        setExpiry(setKey, 24);
+        setExpiry(setKey, DEFAULT_EXPIRY_HOURS);
     }
 
 //    public Long getRandomMatching(InitiatorType userRole) {
@@ -57,7 +59,7 @@ public class RedisMatchingService {
     public void incrementUserActiveMatchingCount(Long userId) {
         String key = buildKey(USER_ACTIVE_MATCHING_COUNT, userId);
         redisTemplate.opsForValue().increment(key);
-        setExpiry(key, 24);
+        setExpiry(key, DEFAULT_EXPIRY_HOURS);
     }
 
     public void decrementUserActiveMatchingCount(Long userId) {
