@@ -19,9 +19,7 @@ public interface MagazineService {
 
     Magazine findMagazineById(Long magazineId);
 
-    MagazineResponse publishMagazine(Long magazineId);
-
-    MagazineResponse rejectMagazine(Long magazineId);
+    MagazineResponse manageMagazine(Long magazineId, boolean isAccepted);
 
     Page<MagazineResponse> getPendingMagazines(Pageable pageable);
 }

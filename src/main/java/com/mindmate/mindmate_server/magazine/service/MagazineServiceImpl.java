@@ -94,21 +94,19 @@ public class MagazineServiceImpl implements MagazineService {
 
     @Override
     @Transactional
-    public MagazineResponse publishMagazine(Long magazineId) {
+    public MagazineResponse manageMagazine(Long magazineId, boolean isAccepted) {
         Magazine magazine = findMagazineById(magazineId);
-        magazine.setStatus(MagazineStatus.PUBLISHED);
 
-        return MagazineResponse.from(magazineRepository.save(magazine));
-    }
+        if (magazine.getMagazineStatus().equals(MagazineStatus.PUBLISHED)) {
+            throw new CustomException(MagazineErrorCode.ALEADY_PUBLISHED);
+        }
 
-    @Override
-    @Transactional
-    public MagazineResponse rejectMagazine(Long magazineId) {
-        Magazine magazine = findMagazineById(magazineId);
-        magazine.setStatus(MagazineStatus.REJECTED);
-
-        // todo: 추가 동작 고려
-
+        if (isAccepted) {
+            magazine.setStatus(MagazineStatus.PUBLISHED);
+        } else {
+            magazine.setStatus(MagazineStatus.REJECTED);
+            // todo: 거절 시 추가 동작
+        }
         return MagazineResponse.from(magazineRepository.save(magazine));
     }
 

@@ -2,11 +2,13 @@ package com.mindmate.mindmate_server.magazine.repository;
 
 import com.mindmate.mindmate_server.magazine.domain.MagazineStatus;
 import com.mindmate.mindmate_server.magazine.domain.QMagazine;
+import com.mindmate.mindmate_server.magazine.dto.MagazineCategoryStatistics;
 import com.mindmate.mindmate_server.magazine.dto.MagazineResponse;
 import com.mindmate.mindmate_server.magazine.dto.MagazineSearchFilter;
 import com.mindmate.mindmate_server.user.domain.QProfile;
 import com.mindmate.mindmate_server.user.domain.QUser;
 import com.querydsl.core.BooleanBuilder;
+import com.querydsl.core.Tuple;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -17,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class MagazineRepositoryImpl implements MagazineRepositoryCustom {
@@ -81,6 +84,31 @@ public class MagazineRepositoryImpl implements MagazineRepositoryCustom {
         return new PageImpl<>(content, pageable, total);
 
 
+    }
+
+    @Override
+    public List<MagazineCategoryStatistics> getCategoryStatistics() {
+        QMagazine magazine = QMagazine.magazine;
+
+        List<Tuple> results = queryFactory
+                .select(
+                        magazine.category,
+                        magazine.count(),
+                        magazine.likeCount.sum()
+                )
+                .from(magazine)
+                .where(magazine.magazineStatus.eq(MagazineStatus.PUBLISHED))
+                .groupBy(magazine.category)
+                .fetch();
+
+        return results.stream()
+                .map(tuple -> MagazineCategoryStatistics.builder()
+                        .category(tuple.get(magazine.category))
+                        .magazineCount(tuple.get(magazine.count()).intValue())
+                        .totalLikes(tuple.get(magazine.likeCount.sum()) != null
+                        ? tuple.get(magazine.likeCount.sum()).intValue() : 0)
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private OrderSpecifier<?> getOrderSpecifier(MagazineSearchFilter.SortType sortType, QMagazine magazine) {
