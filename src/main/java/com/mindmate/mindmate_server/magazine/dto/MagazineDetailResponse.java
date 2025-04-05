@@ -18,10 +18,11 @@ public class MagazineDetailResponse {
     private Long authorId;
     private int likeCount;
     private boolean isAuthor;
+    private boolean isLiked;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public static MagazineDetailResponse from(Magazine magazine, boolean isAuthor) {
+    public static MagazineDetailResponse from(Magazine magazine, boolean isAuthor, boolean isLiked) {
         return MagazineDetailResponse.builder()
                 .id(magazine.getId())
                 .title(magazine.getTitle())
@@ -31,6 +32,7 @@ public class MagazineDetailResponse {
                 .authorId(magazine.getAuthor().getId())
                 .likeCount(magazine.getLikeCount())
                 .isAuthor(isAuthor)
+                .isLiked(isLiked)
                 .createdAt(magazine.getCreatedAt())
                 .updatedAt(magazine.getModifiedAt())
                 .build();
