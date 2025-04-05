@@ -1,13 +1,15 @@
 package com.mindmate.mindmate_server.global.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindmate.mindmate_server.auth.service.TokenService;
 import com.mindmate.mindmate_server.auth.util.JwtAuthenticationFilter;
 import com.mindmate.mindmate_server.auth.util.JwtTokenProvider;
-import com.mindmate.mindmate_server.user.repository.UserRepository;
+import com.mindmate.mindmate_server.global.util.RateLimitFilter;
+import com.mindmate.mindmate_server.global.util.RequestLoggingFilter;
+import com.mindmate.mindmate_server.global.util.XssFilter;
 import com.mindmate.mindmate_server.user.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.apache.catalina.filters.RateLimitFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -37,6 +39,7 @@ public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenService tokenService;
     private final UserService userService;
+    private final ObjectMapper objectMapper;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -79,9 +82,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/chat/**", "/ws/**").hasAnyAuthority("ROLE_PROFILE", "ROLE_ADMIN")
 //                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN") 나중에 admin 접근 제한 시 사용
                         .anyRequest().authenticated())
-//                .addFilterBefore(new RequestLoggingFilter(), UsernamePasswordAuthenticationFilter.class) // 모든 요청 로깅
-//                .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class) // 초당 50개 요청 제한
-//                .addFilterBefore(new XssFilter(), UsernamePasswordAuthenticationFilter.class) // XSS 공격 방지
+                .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class) // 초당 10개 요청 제한
+                .addFilterBefore(new XssFilter(), UsernamePasswordAuthenticationFilter.class) // XSS 공격 방지
+                .addFilterBefore(new RequestLoggingFilter(), UsernamePasswordAuthenticationFilter.class) // 모든 요청 로깅
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class); // JWT 토큰 검증
          return http.build();
     }
