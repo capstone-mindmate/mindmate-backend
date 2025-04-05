@@ -89,6 +89,17 @@ public class MagazineController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * 좋아요 토글
+     */
+    @PostMapping("/{magazineId}/like")
+    public ResponseEntity<LikeResponse> toggleLike(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long magazineId) {
+        LikeResponse response = magazineService.toggleLike(magazineId, principal.getUserId());
+        return ResponseEntity.ok(response);
+    }
+
 
     /**
      * 인기 메거진

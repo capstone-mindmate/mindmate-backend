@@ -22,4 +22,7 @@ public interface MagazineService {
     MagazineResponse manageMagazine(Long magazineId, boolean isAccepted);
 
     Page<MagazineResponse> getPendingMagazines(Pageable pageable);
+
+    LikeResponse toggleLike(Long magazineId, Long userId);
+
 }

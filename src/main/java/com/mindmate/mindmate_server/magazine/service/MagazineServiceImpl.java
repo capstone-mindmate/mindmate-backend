@@ -3,8 +3,10 @@ package com.mindmate.mindmate_server.magazine.service;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MagazineErrorCode;
 import com.mindmate.mindmate_server.magazine.domain.Magazine;
+import com.mindmate.mindmate_server.magazine.domain.MagazineLike;
 import com.mindmate.mindmate_server.magazine.domain.MagazineStatus;
 import com.mindmate.mindmate_server.magazine.dto.*;
+import com.mindmate.mindmate_server.magazine.repository.MagazineLikeRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineRepository;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
@@ -22,6 +24,7 @@ public class MagazineServiceImpl implements MagazineService {
     private final UserService userService;
 
     private final MagazineRepository magazineRepository;
+    private final MagazineLikeRepository magazineLikeRepository;
 
     @Override
     @Transactional
@@ -83,7 +86,11 @@ public class MagazineServiceImpl implements MagazineService {
 //            throw new CustomException(MagazineErrorCode.MAGAZINE_NOT_FOUND);
 //        }
 
-        return MagazineDetailResponse.from(magazine, magazine.getAuthor().equals(user));
+        boolean isAuthor = magazine.getAuthor().equals(user);
+        boolean isLiked = magazineLikeRepository.existsByMagazineAndUser(magazine, user);
+
+        return MagazineDetailResponse.from(magazine, isAuthor, isLiked);
+
     }
 
     @Override
@@ -114,5 +121,29 @@ public class MagazineServiceImpl implements MagazineService {
     public Page<MagazineResponse> getPendingMagazines(Pageable pageable) {
         Page<Magazine> pendingMagazines = magazineRepository.findByMagazineStatus(MagazineStatus.PENDING, pageable);
         return pendingMagazines.map(MagazineResponse::from);
+    }
+
+    @Override
+    public LikeResponse toggleLike(Long magazineId, Long userId) {
+        Magazine magazine = findMagazineById(magazineId);
+        User user = userService.findUserById(userId);
+
+        boolean isLiked = magazineLikeRepository.existsByMagazineAndUser(magazine, user);
+
+        if (isLiked) {
+            magazineLikeRepository.deleteByMagazineAndUser(magazine, user);
+            magazine.removeLike(user);
+            return LikeResponse.of(false, magazine.getLikeCount());
+        } else {
+            MagazineLike like = MagazineLike.builder()
+                    .magazine(magazine)
+                    .user(user)
+                    .build();
+            magazineLikeRepository.save(like);
+            magazine.addLike(user);
+            return LikeResponse.of(true, magazine.getLikeCount());
+
+        }
+
     }
 }
