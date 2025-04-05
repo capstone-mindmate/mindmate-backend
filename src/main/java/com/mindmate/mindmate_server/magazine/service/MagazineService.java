@@ -1,10 +1,9 @@
 package com.mindmate.mindmate_server.magazine.service;
 
 import com.mindmate.mindmate_server.magazine.domain.Magazine;
-import com.mindmate.mindmate_server.magazine.dto.MagazineCreateRequest;
-import com.mindmate.mindmate_server.magazine.dto.MagazineDetailResponse;
-import com.mindmate.mindmate_server.magazine.dto.MagazineResponse;
-import com.mindmate.mindmate_server.magazine.dto.MagazineUpdateRequest;
+import com.mindmate.mindmate_server.magazine.dto.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface MagazineService {
 
@@ -14,7 +13,7 @@ public interface MagazineService {
 
     void deleteMagazine(Long magazineId, Long userId);
 
-//    Page<MagazineResponse> getMagazines(Long userId, PageRequest createdAt);
+    Page<MagazineResponse> getMagazines(Long userId, MagazineSearchFilter filter, Pageable pageable);
 
     MagazineDetailResponse getMagazine(Long magazineId, Long userId);
 

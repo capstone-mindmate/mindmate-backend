@@ -4,15 +4,14 @@ import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MagazineErrorCode;
 import com.mindmate.mindmate_server.magazine.domain.Magazine;
 import com.mindmate.mindmate_server.magazine.domain.MagazineStatus;
-import com.mindmate.mindmate_server.magazine.dto.MagazineCreateRequest;
-import com.mindmate.mindmate_server.magazine.dto.MagazineDetailResponse;
-import com.mindmate.mindmate_server.magazine.dto.MagazineResponse;
-import com.mindmate.mindmate_server.magazine.dto.MagazineUpdateRequest;
+import com.mindmate.mindmate_server.magazine.dto.*;
 import com.mindmate.mindmate_server.magazine.repository.MagazineRepository;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,16 +62,17 @@ public class MagazineServiceImpl implements MagazineService {
         Magazine magazine = findMagazineById(magazineId);
         User user = userService.findUserById(userId);
 
-        if (!magazine.getAuthor().equals(user) || user.getProfile().equals(RoleType.ROLE_ADMIN)) {
+        if (!magazine.getAuthor().equals(user) || !user.getCurrentRole().equals(RoleType.ROLE_ADMIN)) {
             throw new CustomException(MagazineErrorCode.MAGAZINE_ACCESS_DENIED);
         }
 
         magazineRepository.delete(magazine);
     }
 
-//    @Override
-//    public Page<MagazineResponse> getMagazines(Long userId, PageRequest createdAt) {
-//    }
+    @Override
+    public Page<MagazineResponse> getMagazines(Long userId, MagazineSearchFilter filter, Pageable pageable) {
+        return magazineRepository.findMagazinesWithFilters(filter, pageable);
+    }
 
     @Override
     public MagazineDetailResponse getMagazine(Long magazineId, Long userId) {

@@ -1,13 +1,14 @@
 package com.mindmate.mindmate_server.magazine.controller;
 
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
-import com.mindmate.mindmate_server.magazine.dto.MagazineCreateRequest;
-import com.mindmate.mindmate_server.magazine.dto.MagazineDetailResponse;
-import com.mindmate.mindmate_server.magazine.dto.MagazineResponse;
-import com.mindmate.mindmate_server.magazine.dto.MagazineUpdateRequest;
+import com.mindmate.mindmate_server.magazine.dto.*;
 import com.mindmate.mindmate_server.magazine.service.MagazineService;
+import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -54,17 +55,28 @@ public class MagazineController {
 
     /**
      * 메거진 목록 조회
-     * (카테고리 + 필터링?)
-     * todo: querydsl로 여러 필터링 적용
+     * 1. 카테고리별 필터링
+     * 2. 키워드 검색
+     * 3. 인기순/생성순에 따라 필터링
+     * 1, 2, 3을 혼합해서 호출 가능
      */
-//    @GetMapping
-//    public ResponseEntity<Page<MagazineResponse>> getMagazines(
-//            @AuthenticationPrincipal UserPrincipal principal,
-//            @RequestParam(defaultValue = "0") int page,
-//            @RequestParam(defaultValue = "10") int size) {
-//        Page<MagazineResponse> magazineResponses = magazineService.getMagazines(principal.getUserId(), PageRequest.of(page, size, Sort.by("createdAt").descending()));
-//        return ResponseEntity.ok(magazineResponses);
-//    }
+    @GetMapping
+    public ResponseEntity<Page<MagazineResponse>> getMagazines(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(required = false) MatchingCategory category,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false, defaultValue = "LATEST") MagazineSearchFilter.SortType sortBy,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        MagazineSearchFilter filter = MagazineSearchFilter.builder()
+                .category(category)
+                .keyword(keyword)
+                .sortBy(sortBy)
+                .build();
+
+        Page<MagazineResponse> magazineResponses = magazineService.getMagazines(principal.getUserId(), filter, PageRequest.of(page, size, Sort.by("createdAt").descending()));
+        return ResponseEntity.ok(magazineResponses);
+    }
 
     /**
      * 메거진 상세 조회
@@ -77,9 +89,6 @@ public class MagazineController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * 메거진 검색
-     */
 
     /**
      * 인기 메거진
