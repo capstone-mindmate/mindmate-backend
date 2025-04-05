@@ -142,7 +142,7 @@ class MatchingEventConsumerTest {
 
     @Test
     @DisplayName("매칭 수락 이벤트 처리 - 예외 발생")
-    void handleMatchingAccepteEexception() {
+    void handleMatchingAcceptedException() {
         // given
         MatchingAcceptedEvent event = MatchingAcceptedEvent.builder()
                 .matchingId(1L)
