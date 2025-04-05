@@ -128,7 +128,7 @@ class RedisMatchingServiceTest {
     void cleanupMatchingKeys_closed() {
         // given
         when(matching.isOpen()).thenReturn(false);
-        when(matching.getStatus()).thenReturn(MatchingStatus.CLOSED);
+        when(matching.getStatus()).thenReturn(MatchingStatus.CANCELED);
 
         // when
         redisMatchingService.cleanupMatchingKeys(matching);
