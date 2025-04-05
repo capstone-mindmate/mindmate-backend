@@ -92,4 +92,29 @@ public class MagazineServiceImpl implements MagazineService {
                 .orElseThrow(() -> new CustomException(MagazineErrorCode.MAGAZINE_NOT_FOUND));
     }
 
+    @Override
+    @Transactional
+    public MagazineResponse publishMagazine(Long magazineId) {
+        Magazine magazine = findMagazineById(magazineId);
+        magazine.setStatus(MagazineStatus.PUBLISHED);
+
+        return MagazineResponse.from(magazineRepository.save(magazine));
+    }
+
+    @Override
+    @Transactional
+    public MagazineResponse rejectMagazine(Long magazineId) {
+        Magazine magazine = findMagazineById(magazineId);
+        magazine.setStatus(MagazineStatus.REJECTED);
+
+        // todo: 추가 동작 고려
+
+        return MagazineResponse.from(magazineRepository.save(magazine));
+    }
+
+    @Override
+    public Page<MagazineResponse> getPendingMagazines(Pageable pageable) {
+        Page<Magazine> pendingMagazines = magazineRepository.findByMagazineStatus(MagazineStatus.PENDING, pageable);
+        return pendingMagazines.map(MagazineResponse::from);
+    }
 }

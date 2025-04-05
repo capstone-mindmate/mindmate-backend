@@ -18,4 +18,10 @@ public interface MagazineService {
     MagazineDetailResponse getMagazine(Long magazineId, Long userId);
 
     Magazine findMagazineById(Long magazineId);
+
+    MagazineResponse publishMagazine(Long magazineId);
+
+    MagazineResponse rejectMagazine(Long magazineId);
+
+    Page<MagazineResponse> getPendingMagazines(Pageable pageable);
 }
