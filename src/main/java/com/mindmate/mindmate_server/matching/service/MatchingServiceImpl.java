@@ -149,10 +149,14 @@ public class MatchingServiceImpl implements MatchingService {
     @Override @Transactional
     public Long autoMatchApply(Long userId, AutoMatchingRequest request) {
         InitiatorType userRole = request.getUserRole();
-
         User user = userService.findUserById(userId);
 
-        Long matchingId = redisMatchingService.getRandomMatching(userRole);
+        int activeRoomCount = redisMatchingService.getUserActiveMatchingCount(userId);
+        if (activeRoomCount >= 3) {
+            throw new CustomException(MatchingErrorCode.MATCHING_LIMIT_EXCEED);
+        }
+
+        Long matchingId = redisMatchingService.getRandomMatching(user, userRole);
 
         if (matchingId == null) {
             throw new CustomException(MatchingErrorCode.NO_MATCHING_AVAILABLE);
@@ -164,7 +168,7 @@ public class MatchingServiceImpl implements MatchingService {
         // 자동 매칭 신청
         WaitingUser waitingUser = WaitingUser.builder()
                 .waitingUser(user)
-                .matchingType(MatchingType.AUTO_FORMAT)
+                .matchingType(MatchingType.AUTO_RANDOM)
                 .anonymous(request.isAnonymous())
                 .build();
 
@@ -317,7 +321,7 @@ public class MatchingServiceImpl implements MatchingService {
     }
 
     @Override @Transactional
-    public void closeMatching(Long userId, Long matchingId) {
+    public void cancelMatching(Long userId, Long matchingId) {
         User user = userService.findUserById(userId);
 
         Matching matching = matchingRepository.findById(matchingId)
@@ -338,7 +342,7 @@ public class MatchingServiceImpl implements MatchingService {
                     redisMatchingService.decrementUserActiveMatchingCount(app.getWaitingUser().getId());
                 });
 
-        matching.closeMatching();
+        matching.cancelMatching();
 
         redisMatchingService.decrementUserActiveMatchingCount(userId);
         redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());

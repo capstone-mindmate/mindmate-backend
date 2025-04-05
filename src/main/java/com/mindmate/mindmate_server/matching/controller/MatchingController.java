@@ -99,7 +99,7 @@ public class MatchingController {
     public ResponseEntity<Void> closeMatching(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long matchingId) {
-        matchingService.closeMatching(userPrincipal.getUserId(), matchingId);
+        matchingService.cancelMatching(userPrincipal.getUserId(), matchingId);
         return ResponseEntity.ok().build();
     }
 
