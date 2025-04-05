@@ -5,5 +5,6 @@ import lombok.Getter;
 @Getter
 public enum MagazineStatus {
     PENDING,
-    PUBLISHED
+    PUBLISHED,
+    REJECTED
 }
