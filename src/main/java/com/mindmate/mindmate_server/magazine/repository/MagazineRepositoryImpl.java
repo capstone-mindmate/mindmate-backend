@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.magazine.repository;
 
+import com.mindmate.mindmate_server.magazine.domain.Magazine;
 import com.mindmate.mindmate_server.magazine.domain.MagazineStatus;
 import com.mindmate.mindmate_server.magazine.domain.QMagazine;
 import com.mindmate.mindmate_server.magazine.dto.MagazineCategoryStatistics;
@@ -10,7 +11,6 @@ import com.mindmate.mindmate_server.user.domain.QUser;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.OrderSpecifier;
-import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -50,26 +50,20 @@ public class MagazineRepositoryImpl implements MagazineRepositoryCustom {
         // 4. 정렬 조건 확인
         OrderSpecifier<?> orderSpecifier = getOrderSpecifier(filter.getSortBy(), magazine);
 
-        List<MagazineResponse> content = queryFactory
-                .select(Projections.constructor(MagazineResponse.class,
-                        magazine.id,
-                        magazine.title,
-                        magazine.content,
-                        magazine.category,
-                        profile.nickname,
-                        author.id,
-                        magazine.likeCount,
-                        magazine.createdAt,
-                        magazine.modifiedAt
-                ))
-                .from(magazine)
-                .join(magazine.author, author)
-                .join(author.profile, profile)
+        List<Magazine> magazines = queryFactory
+                .selectFrom(magazine)
+                .join(magazine.author, author).fetchJoin()
+                .join(author.profile, profile).fetchJoin()
+                .leftJoin(magazine.images).fetchJoin()
                 .where(builder)
                 .orderBy(orderSpecifier)
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
+
+        List<MagazineResponse> content = magazines.stream()
+                .map(MagazineResponse::from)
+                .collect(Collectors.toList());
 
         Long countResult = queryFactory
                 .select(magazine.count())

@@ -28,6 +28,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MagazineImageService {
     private final MagazineImageRepository magazineImageRepository;
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 최대 파일 크기 10mb
 
     @Value("${image.dir}")
     private String imageDir;
@@ -37,7 +38,20 @@ public class MagazineImageService {
 
     @Transactional
     public MagazineImage uploadImage(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new CustomException(MagazineErrorCode.EMPTY_FILE);
+        }
+
         String originalFileName = file.getOriginalFilename();
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new CustomException(MagazineErrorCode.INVALID_FILE_TYPE);
+        }
+
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new CustomException(MagazineErrorCode.FILE_TOO_LARGE);
+        }
+
         String extension = "webp";
         String storedFileName = UUID.randomUUID() + "." + extension;
 
@@ -60,13 +74,15 @@ public class MagazineImageService {
 
         String imageUrl = imageUrlPrefix + storedFileName;
 
-        return MagazineImage.builder()
+        MagazineImage image = MagazineImage.builder()
                 .originalName(originalFileName)
                 .storedName(storedFileName)
                 .imageUrl(imageUrl)
                 .contentType("image/webp")
                 .fileSize(destFile.length())
                 .build();
+
+        return magazineImageRepository.save(image);
     }
 
     @Transactional

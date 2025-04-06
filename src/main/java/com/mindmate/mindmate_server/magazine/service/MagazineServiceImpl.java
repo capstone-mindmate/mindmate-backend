@@ -51,7 +51,12 @@ public class MagazineServiceImpl implements MagazineService {
 
         if (request.getImageIds() != null && !request.getImageIds().isEmpty()) {
             List<MagazineImage> images = magazineImageRepository.findAllById(request.getImageIds());
+
+            // 이미지가 다른 매거진에 연결되어 있는지 확인
             for (MagazineImage image : images) {
+                if (image.getMagazine() != null) {
+                    throw new CustomException(MagazineErrorCode.MAGAZINE_IMAGE_ALREADY_IN_USE);
+                }
                 magazine.addImage(image);
             }
         }
@@ -72,6 +77,7 @@ public class MagazineServiceImpl implements MagazineService {
 
         magazine.update(request.getTitle(), request.getContent(), request.getCategory());
 
+        // 해당 이미지가 다른 곳에 연결되어 있는 경우
         if (request.getImageIds() != null) {
             List<MagazineImage> existingImages = new ArrayList<>(magazine.getImages());
             Set<Long> newImageIds = new HashSet<>(request.getImageIds());
@@ -88,6 +94,10 @@ public class MagazineServiceImpl implements MagazineService {
             // 새 이미지 연결
             List<MagazineImage> newImages = magazineImageRepository.findAllById(request.getImageIds());
             for (MagazineImage image : newImages) {
+                if (image.getMagazine() != null && !image.getMagazine().equals(magazine)) {
+                    throw new CustomException(MagazineErrorCode.MAGAZINE_IMAGE_ALREADY_IN_USE);
+                }
+
                 if (image.getMagazine() == null) {
                     magazine.addImage(image);
                 }
@@ -124,9 +134,11 @@ public class MagazineServiceImpl implements MagazineService {
         Magazine magazine = findMagazineById(magazineId);
         User user = userService.findUserById(userId);
 
-//        if (magazine.getMagazineStatus() != MagazineStatus.PUBLISHED) {
-//            throw new CustomException(MagazineErrorCode.MAGAZINE_NOT_FOUND);
-//        }
+        // PUBLISHED 아닌 매거진 작성자만 확인 가능
+        if (!magazine.getAuthor().equals(user) &&
+                magazine.getMagazineStatus() != MagazineStatus.PUBLISHED) {
+            throw new CustomException(MagazineErrorCode.MAGAZINE_NOT_FOUND);
+        }
 
         boolean isAuthor = magazine.getAuthor().equals(user);
         boolean isLiked = magazineLikeRepository.existsByMagazineAndUser(magazine, user);
