@@ -72,14 +72,12 @@ public class FCMService {
         }
 
         fcmToken.deactivate();
-        fcmTokenRepository.save(fcmToken);
 
         return FCMTokenResponse.builder()
             .success(true)
             .message("FCM 토큰이 비활성화되었습니다.")
             .build();
     }
-
 
     public void sendNotification(Long userId, NotificationEvent event) {
         List<FCMToken> tokens = fcmTokenRepository.findByUserIdAndActiveIsTrue(userId);

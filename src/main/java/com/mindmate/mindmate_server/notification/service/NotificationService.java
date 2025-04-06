@@ -1,5 +1,7 @@
 package com.mindmate.mindmate_server.notification.service;
 
+import com.mindmate.mindmate_server.global.exception.CustomException;
+import com.mindmate.mindmate_server.global.exception.NotificationErrorCode;
 import com.mindmate.mindmate_server.notification.domain.Notification;
 import com.mindmate.mindmate_server.notification.dto.NotificationEvent;
 import com.mindmate.mindmate_server.notification.dto.NotificationResponse;
@@ -51,10 +53,10 @@ public class NotificationService {
 
     @Transactional
     public void markAsRead(Long notificationId) {
-        notificationRepository.findById(notificationId).ifPresent(notification -> {
-            notification.readNotification();
-            notificationRepository.save(notification);
-        });
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new CustomException(NotificationErrorCode.NOTIFICATION_NOT_FOUND));
+
+        notification.readNotification();
     }
 
     @Transactional
@@ -68,6 +70,10 @@ public class NotificationService {
 
     @Transactional
     public void deleteNotification(Long notificationId) {
+        if (!notificationRepository.existsById(notificationId)) {
+            throw new CustomException(NotificationErrorCode.NOTIFICATION_NOT_FOUND);
+        }
+
         notificationRepository.deleteById(notificationId);
     }
 
@@ -75,4 +81,5 @@ public class NotificationService {
     public void deleteAllNotifications(Long userId) {
         notificationRepository.deleteByUserId(userId);
     }
+
 }
