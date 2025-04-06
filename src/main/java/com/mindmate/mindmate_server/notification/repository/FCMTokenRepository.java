@@ -7,5 +7,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface FCMTokenRepository extends JpaRepository<FCMToken, Long> {
+    List<FCMToken> findByUserIdAndActiveIsTrue(Long userId);
     Optional<FCMToken> findByToken(String token);
 }
