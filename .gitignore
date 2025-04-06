@@ -45,3 +45,4 @@ application-*.yml
 docker-compose.yml
 
 /src/main/resources/firebase/
+src/main/resources/firebase/*.json
