@@ -74,7 +74,7 @@ public class MagazineController {
                 .sortBy(sortBy)
                 .build();
 
-        Page<MagazineResponse> magazineResponses = magazineService.getMagazines(principal.getUserId(), filter, PageRequest.of(page, size, Sort.by("createdAt").descending()));
+        Page<MagazineResponse> magazineResponses = magazineService.getMagazines(principal.getUserId(), filter, PageRequest.of(page, size));
         return ResponseEntity.ok(magazineResponses);
     }
 

@@ -103,7 +103,7 @@ public class MagazineServiceImpl implements MagazineService {
         Magazine magazine = findMagazineById(magazineId);
         User user = userService.findUserById(userId);
 
-        if (!magazine.getAuthor().equals(user) || !user.getCurrentRole().equals(RoleType.ROLE_ADMIN)) {
+        if (!magazine.getAuthor().equals(user) && !user.getCurrentRole().equals(RoleType.ROLE_ADMIN)) {
             throw new CustomException(MagazineErrorCode.MAGAZINE_ACCESS_DENIED);
         }
 
