@@ -3,9 +3,11 @@ package com.mindmate.mindmate_server.magazine.service;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MagazineErrorCode;
 import com.mindmate.mindmate_server.magazine.domain.Magazine;
+import com.mindmate.mindmate_server.magazine.domain.MagazineImage;
 import com.mindmate.mindmate_server.magazine.domain.MagazineLike;
 import com.mindmate.mindmate_server.magazine.domain.MagazineStatus;
 import com.mindmate.mindmate_server.magazine.dto.*;
+import com.mindmate.mindmate_server.magazine.repository.MagazineImageRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineLikeRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineRepository;
 import com.mindmate.mindmate_server.user.domain.RoleType;
@@ -17,14 +19,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MagazineServiceImpl implements MagazineService {
     private final UserService userService;
+    private final MagazineImageService magazineImageService;
 
     private final MagazineRepository magazineRepository;
     private final MagazineLikeRepository magazineLikeRepository;
+    private final MagazineImageRepository magazineImageRepository;
 
     @Override
     @Transactional
@@ -39,6 +48,13 @@ public class MagazineServiceImpl implements MagazineService {
 
         magazine.setCategory(request.getCategory());
         magazine.setStatus(MagazineStatus.PENDING);
+
+        if (request.getImageIds() != null && !request.getImageIds().isEmpty()) {
+            List<MagazineImage> images = magazineImageRepository.findAllById(request.getImageIds());
+            for (MagazineImage image : images) {
+                magazine.addImage(image);
+            }
+        }
 
         Magazine savedMagazine = magazineRepository.save(magazine);
         return MagazineResponse.from(savedMagazine);
@@ -56,6 +72,28 @@ public class MagazineServiceImpl implements MagazineService {
 
         magazine.update(request.getTitle(), request.getContent(), request.getCategory());
 
+        if (request.getImageIds() != null) {
+            List<MagazineImage> existingImages = new ArrayList<>(magazine.getImages());
+            Set<Long> newImageIds = new HashSet<>(request.getImageIds());
+
+            // 기존 존재 이미지가 포함되지 않은 경우 -> 삭제
+            for (MagazineImage image : existingImages) {
+                if (!newImageIds.contains(image.getId())) {
+                    magazine.removeImage(image);
+                    magazineImageService.deleteImage(image.getStoredName());
+                    magazineImageRepository.delete(image);
+                }
+            }
+
+            // 새 이미지 연결
+            List<MagazineImage> newImages = magazineImageRepository.findAllById(request.getImageIds());
+            for (MagazineImage image : newImages) {
+                if (image.getMagazine() == null) {
+                    magazine.addImage(image);
+                }
+            }
+        }
+
         return MagazineResponse.from(magazine);
     }
 
@@ -67,6 +105,10 @@ public class MagazineServiceImpl implements MagazineService {
 
         if (!magazine.getAuthor().equals(user) || !user.getCurrentRole().equals(RoleType.ROLE_ADMIN)) {
             throw new CustomException(MagazineErrorCode.MAGAZINE_ACCESS_DENIED);
+        }
+
+        for (MagazineImage image : magazine.getImages()) {
+            magazineImageService.deleteImage(image.getStoredName());
         }
 
         magazineRepository.delete(magazine);
@@ -105,7 +147,7 @@ public class MagazineServiceImpl implements MagazineService {
         Magazine magazine = findMagazineById(magazineId);
 
         if (magazine.getMagazineStatus().equals(MagazineStatus.PUBLISHED)) {
-            throw new CustomException(MagazineErrorCode.ALEADY_PUBLISHED);
+            throw new CustomException(MagazineErrorCode.ALREADY_PUBLISHED);
         }
 
         if (isAccepted) {
@@ -123,7 +165,9 @@ public class MagazineServiceImpl implements MagazineService {
         return pendingMagazines.map(MagazineResponse::from);
     }
 
+    // todo: 동시성 처리 고려?
     @Override
+    @Transactional
     public LikeResponse toggleLike(Long magazineId, Long userId) {
         Magazine magazine = findMagazineById(magazineId);
         User user = userService.findUserById(userId);
@@ -144,6 +188,5 @@ public class MagazineServiceImpl implements MagazineService {
             return LikeResponse.of(true, magazine.getLikeCount());
 
         }
-
     }
 }
