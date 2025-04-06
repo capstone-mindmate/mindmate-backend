@@ -18,7 +18,7 @@ public class MatchingAppliedNotificationEvent implements NotificationEvent {
 
     @Override
     public String getContent() {
-        return String.format("%s님이 '%s' 매칭에 신청했습니다.", applicantNickname, matchingTitle);
+        return String.format("'%s'님이 '%s' 매칭에 신청했습니다.", applicantNickname, matchingTitle);
     }
 
     @Override

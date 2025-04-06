@@ -28,19 +28,19 @@ public class Notification extends BaseTimeEntity {
 
     private Long relatedEntityId;
 
-    private boolean read = false;
+    private boolean readNotification = false;
 
     @Builder
-    public Notification(Long userId, String title, String content, String type, Long relatedEntityId, boolean read) {
+    public Notification(Long userId, String title, String content, String type, Long relatedEntityId, boolean readNotification) {
         this.userId = userId;
         this.title = title;
         this.content = content;
         this.type = type;
         this.relatedEntityId = relatedEntityId;
-        this.read = read;
+        this.readNotification = readNotification;
     }
 
     public void readNotification(){
-        this.read = true;
+        this.readNotification = true;
     }
 }

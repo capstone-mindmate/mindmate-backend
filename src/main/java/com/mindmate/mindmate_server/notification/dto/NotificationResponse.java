@@ -14,7 +14,7 @@ public class NotificationResponse {
     private String content;
     private String type;
     private Long relatedEntityId;
-    private boolean read;
+    private boolean readNotification;
     private LocalDateTime createdAt;
 
     public static NotificationResponse from(Notification notification) {
@@ -24,7 +24,7 @@ public class NotificationResponse {
                 .content(notification.getContent())
                 .type(notification.getType())
                 .relatedEntityId(notification.getRelatedEntityId())
-                .read(notification.isRead())
+                .readNotification(notification.isReadNotification())
                 .createdAt(notification.getCreatedAt())
                 .build();
     }

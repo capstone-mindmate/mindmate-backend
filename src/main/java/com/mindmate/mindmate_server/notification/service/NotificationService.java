@@ -31,7 +31,7 @@ public class NotificationService {
                 .content(event.getContent())
                 .type(event.getType())
                 .relatedEntityId(event.getRelatedEntityId())
-                .read(false)
+                .readNotification(false)
                 .build();
 
         notificationRepository.save(notification);
@@ -45,7 +45,7 @@ public class NotificationService {
     }
 
     public List<NotificationResponse> getUserUnreadNotifications(Long userId) {
-        List<Notification> notifications = notificationRepository.findByUserIdAndReadIsFalseOrderByCreatedAtDesc(userId);
+        List<Notification> notifications = notificationRepository.findByUserIdAndReadNotificationIsFalseOrderByCreatedAtDesc(userId);
         return notifications.stream()
                 .map(NotificationResponse::from)
                 .collect(Collectors.toList());
@@ -62,7 +62,7 @@ public class NotificationService {
     @Transactional
     public void markAllAsRead(Long userId) {
         List<Notification> unreadNotifications =
-                notificationRepository.findByUserIdAndReadIsFalseOrderByCreatedAtDesc(userId);
+                notificationRepository.findByUserIdAndReadNotificationIsFalseOrderByCreatedAtDesc(userId);
 
         unreadNotifications.forEach(Notification::readNotification);
         notificationRepository.saveAll(unreadNotifications);
