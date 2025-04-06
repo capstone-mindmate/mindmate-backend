@@ -5,6 +5,8 @@ import com.mindmate.mindmate_server.auth.util.JwtTokenProvider;
 import com.mindmate.mindmate_server.auth.util.PasswordValidator;
 import com.mindmate.mindmate_server.global.exception.AuthErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
+import com.mindmate.mindmate_server.notification.dto.FCMTokenRequest;
+import com.mindmate.mindmate_server.notification.service.FCMService;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
@@ -38,6 +40,8 @@ public class AuthServiceImpl implements AuthService {
 
     private final PasswordEncoder passwordEncoder;
 
+    // 알림
+    private final FCMService fcmService;
     /**
      * 회원가입<p>
      * 1. 이미 등록된 이메일인지 확인<br>
@@ -173,6 +177,11 @@ public class AuthServiceImpl implements AuthService {
 
         user.updateLastLoginAt();
 
+        if (request.getFcmToken() != null && !request.getFcmToken().isEmpty()) {
+            FCMTokenRequest tokenRequest = new FCMTokenRequest(request.getFcmToken());
+            fcmService.registerToken(user.getId(), tokenRequest);
+        } // 알림
+
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -201,6 +210,8 @@ public class AuthServiceImpl implements AuthService {
 
         Long userId = jwtTokenProvider.getUserIdFromToken(token);
         tokenService.invalidateRefreshToken(userId);
+
+        fcmService.deactivateAllTokens(userId); // 단일 or 전체
     }
 
     /**

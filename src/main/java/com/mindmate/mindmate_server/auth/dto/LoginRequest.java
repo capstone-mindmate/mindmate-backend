@@ -13,6 +13,8 @@ public class LoginRequest {
     @NotBlank
     private String password;
 
+    private String fcmToken; // 알림
+
     public LoginRequest(String email, String password) {
         this.email = email;
         this.password = password;

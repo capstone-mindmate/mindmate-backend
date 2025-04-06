@@ -125,4 +125,25 @@ public class FCMService {
             log.error("FCM 전송 오류: {}, 토큰: {}", e.getMessage(), token.getToken());
         }
     }
+
+    @Transactional
+    public void deactivateAllTokens(Long userId) {
+
+        userService.findUserById(userId);
+
+        List<FCMToken> activeTokens = fcmTokenRepository.findByUserIdAndActiveIsTrue(userId);
+
+        if (activeTokens.isEmpty()) {
+            log.info("사용자 ID {}에 대한 활성 FCM 토큰이 없음.", userId);
+            return;
+        }
+
+        for (FCMToken token : activeTokens) {
+            token.deactivate();
+        }
+
+        fcmTokenRepository.saveAll(activeTokens);
+
+        log.info("사용자 ID {}의 FCM 토큰 {}개가 비활성화됨.", userId, activeTokens.size());
+    }
 }

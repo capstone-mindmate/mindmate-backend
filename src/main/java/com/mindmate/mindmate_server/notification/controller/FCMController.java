@@ -20,8 +20,8 @@ public class FCMController {
             @RequestBody FCMTokenRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
 
-        fcmService.registerToken(principal.getUserId(), request);
-        return ResponseEntity.ok().build();
+        FCMTokenResponse fcmTokenResponse = fcmService.registerToken(principal.getUserId(), request);
+        return ResponseEntity.ok(fcmTokenResponse);
     }
 
     @DeleteMapping
@@ -29,7 +29,7 @@ public class FCMController {
             @RequestParam FCMTokenRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
 
-        fcmService.deactivateToken(principal.getUserId(), request);
-        return ResponseEntity.ok().build();
+        FCMTokenResponse fcmTokenResponse = fcmService.deactivateToken(principal.getUserId(), request);
+        return ResponseEntity.ok(fcmTokenResponse);
     }
 }
