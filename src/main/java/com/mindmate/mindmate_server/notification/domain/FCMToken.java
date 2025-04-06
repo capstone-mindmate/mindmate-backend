@@ -5,8 +5,6 @@ import com.mindmate.mindmate_server.user.domain.User;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
-
 @Entity
 @Table(name = "fcm_tokens")
 @Getter
@@ -26,8 +24,12 @@ public class FCMToken extends BaseTimeEntity {
     private boolean active = true;
 
     @Builder
-    public FCMToken(User user, String token, String deviceInfo) {
+    public FCMToken(User user, String token) {
         this.user = user;
         this.token = token;
+    }
+
+    public void deactivate() {
+        this.active = false;
     }
 }
