@@ -35,6 +35,8 @@ public class MagazineServiceImpl implements MagazineService {
     private final MagazineLikeRepository magazineLikeRepository;
     private final MagazineImageRepository magazineImageRepository;
 
+    public final static long MAX_IMAGE_SIZE = 10;
+
     @Override
     @Transactional
     public MagazineResponse createMagazine(Long userId, MagazineCreateRequest request) {
@@ -50,6 +52,10 @@ public class MagazineServiceImpl implements MagazineService {
         magazine.setStatus(MagazineStatus.PENDING);
 
         if (request.getImageIds() != null && !request.getImageIds().isEmpty()) {
+            if (request.getImageIds().size() > MAX_IMAGE_SIZE) {
+                throw new CustomException(MagazineErrorCode.TOO_MANY_IMAGES);
+            }
+
             List<MagazineImage> images = magazineImageRepository.findAllById(request.getImageIds());
 
             // 이미지가 다른 매거진에 연결되어 있는지 확인

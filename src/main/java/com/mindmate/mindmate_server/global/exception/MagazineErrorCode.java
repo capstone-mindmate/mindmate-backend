@@ -15,7 +15,8 @@ public enum MagazineErrorCode implements ErrorCode {
     MAGAZINE_IMAGE_ALREADY_IN_USE(HttpStatus.BAD_REQUEST, "해당 이미지는 이미 다른 매거진에서 사용 중입니다." ),
     EMPTY_FILE(HttpStatus.BAD_REQUEST, "이미지를 업로드해주세요" ),
     INVALID_FILE_TYPE(HttpStatus.BAD_REQUEST, "적절하지 않은 이미지 타입입니다." ),
-    FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "이미지 크기가 너무 큽니다" );
+    FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "이미지 크기가 너무 큽니다" ),
+    TOO_MANY_IMAGES(HttpStatus.BAD_REQUEST, "이미지 개수가 너무 많습니다" );
 
     private final HttpStatus status;
     private final String message;
