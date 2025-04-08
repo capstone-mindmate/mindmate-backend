@@ -1,11 +1,12 @@
 package com.mindmate.mindmate_server.user.domain;
 
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
-import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.domain.CustomForm;
 import com.mindmate.mindmate_server.chat.domain.MessageReaction;
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import com.mindmate.mindmate_server.matching.domain.Matching;
+import com.mindmate.mindmate_server.magazine.domain.Magazine;
+import com.mindmate.mindmate_server.magazine.domain.MagazineLike;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -71,6 +72,13 @@ public class User extends BaseTimeEntity {
 
     @OneToMany(mappedBy = "responder")
     private List<CustomForm> respondedCustomForms = new ArrayList<>();
+
+    @OneToMany(mappedBy = "author")
+    private List<Magazine> magazines = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user")
+    private List<MagazineLike> magazineLikes = new ArrayList<>();
+
 
     // 일일 매칭 제한 관련 필드 추가
     private int dailyCancellationCount = 0;
