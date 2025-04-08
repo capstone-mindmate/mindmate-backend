@@ -74,7 +74,7 @@ public class MagazineController {
                 .sortBy(sortBy)
                 .build();
 
-        Page<MagazineResponse> magazineResponses = magazineService.getMagazines(principal.getUserId(), filter, PageRequest.of(page, size, Sort.by("createdAt").descending()));
+        Page<MagazineResponse> magazineResponses = magazineService.getMagazines(principal.getUserId(), filter, PageRequest.of(page, size));
         return ResponseEntity.ok(magazineResponses);
     }
 
@@ -86,6 +86,17 @@ public class MagazineController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long magazineId) {
         MagazineDetailResponse response = magazineService.getMagazine(magazineId, principal.getUserId());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 좋아요 토글
+     */
+    @PostMapping("/{magazineId}/like")
+    public ResponseEntity<LikeResponse> toggleLike(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long magazineId) {
+        LikeResponse response = magazineService.toggleLike(magazineId, principal.getUserId());
         return ResponseEntity.ok(response);
     }
 

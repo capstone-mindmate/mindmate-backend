@@ -67,6 +67,20 @@ public class Magazine extends BaseTimeEntity {
         this.magazineStatus = status;
     }
 
-    // todo: 좋아요 관리, 사진 관리
+    public void addLike(User user) {
+        this.likeCount++;
+    }
 
+    public void removeLike(User user) {
+        this.likeCount = Math.max(0, this.likeCount - 1);
+    }
+
+    public void addImage(MagazineImage image) {
+        this.images.add(image);
+        image.setMagazine(this);
+    }
+
+    public void removeImage(MagazineImage image) {
+        this.images.remove(image);
+    }
 }
