@@ -35,8 +35,6 @@ public class MagazineImage extends BaseTimeEntity {
     @JoinColumn(name = "magazine_id")
     private Magazine magazine;
 
-    // todo: 추가 필요 내용 + method, builder
-
     @Builder
     public MagazineImage(String originalName, String storedName, String imageUrl, String contentType, long fileSize, Magazine magazine) {
         this.originalName = originalName;

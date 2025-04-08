@@ -57,6 +57,7 @@ public class Magazine extends BaseTimeEntity {
         this.title = title;
         this.content = content;
         this.category = category;
+        this.magazineStatus = MagazineStatus.PENDING;
     }
 
     public void setCategory(MatchingCategory category) {
