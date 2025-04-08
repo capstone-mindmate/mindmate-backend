@@ -8,6 +8,9 @@ import com.mindmate.mindmate_server.matching.domain.*;
 import com.mindmate.mindmate_server.matching.dto.*;
 import com.mindmate.mindmate_server.matching.repository.MatchingRepository;
 import com.mindmate.mindmate_server.matching.repository.WaitingUserRepository;
+import com.mindmate.mindmate_server.notification.dto.MatchingAcceptedNotificationEvent;
+import com.mindmate.mindmate_server.notification.dto.MatchingAppliedNotificationEvent;
+import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -29,10 +32,11 @@ public class MatchingServiceImpl implements MatchingService {
 
     private final MatchingRepository matchingRepository;
     private final WaitingUserRepository waitingUserRepository;
+
     private final UserService userService;
     private final ChatRoomService chatRoomService;
-
     private final RedisMatchingService redisMatchingService;
+    private final NotificationService notificationService;
 
     private final MatchingEventProducer matchingEventProducer;
 
@@ -112,6 +116,20 @@ public class MatchingServiceImpl implements MatchingService {
 
         redisMatchingService.incrementUserActiveMatchingCount(userId);
 
+        // 알림 전송 (생성자한테)
+        String applicantName = user.getProfile() != null ?
+                (request.isAnonymous() ? "익명" : user.getProfile().getNickname()) : "사용자";
+
+        MatchingAppliedNotificationEvent event = MatchingAppliedNotificationEvent.builder()
+                .recipientId(matching.getCreator().getId())
+                .matchingId(matching.getId())
+                .matchingTitle(matching.getTitle())
+                .applicantNickname(applicantName)
+                .build();
+
+        notificationService.processNotification(event);
+
+
         return waitingUserRepository.save(waitingUser).getId();
     }
 
@@ -124,6 +142,15 @@ public class MatchingServiceImpl implements MatchingService {
 
         matching.acceptMatching(waitingUser.getWaitingUser());
         matchingRepository.save(matching);
+
+        // 알림 전송 (신청자한테)
+        MatchingAcceptedNotificationEvent event = MatchingAcceptedNotificationEvent.builder()
+                .recipientId(waitingUser.getWaitingUser().getId())
+                .matchingId(matching.getId())
+                .matchingTitle(matching.getTitle())
+                .build();
+
+        notificationService.processNotification(event);
 
         List<Long> pendingWaitingUserIds = waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching)
                 .stream()

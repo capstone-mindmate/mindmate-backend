@@ -73,6 +73,9 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	implementation 'com.google.guava:guava:23.0'
 
+	// firebase
+	implementation 'com.google.firebase:firebase-admin:9.1.1'
+
 	// webp 이미지 처리
 	implementation files('libs/webp-imageio-core-0.1.3.jar')
 	implementation "com.sksamuel.scrimage:scrimage-core:4.0.32"
