@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
+import com.mindmate.mindmate_server.chat.dto.ChatEventType;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
@@ -34,6 +35,7 @@ class ChatPresenceServiceTest {
     @Mock private RedisKeyManager redisKeyManager;
     @Mock private HashOperations<String, Object, Object> hashOperations;
     @Mock private ValueOperations<String, Object> valueOperations;
+    @Mock private ChatEventPublisher eventPublisher;
 
     @Mock private UserService userService;
     @Mock private ChatRoomService chatRoomService;
@@ -89,7 +91,11 @@ class ChatPresenceServiceTest {
             // then
             verify(hashOperations).putAll(eq("user:status:" + userId), any(Map.class));
             verify(redisTemplate).expire(eq("user:status:" + userId), eq(5L), eq(TimeUnit.MINUTES));
-            verify(redisTemplate).convertAndSend(eq("user:status:channel:" + userId), any(Map.class));
+            verify(eventPublisher).publishUserEvent(
+                    eq(userId),
+                    eq(ChatEventType.USER_STATUS),
+                    any(Map.class)
+            );
         }
 
         @Test
@@ -105,7 +111,11 @@ class ChatPresenceServiceTest {
             // then
             verify(hashOperations).putAll(eq("user:status:" + userId), any(Map.class));
             verify(redisTemplate).expire(eq("user:status:" + userId), eq(30L), eq(TimeUnit.MINUTES));
-            verify(redisTemplate).convertAndSend(eq("user:status:channel:" + userId), any(Map.class));
+            verify(eventPublisher).publishUserEvent(
+                    eq(userId),
+                    eq(ChatEventType.USER_STATUS),
+                    any(Map.class)
+            );
         }
     }
 

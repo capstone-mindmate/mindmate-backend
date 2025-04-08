@@ -1,13 +1,10 @@
 package com.mindmate.mindmate_server.chat.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.domain.FilteringWordCategory;
 import com.mindmate.mindmate_server.chat.domain.MessageType;
-import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
-import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
-import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
+import com.mindmate.mindmate_server.chat.dto.*;
 import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
@@ -49,6 +46,7 @@ class ChatServiceTest {
     @Mock private RedisTemplate<String, Object> redisTemplate;
     @Mock private RedisKeyManager redisKeyManager;
     @Mock private ValueOperations<String, Object> valueOperations;
+    @Mock private ChatEventPublisher eventPublisher;
 
     @InjectMocks
     private ChatServiceImpl chatService;
@@ -143,6 +141,11 @@ class ChatServiceTest {
             assertTrue(response.getContent().contains("욕설 관련 부적절한 내용이 감지되었습니다"));
             assertEquals(mockUser1.getId(), response.getSenderId());
             verify(chatMessageService, never()).save(any(ChatMessage.class));
+            verify(eventPublisher).publishChatRoomEvent(
+                    eq(roomId),
+                    eq(ChatEventType.CONTENT_FILTERED),
+                    any(ChatMessageResponse.class)
+            );
         }
     }
 
@@ -180,6 +183,4 @@ class ChatServiceTest {
             verify(chatRoomService, never()).save(any(ChatRoom.class));
         }
     }
-
-
 }
