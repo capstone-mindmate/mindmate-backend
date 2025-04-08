@@ -30,7 +30,7 @@ import static com.mindmate.mindmate_server.magazine.service.MagazineServiceImpl.
 @RequiredArgsConstructor
 public class MagazineImageService {
     private final MagazineImageRepository magazineImageRepository;
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 최대 파일 크기 10mb
+    public static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 최대 파일 크기 10mb
 
     @Value("${image.dir}")
     private String imageDir;
@@ -70,21 +70,29 @@ public class MagazineImageService {
         WebPWriteParam writeParam = new WebPWriteParam(writer.getLocale());
         writeParam.setCompressionMode(WebPWriteParam.MODE_DEFAULT);
 
-        writer.setOutput(new FileImageOutputStream(destFile));
-        writer.write(null, new IIOImage(originalImage, null, null), writeParam);
-        writer.dispose();
+        try {
+            writer.setOutput(new FileImageOutputStream(destFile));
+            writer.write(null, new IIOImage(originalImage, null, null), writeParam);
+            writer.dispose();
 
-        String imageUrl = imageUrlPrefix + storedFileName;
+            String imageUrl = imageUrlPrefix + storedFileName;
 
-        MagazineImage image = MagazineImage.builder()
-                .originalName(originalFileName)
-                .storedName(storedFileName)
-                .imageUrl(imageUrl)
-                .contentType("image/webp")
-                .fileSize(destFile.length())
-                .build();
+            MagazineImage image = MagazineImage.builder()
+                    .originalName(originalFileName)
+                    .storedName(storedFileName)
+                    .imageUrl(imageUrl)
+                    .contentType("image/webp")
+                    .fileSize(destFile.length())
+                    .build();
 
-        return magazineImageRepository.save(image);
+            return magazineImageRepository.save(image);
+        } catch (Exception e) {
+            if (destFile.exists()) {
+                destFile.delete();
+            }
+            throw e;
+        }
+
     }
 
     @Transactional
