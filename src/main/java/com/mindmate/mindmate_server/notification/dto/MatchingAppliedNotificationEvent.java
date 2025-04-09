@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.notification.dto;
 
+import com.mindmate.mindmate_server.notification.domain.NotificationType;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -22,10 +23,9 @@ public class MatchingAppliedNotificationEvent implements NotificationEvent {
     }
 
     @Override
-    public String getType() {
-        return "MATCHING_APPLIED";
+    public NotificationType getType() {
+        return NotificationType.MATCHING_APPLIED;
     }
-
     @Override
     public Long getRelatedEntityId() {
         return matchingId;
