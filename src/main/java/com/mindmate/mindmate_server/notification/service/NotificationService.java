@@ -21,27 +21,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class NotificationService {
-    private final FCMService fcmService;
     private final NotificationRepository notificationRepository;
+    private final NotificationProducer notificationProducer;
 
-    @Transactional
     public void processNotification(NotificationEvent event) {
-        if (event.saveToDatabase()) {
-            Notification notification = Notification.builder()
-                    .userId(event.getRecipientId())
-                    .title(event.getTitle())
-                    .content(event.getContent())
-                    .type(event.getType())
-                    .relatedEntityId(event.getRelatedEntityId())
-                    .readNotification(false)
-                    .build();
-
-            notificationRepository.save(notification);
-        }
-
-        if (event.sendFCM()) {
-            fcmService.sendNotification(event.getRecipientId(), event);
-        }
+        notificationProducer.send(event);
     }
 
     public Page<NotificationResponse> getUserNotifications(Long userId, Pageable pageable) {

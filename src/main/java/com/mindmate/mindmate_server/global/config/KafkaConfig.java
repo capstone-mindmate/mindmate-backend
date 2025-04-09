@@ -140,4 +140,12 @@ public class KafkaConfig {
                 .build();
     }
 
+    @Bean
+    public NewTopic notificationTopic() {
+        return TopicBuilder.name("notifications")
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
+
 }
