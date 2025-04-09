@@ -93,7 +93,7 @@ public class NotificationService {
             NotificationEvent personalizedEvent = createPersonalEvent(eventTemplate, userId);
             processNotification(personalizedEvent);
         }
-    }
+    } // admin이 공지사항 보낼 수 있음
 
     private NotificationEvent createPersonalEvent(NotificationEvent template, Long userId) {
         return new NotificationEvent() {

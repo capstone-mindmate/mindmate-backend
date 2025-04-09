@@ -11,7 +11,8 @@ public enum NotificationType {
     MAGAZINE_REJECTED("매거진 반려"),
     REVIEW_CREATED("새로운 리뷰"),
     CHAT_MESSAGE("새 메시지"),
-    ANNOUNCEMENT("공지사항");
+    ANNOUNCEMENT("공지사항"),
+    CHAT_CLOSED("채팅 종료");
 
     private final String displayName;
 

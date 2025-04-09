@@ -10,6 +10,8 @@ import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.matching.domain.Matching;
+import com.mindmate.mindmate_server.notification.dto.ChatCloseRequestNotificationEvent;
+import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
     private final ChatMessageService chatMessageService;
     private final UserService userService;
+    private final NotificationService notificationService;
 
     @Override
     public ChatRoom findChatRoomById(Long roomId) {
@@ -123,6 +126,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         User user = userService.findUserById(userId);
         ChatRoom chatRoom = findChatRoomById(roomId);
         chatRoom.requestClosure(user);
+
+        User recipient = chatRoom.isListener(user) ? chatRoom.getSpeaker() : chatRoom.getListener();
+        String requesterName = user.getProfile() != null ? user.getProfile().getNickname() : "사용자";
+
+        ChatCloseRequestNotificationEvent event = ChatCloseRequestNotificationEvent.builder()
+                .recipientId(recipient.getId())
+                .chatRoomId(roomId)
+                .requesterNickname(requesterName)
+                .build();
+
+        notificationService.processNotification(event);
     }
 
     @Override

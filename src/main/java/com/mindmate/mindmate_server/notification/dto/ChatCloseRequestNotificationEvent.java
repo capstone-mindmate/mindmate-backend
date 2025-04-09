@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.notification.dto;
 
+import com.mindmate.mindmate_server.notification.domain.NotificationType;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -21,8 +22,8 @@ public class ChatCloseRequestNotificationEvent implements NotificationEvent {
     }
 
     @Override
-    public String getType() {
-        return "CHAT_CLOSE_REQUEST";
+    public NotificationType getType() {
+        return NotificationType.CHAT_CLOSED;
     }
 
     @Override

@@ -10,6 +10,9 @@ import com.mindmate.mindmate_server.magazine.dto.*;
 import com.mindmate.mindmate_server.magazine.repository.MagazineImageRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineLikeRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineRepository;
+import com.mindmate.mindmate_server.notification.dto.MagazineApprovedNotificationEvent;
+import com.mindmate.mindmate_server.notification.dto.MagazineRejectedNotificationEvent;
+import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
@@ -30,6 +33,8 @@ import java.util.Set;
 public class MagazineServiceImpl implements MagazineService {
     private final UserService userService;
     private final MagazineImageService magazineImageService;
+
+    private final NotificationService notificationService;
 
     private final MagazineRepository magazineRepository;
     private final MagazineLikeRepository magazineLikeRepository;
@@ -174,9 +179,26 @@ public class MagazineServiceImpl implements MagazineService {
 
         if (isAccepted) {
             magazine.setStatus(MagazineStatus.PUBLISHED);
+
+            MagazineApprovedNotificationEvent authorEvent = MagazineApprovedNotificationEvent.builder()
+                    .recipientId(magazine.getAuthor().getId())
+                    .magazineId(magazineId)
+                    .magazineTitle(magazine.getTitle())
+                    .build();
+
+            notificationService.processNotification(authorEvent);
         } else {
             magazine.setStatus(MagazineStatus.REJECTED);
             // todo: 거절 시 추가 동작
+
+            MagazineRejectedNotificationEvent event = MagazineRejectedNotificationEvent.builder()
+                    .recipientId(magazine.getAuthor().getId())
+                    .magazineId(magazineId)
+                    .magazineTitle(magazine.getTitle())
+                    .rejectionReason("관리자 검토 결과 부적합") // 추후에 더 정확한 피드백 줘도 될듯
+                    .build();
+
+            notificationService.processNotification(event);
         }
         return MagazineResponse.from(magazineRepository.save(magazine));
     }

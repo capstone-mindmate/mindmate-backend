@@ -3,6 +3,7 @@ package com.mindmate.mindmate_server.user.repository;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -20,4 +21,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByCurrentRoleAndSuspensionEndTimeBefore(RoleType roleType, LocalDateTime time);
 
 //    boolean existsByNickname(String nickname);
+
+    @Query("SELECT u.id FROM User u")
+    List<Long> findAllUserIds();
 }
