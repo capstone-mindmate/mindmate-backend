@@ -3,6 +3,7 @@ package com.mindmate.mindmate_server.notification.service;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.NotificationErrorCode;
 import com.mindmate.mindmate_server.notification.domain.Notification;
+import com.mindmate.mindmate_server.notification.domain.NotificationType;
 import com.mindmate.mindmate_server.notification.dto.NotificationEvent;
 import com.mindmate.mindmate_server.notification.dto.NotificationResponse;
 import com.mindmate.mindmate_server.notification.repository.NotificationRepository;
@@ -25,18 +26,22 @@ public class NotificationService {
 
     @Transactional
     public void processNotification(NotificationEvent event) {
-        Notification notification = Notification.builder()
-                .userId(event.getRecipientId())
-                .title(event.getTitle())
-                .content(event.getContent())
-                .type(event.getType())
-                .relatedEntityId(event.getRelatedEntityId())
-                .readNotification(false)
-                .build();
+        if (event.saveToDatabase()) {
+            Notification notification = Notification.builder()
+                    .userId(event.getRecipientId())
+                    .title(event.getTitle())
+                    .content(event.getContent())
+                    .type(event.getType())
+                    .relatedEntityId(event.getRelatedEntityId())
+                    .readNotification(false)
+                    .build();
 
-        notificationRepository.save(notification);
+            notificationRepository.save(notification);
+        }
 
-        fcmService.sendNotification(event.getRecipientId(), event);
+        if (event.sendFCM()) {
+            fcmService.sendNotification(event.getRecipientId(), event);
+        }
     }
 
     public Page<NotificationResponse> getUserNotifications(Long userId, Pageable pageable) {
@@ -80,6 +85,53 @@ public class NotificationService {
     @Transactional
     public void deleteAllNotifications(Long userId) {
         notificationRepository.deleteByUserId(userId);
+    }
+
+    @Transactional
+    public void sendNotificationToAllUsers(NotificationEvent eventTemplate, List<Long> userIds) {
+        for (Long userId : userIds) {
+            NotificationEvent personalizedEvent = createPersonalEvent(eventTemplate, userId);
+            processNotification(personalizedEvent);
+        }
+    }
+
+    private NotificationEvent createPersonalEvent(NotificationEvent template, Long userId) {
+        return new NotificationEvent() {
+            @Override
+            public Long getRecipientId() {
+                return userId;
+            }
+
+            @Override
+            public String getTitle() {
+                return template.getTitle();
+            }
+
+            @Override
+            public String getContent() {
+                return template.getContent();
+            }
+
+            @Override
+            public NotificationType getType() {
+                return template.getType();
+            }
+
+            @Override
+            public Long getRelatedEntityId() {
+                return template.getRelatedEntityId();
+            }
+
+            @Override
+            public boolean saveToDatabase() {
+                return template.saveToDatabase();
+            }
+
+            @Override
+            public boolean sendFCM() {
+                return template.sendFCM();
+            }
+        };
     }
 
 }
