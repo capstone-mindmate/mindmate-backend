@@ -26,7 +26,7 @@ public class FCMController {
 
     @DeleteMapping
     public ResponseEntity<FCMTokenResponse> deactivateToken(
-            @RequestParam FCMTokenRequest request,
+            @RequestBody FCMTokenRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
 
         FCMTokenResponse fcmTokenResponse = fcmService.deactivateToken(principal.getUserId(), request);

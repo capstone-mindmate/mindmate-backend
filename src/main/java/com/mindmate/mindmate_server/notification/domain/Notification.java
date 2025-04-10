@@ -23,15 +23,16 @@ public class Notification extends BaseTimeEntity {
     @Column(nullable = false)
     private String content;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String type;
+    private NotificationType type;
 
     private Long relatedEntityId;
 
     private boolean readNotification = false;
 
     @Builder
-    public Notification(Long userId, String title, String content, String type, Long relatedEntityId, boolean readNotification) {
+    public Notification(Long userId, String title, String content, NotificationType type, Long relatedEntityId, boolean readNotification) {
         this.userId = userId;
         this.title = title;
         this.content = content;

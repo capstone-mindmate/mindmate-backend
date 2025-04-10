@@ -6,28 +6,39 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class ChatCloseRequestNotificationEvent implements NotificationEvent {
+public class ChatMessageNotificationEvent implements NotificationEvent {
     private final Long recipientId;
     private final Long chatRoomId;
-    private final String requesterNickname;
+    private final String senderName;
+    private final String messagePreview;
 
     @Override
     public String getTitle() {
-        return "채팅방 종료 요청";
+        return "새 메시지";
     }
 
     @Override
     public String getContent() {
-        return String.format("%s님이 채팅방 종료를 요청했습니다.", requesterNickname);
+        return String.format("'%s': %s", senderName, messagePreview);
     }
 
     @Override
     public NotificationType getType() {
-        return NotificationType.CHAT_CLOSED;
+        return NotificationType.CHAT_MESSAGE;
     }
 
     @Override
     public Long getRelatedEntityId() {
         return chatRoomId;
+    }
+
+    @Override
+    public boolean saveToDatabase() {
+        return false;
+    }
+
+    @Override
+    public boolean sendFCM() {
+        return true;
     }
 }

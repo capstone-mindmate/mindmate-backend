@@ -85,7 +85,7 @@ public class ReviewServiceImpl implements ReviewService{
         ReviewCreatedNotificationEvent event = ReviewCreatedNotificationEvent.builder()
                 .recipientId(reviewedUser.getId())
                 .reviewId(review.getId())
-                .reviewerNickname(reviewerName)
+                .reviewerName(reviewerName)
                 .build();
 
         notificationService.processNotification(event);

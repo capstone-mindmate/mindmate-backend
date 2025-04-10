@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.notification.dto;
 
 import com.mindmate.mindmate_server.notification.domain.Notification;
+import com.mindmate.mindmate_server.notification.domain.NotificationType;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -12,7 +13,7 @@ public class NotificationResponse {
     private Long id;
     private String title;
     private String content;
-    private String type;
+    private NotificationType type;
     private Long relatedEntityId;
     private boolean readNotification;
     private LocalDateTime createdAt;

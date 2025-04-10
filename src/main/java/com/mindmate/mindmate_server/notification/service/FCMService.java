@@ -94,7 +94,7 @@ public class FCMService {
 
         Map<String, String> data = new HashMap<>();
         data.put("notificationId", UUID.randomUUID().toString());
-        data.put("type", event.getType());
+        data.put("type", event.getType().getDisplayName());
         data.put("relatedEntityId", event.getRelatedEntityId().toString());
         data.put("timestamp", String.valueOf(System.currentTimeMillis()));
 

@@ -6,28 +6,28 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class ReviewCreatedNotificationEvent implements NotificationEvent {
+public class MagazineApprovedNotificationEvent implements NotificationEvent {
     private final Long recipientId;
-    private final Long reviewId;
-    private final String reviewerName;
+    private final Long magazineId;
+    private final String magazineTitle;
 
     @Override
     public String getTitle() {
-        return "새로운 리뷰";
+        return "매거진 승인";
     }
 
     @Override
     public String getContent() {
-        return String.format("'%s'님이 리뷰를 작성했습니다.", reviewerName);
+        return String.format("'%s' 매거진이 승인되었습니다.", magazineTitle);
     }
 
     @Override
     public NotificationType getType() {
-        return NotificationType.REVIEW_CREATED;
+        return NotificationType.MAGAZINE_APPROVED;
     }
 
     @Override
     public Long getRelatedEntityId() {
-        return reviewId;
+        return magazineId;
     }
 }

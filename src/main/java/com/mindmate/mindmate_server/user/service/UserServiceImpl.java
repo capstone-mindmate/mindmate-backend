@@ -8,6 +8,7 @@ import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -53,5 +54,11 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<User> findByCurrentRoleAndSuspensionEndTimeBefore(RoleType roleType, LocalDateTime time) {
         return userRepository.findByCurrentRoleAndSuspensionEndTimeBefore(roleType, time);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> findAllUserIds() {
+        return userRepository.findAllUserIds();
     }
 }
