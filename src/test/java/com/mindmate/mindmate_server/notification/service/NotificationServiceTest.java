@@ -35,7 +35,7 @@ class NotificationServiceTest {
     private NotificationRepository notificationRepository;
 
     @Mock
-    private NotificationProducer notificationProducer;
+    private FCMService fcmService;
 
     @InjectMocks
     private NotificationService notificationService;
@@ -71,13 +71,23 @@ class NotificationServiceTest {
     }
 
     @Test
-    @DisplayName("알림 처리 - 카프카로 이벤트 발행")
-    void processNotification_shouldSendEventToKafka() {
+    @DisplayName("알림 처리 - DB 저장 및 FCM 전송")
+    void processNotification_shouldSaveAndSendFCM() {
         // when
         notificationService.processNotification(testEvent);
 
         // then
-        verify(notificationProducer, times(1)).send(eq(testEvent));
+        ArgumentCaptor<Notification> notificationCaptor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(notificationCaptor.capture());
+        verify(fcmService).sendNotification(eq(userId), eq(testEvent));
+
+        Notification savedNotification = notificationCaptor.getValue();
+        assertEquals(userId, savedNotification.getUserId());
+        assertEquals(NotificationType.MATCHING_ACCEPTED, savedNotification.getType());
+        assertEquals("매칭 수락", savedNotification.getTitle());
+        assertEquals("'테스트 매칭' 매칭이 수락되었습니다.", savedNotification.getContent());
+        assertEquals(2L, savedNotification.getRelatedEntityId());
+        assertFalse(savedNotification.isReadNotification());
     }
 
     @Test
@@ -163,7 +173,9 @@ class NotificationServiceTest {
         notificationService.sendNotificationToAllUsers(testEvent, userIds);
 
         // then
-        verify(notificationProducer, times(3)).send(any(NotificationEvent.class));
+        // 각 사용자에 대해 processNotification이 호출되는지 확인
+        verify(notificationRepository, times(3)).save(any(Notification.class));
+        verify(fcmService, times(3)).sendNotification(any(Long.class), any(NotificationEvent.class));
     }
 
     @Test

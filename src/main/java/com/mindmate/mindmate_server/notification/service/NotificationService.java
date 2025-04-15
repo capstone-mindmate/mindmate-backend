@@ -22,10 +22,26 @@ import java.util.stream.Collectors;
 @Slf4j
 public class NotificationService {
     private final NotificationRepository notificationRepository;
-    private final NotificationProducer notificationProducer;
+    private final FCMService fcmService;
 
+    @Transactional
     public void processNotification(NotificationEvent event) {
-        notificationProducer.send(event);
+        if (event.saveToDatabase()) {
+            Notification notification = Notification.builder()
+                    .userId(event.getRecipientId())
+                    .title(event.getTitle())
+                    .content(event.getContent())
+                    .type(event.getType())
+                    .relatedEntityId(event.getRelatedEntityId())
+                    .readNotification(false)
+                    .build();
+
+            notificationRepository.save(notification);
+        }
+
+        if (event.sendFCM()) {
+            fcmService.sendNotification(event.getRecipientId(), event);
+        }
     }
 
     public Page<NotificationResponse> getUserNotifications(Long userId, Pageable pageable) {
