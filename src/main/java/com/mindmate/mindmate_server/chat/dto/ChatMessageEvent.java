@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.chat.dto;
 
+import com.mindmate.mindmate_server.chat.domain.FilteringWordCategory;
 import com.mindmate.mindmate_server.chat.domain.MessageType;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import lombok.AllArgsConstructor;
@@ -20,6 +21,15 @@ public class ChatMessageEvent {
     private Long senderId;
     private String content;
     private MessageType type;
+
+    private Long recipientId;
+    private boolean recipientActive;
+
+    private boolean filtered;
+    private FilteringWordCategory filteringWordCategory;
+
+    private boolean encrypted;
+    private String plainContent;
 
     public void setId(Long id) {
         this.messageId = id;

@@ -74,4 +74,8 @@ public class ChatMessage extends BaseTimeEntity {
     public void setCustomForm(CustomForm customForm) {
         this.customForm = customForm;
     }
+
+    public void updateContent(String encryptedContent) {
+        this.content = encryptedContent;
+    }
 }
