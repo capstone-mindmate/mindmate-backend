@@ -61,7 +61,6 @@ public class ChatNotificationConsumer {
                     .messageId(event.getMessageId())
                     .build();
 
-            // todo: notificationcosumer의 consume 수정 후 바꾸기
             notificationService.processNotification(notificationEvent);
             log.info("Notification sent to recipient {} for message {}", recipient.getId(), event.getMessageId());
         } catch (Exception e) {

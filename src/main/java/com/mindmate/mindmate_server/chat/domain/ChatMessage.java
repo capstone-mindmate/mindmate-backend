@@ -43,28 +43,21 @@ public class ChatMessage extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-
-    // todo: 삭제??
-    private String filteredContent;
-
     @Enumerated(EnumType.STRING)
     private MessageType type;
 
     private boolean isRead;
     private LocalDateTime readAt;
 
+    private boolean encrypted = false;
+    
     @Builder
     public ChatMessage(ChatRoom chatRoom, User sender, String content, MessageType type) {
         this.chatRoom = chatRoom;
         this.sender = sender;
-//        this.senderRole = senderRole;
         this.content = content;
         this.type = type;
         this.isRead = false;
-    }
-
-    public void setFilteredContent(String filteredContent) {
-        this.filteredContent = filteredContent;
     }
 
     public boolean isCustomForm() {
