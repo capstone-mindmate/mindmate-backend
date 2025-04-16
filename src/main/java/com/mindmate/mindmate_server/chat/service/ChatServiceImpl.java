@@ -150,8 +150,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private ChatMessageResponse handleFilteredMessage(ChatRoom chatRoom, User sender, ChatMessageRequest request) {
-        String filteredContent = String.format(
-                "[%s 관련 부적절한 내용이 감지되었습니다]");
+        String filteredContent = "[부적절한 내용이 감지되었습니다]";
 
         // 필터링된 메시지도 이벤트 발행 (분석용)
         ChatMessageEvent event = ChatMessageEvent.builder()
@@ -167,7 +166,7 @@ public class ChatServiceImpl implements ChatService {
         // todo: 필터링 걸렸을 떄 이벤트 날릴건지? 날린다면 어떤 내용 처리할건가? -> 사용자별 특정 기간 동안의 필터링 횟수를 임시 저장해서 처리하는 방식/
         sendKafkaMessage(event);
 
-        ChatMessageResponse response = ChatMessageResponse.filteredResponse(
+        return ChatMessageResponse.filteredResponse(
                 chatRoom.getId(),
                 sender.getId(),
                 sender.getProfile().getNickname(),
@@ -175,7 +174,17 @@ public class ChatServiceImpl implements ChatService {
                 request.getType()
         );
 
-        eventPublisher.publishChatRoomEvent(chatRoom.getId(), ChatEventType.CONTENT_FILTERED, response);
-        return response;
+//        ChatMessageResponse response = ChatMessageResponse.filteredResponse(
+//                chatRoom.getId(),
+//                sender.getId(),
+//                sender.getProfile().getNickname(),
+//                filteredContent,
+//                request.getType()
+//        );
+//
+//        eventPublisher.publishChatRoomEvent(chatRoom.getId(), ChatEventType.CONTENT_FILTERED, response);
+//        log.info("handle filtering event send to redis");
+//
+//        return response;
     }
 }

@@ -36,13 +36,96 @@
         .custom-form-question { margin-bottom: 5px; }
         .custom-form-answer { margin-left: 15px; color: #0066cc; }
         .custom-form-input { width: 100%; padding: 5px; margin-bottom: 5px; }
+        .toast-box {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 100%;
+            opacity: 1; /* 기본값을 1로 변경 */
+            z-index: 10; /* z-index 추가 */
+            position: relative; /* position 속성 추가 */
+        }
+        
+        .toast-box-header {
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .toast-box-title {
+            font-weight: bold;
+            color: #0066cc;
+        }
+        
+        .toast-box-close {
+            cursor: pointer;
+            font-size: 18px;
+            color: #666;
+        }
+        
+        .toast-box-content {
+            padding: 10px 12px;
+            color: #333;
+        }
+        
+        .toast-box-footer {
+            padding: 8px 12px;
+            border-top: 1px solid #eee;
+            text-align: right;
+        }
+        
+        .toast-box-link {
+            color: #0066cc;
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        
+        .toast-box-link:hover {
+            text-decoration: underline;
+        }
+        
+        .toast-box-image {
+            padding: 0 12px 12px;
+            text-align: center;
+        }
+        
+        .toast-box-image img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 3px;
+        }
+        
+        /* 필터링된 메시지 스타일 개선 */
+        .message-container[data-message-type="FILTERED"] {
+            position: relative;
+        }
+        
         .message-container[data-message-type="FILTERED"] .message-content {
             color: #721c24;
             background-color: #f8d7da;
-            padding: 5px;
-            border-radius: 3px;
+            padding: 8px 12px;
+            border-radius: 5px;
             border-left: 3px solid #f5c6cb;
+            margin: 5px 0;
+            font-style: italic;
         }
+        
+        .message-container[data-message-type="FILTERED"]::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -5px;
+            width: 3px;
+            height: 100%;
+            background-color: #f5c6cb;
+        }
+        
     
     </style>
 </head>
@@ -232,6 +315,11 @@
             '/topic/chat.room.' + currentRoomId + '.customform',
             handleCustomFormEvent
         );
+        
+        subscriptions[`toastbox_${currentRoomId}`] = stompClient.subscribe(
+            '/topic/chat.room.' + currentRoomId + '.toastbox',
+            handleToastBoxEvent
+        );
     
         updatePresence('ONLINE', currentRoomId);
         markAsRead();
@@ -241,7 +329,7 @@
     }
     
     function unsubscribeRoom(roomId) {
-        ['room', 'read', 'reaction', 'customform'].forEach(type => {
+        ['room', 'read', 'reaction', 'customform', 'toastbox'].forEach(type => {
             const subKey = `${type}_${roomId}`;
             if (subscriptions[subKey]) {
                 try {
@@ -368,14 +456,12 @@ function handleIncomingMessage(message) {
         console.log("Received message on main channel:", data);
 
         // 이벤트 타입이 있는 경우 처리 (Redis Pub/Sub 이벤트 형식)
-        if (data.type && data.data) {
+         if (data.type && data.data) {
             switch (data.type) {
                 case 'MESSAGE':
                     // 일반 메시지 처리
                     addMessageToDisplay(data.data);
                     return;
-                // 다른 이벤트 타입은 각각의 전용 핸들러에서 처리되어야 함
-                // 하지만 모든 메시지가 이 채널로 오고 있으므로 여기서도 처리
                 case 'READ_STATUS':
                     handleReadStatus({ body: JSON.stringify(data.data) });
                     return;
@@ -386,12 +472,22 @@ function handleIncomingMessage(message) {
                 case 'CUSTOM_FORM_RESPONSE':
                     handleCustomFormEvent({ body: JSON.stringify(data.data) });
                     return;
+                case 'TOAST_BOX':
+                    handleToastBoxEvent({ body: JSON.stringify(data.data) });
+                    return;
+                case 'CONTENT_FILTERED':
+                    // 필터링된 메시지 처리
+                    addMessageToDisplay(data.data);
+                    return;
             }
         }
 
         // 이전 형식 호환성 유지 (type 필드가 없는 경우)
-        if (data.id) {
+        if (data.id !== undefined) { // null도 허용하도록 변경
             addMessageToDisplay(data);
+        } else if (data.messageId && data.keyword) {
+            // 토스트 박스 이벤트 처리
+            handleToastBoxEvent({ body: JSON.stringify(data) });
         } else {
             console.error("Invalid message format:", data);
         }
@@ -399,6 +495,81 @@ function handleIncomingMessage(message) {
         console.error("Error processing message:", e, message.body);
     }
 }
+function handleToastBoxEvent(message) {
+    try {
+        const toastData = JSON.parse(message.body);
+        console.log("Toast box event:", toastData);
+        
+        if (toastData.roomId && toastData.messageId && toastData.keyword) {
+            // 관련 메시지 찾기
+            const messageElement = document.querySelector(`.message-container[data-message-id="${toastData.messageId}"]`);
+            
+            if (messageElement) {
+                // 이미 토스트 박스가 있는지 확인
+                const existingToastBox = messageElement.querySelector(`.toast-box[data-keyword="${toastData.keyword}"]`);
+                if (!existingToastBox) {
+                    // 토스트 박스 UI 생성
+                    const toastBoxElement = createToastBoxElement(toastData);
+                    
+                    // 메시지 내용 다음에 토스트 박스 추가
+                    const messageContent = messageElement.querySelector('.message-content');
+                    messageContent.insertAdjacentElement('afterend', toastBoxElement);
+                    
+                    // 토스트 박스 애니메이션 효과 - 즉시 .show 클래스 추가
+                    toastBoxElement.classList.add('show');
+                    
+                    // 콘솔에 로그 추가
+                    console.log("Toast box added and show class applied:", toastBoxElement);
+                    
+                    logMessage(`토스트 박스가 표시됨: 키워드 "${toastData.keyword}"`, "info");
+                }
+            } else {
+                logMessage(`메시지 ID ${toastData.messageId}에 대한 요소를 찾을 수 없습니다`, "warning");
+            }
+        } else {
+            console.error("Invalid toast box format:", toastData);
+        }
+    } catch (e) {
+        console.error("Error processing toast box:", e);
+    }
+}
+
+
+function createToastBoxElement(toastData) {
+    const toastBox = document.createElement('div');
+    toastBox.className = 'toast-box';
+    toastBox.dataset.keyword = toastData.keyword;
+    
+    let toastContent = `
+        <div class="toast-box-header">
+            <span class="toast-box-title">${toastData.title || '정보'}</span>
+            <span class="toast-box-close" onclick="this.parentNode.parentNode.remove()">×</span>
+        </div>
+        <div class="toast-box-content">
+            ${toastData.content || ''}
+        </div>
+    `;
+    
+    if (toastData.linkUrl) {
+        toastContent += `
+            <div class="toast-box-footer">
+                <a href="${toastData.linkUrl}" target="_blank" class="toast-box-link">자세히 보기</a>
+            </div>
+        `;
+    }
+    
+    if (toastData.imageUrl) {
+        toastContent += `
+            <div class="toast-box-image">
+                <img src="${toastData.imageUrl}" alt="${toastData.keyword}">
+            </div>
+        `;
+    }
+    
+    toastBox.innerHTML = toastContent;
+    return toastBox;
+}
+
 
 
 
@@ -658,18 +829,18 @@ function handleCustomFormEvent(message) {
         });
         
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
+    }
         
-        function addMessageToDisplay(message, isNew = true) {
-    if (!message || !message.id) {
-        console.error("Invalid message object:", message);
+function addMessageToDisplay(message, isNew = true) {
+    if (!message) {
+        console.error("Message object is null or undefined");
         return;
     }
 
     const messagesContainer = document.getElementById('messages');
     const messageElement = document.createElement('div');
     messageElement.className = 'message-container';
-    messageElement.dataset.messageId = message.id;
+    messageElement.dataset.messageId = message.id || `error-${Date.now()}`; // ID가 없는 경우 임시 ID 생성
     messageElement.dataset.messageType = message.type || 'TEXT';
     messageElement.dataset.roomId = currentRoomId;
 
@@ -678,13 +849,16 @@ function handleCustomFormEvent(message) {
     // 필터링된 메시지 처리
     if (message.filtered) {
         messageElement.dataset.messageType = 'FILTERED';
+        // 필터링 아이콘 추가
+        const filterIcon = '⚠️';
+        message.content = `${filterIcon} ${message.content}`;
     }
 
     // 에러 메시지 처리
     if (message.error) {
         messageElement.dataset.messageType = 'ERROR';
     }
-
+    
     let messageContent = `
         <div class="message-header">
             <span class="message-sender">${message.senderName || '알 수 없음'} ${isMyMessage ? '(나)' : ''}</span>
