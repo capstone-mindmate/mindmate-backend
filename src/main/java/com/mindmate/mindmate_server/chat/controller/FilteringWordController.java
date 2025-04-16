@@ -2,9 +2,7 @@ package com.mindmate.mindmate_server.chat.controller;
 
 import com.mindmate.mindmate_server.chat.dto.FilteringWordDTO;
 import com.mindmate.mindmate_server.chat.dto.FilteringWordRequest;
-import com.mindmate.mindmate_server.chat.service.ContentFilterService;
 import com.mindmate.mindmate_server.chat.service.FilteringWordService;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +15,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FilteringWordController {
     private final FilteringWordService filteringWordService;
-    private final ContentFilterService contentFilterService;
 
     /**
      * 필터링 단어들 확인
@@ -33,13 +30,8 @@ public class FilteringWordController {
      */
     @PostMapping("/words")
     public ResponseEntity<FilteringWordDTO> addFilteringWord(@RequestBody FilteringWordRequest request) {
-        try {
-            FilteringWordDTO saved = filteringWordService.addFilteringWord(request.getWord());
-            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
-
+        FilteringWordDTO saved = filteringWordService.addFilteringWord(request.getWord());
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     /**
@@ -47,12 +39,8 @@ public class FilteringWordController {
      */
     @DeleteMapping("/words/{id}")
     public ResponseEntity<Void> deleteFilteringWord(@PathVariable Long id) {
-        try {
-            filteringWordService.deleteFilteringWord(id);
-            return ResponseEntity.noContent().build();
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        filteringWordService.deleteFilteringWord(id);
+        return ResponseEntity.noContent().build();
     }
 
     /**
@@ -60,22 +48,13 @@ public class FilteringWordController {
      */
     @PutMapping("/words/{id}/activate")
     public ResponseEntity<FilteringWordDTO> activateFilteringWord(@PathVariable Long id) {
-        try {
-            FilteringWordDTO updated = filteringWordService.activateFilteringWod(id);
-            return ResponseEntity.ok(updated);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        FilteringWordDTO updated = filteringWordService.setFilteringWordActive(id, true);
+        return ResponseEntity.ok(updated);
     }
-
     @PutMapping("/words/{id}/deactivate")
     public ResponseEntity<FilteringWordDTO> deactivateFilteringWord(@PathVariable Long id) {
-        try {
-            FilteringWordDTO updated = filteringWordService.deactivateFilteringWod(id);
-            return ResponseEntity.ok(updated);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        FilteringWordDTO updated = filteringWordService.setFilteringWordActive(id, false);
+        return ResponseEntity.ok(updated);
     }
 
 }

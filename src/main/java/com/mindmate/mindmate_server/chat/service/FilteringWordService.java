@@ -55,26 +55,14 @@ public class FilteringWordService {
     }
 
     @Transactional
-    public FilteringWordDTO activateFilteringWod(Long id) {
+    public FilteringWordDTO setFilteringWordActive(Long id, boolean active) {
         FilteringWord word = findFilteringWordById(id);
+        word.setActive(active);
 
-        word.activate();
         FilteringWord save = filteringWordRepository.save(word);
         // 추가
 
         log.info("필터링 단어 활성화: ID={}, 단어={}", id, word.getWord());
-        return FilteringWordDTO.from(save);
-    }
-
-    @Transactional
-    public FilteringWordDTO deactivateFilteringWod(Long id) {
-        FilteringWord word = findFilteringWordById(id);
-
-        word.deactivate();
-        FilteringWord save = filteringWordRepository.save(word);
-
-        // 추가
-        log.info("필터링 단어 비활성화: ID={}, 단어={}", id, word.getWord());
         return FilteringWordDTO.from(save);
     }
 

@@ -26,12 +26,7 @@ public class FilteringWord extends BaseTimeEntity {
         this.word = word;
     }
 
-    public void deactivate() {
-        this.active = false;
+    public void setActive(boolean active) {
+        this.active = active;
     }
-
-    public void activate() {
-        this.active = true;
-    }
-
 }
