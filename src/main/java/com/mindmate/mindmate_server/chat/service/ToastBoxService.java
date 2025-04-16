@@ -15,7 +15,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,6 +46,21 @@ public class ToastBoxService {
                 .collect(Collectors.toList());
 
         toastBoxMatcher.initialize(keywords);
+    }
+
+    public List<ToastBoxKeyword> findToastBoxKeywords(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> matchedKeywords = toastBoxMatcher.search(content);
+
+        if (matchedKeywords.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<String> uniqueKeywords = new HashSet<>(matchedKeywords);
+        return toastBoxRepository.findByKeywordInAndActiveTrue(uniqueKeywords);
     }
 
     public List<ToastBoxKeywordDTO> getAllToastBoxWords() {
