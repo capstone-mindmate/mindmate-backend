@@ -2,13 +2,18 @@ package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.FilteringWord;
 import com.mindmate.mindmate_server.chat.domain.ToastBoxKeyword;
+import com.mindmate.mindmate_server.chat.dto.ToastBoxKeywordDTO;
+import com.mindmate.mindmate_server.chat.dto.ToastBoxKeywordRequest;
 import com.mindmate.mindmate_server.chat.repository.ToastBoxRepository;
+import com.mindmate.mindmate_server.global.exception.CustomException;
+import com.mindmate.mindmate_server.global.exception.FilteringErrorCode;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -38,6 +43,75 @@ public class ToastBoxService {
                 .collect(Collectors.toList());
 
         toastBoxMatcher.initialize(keywords);
+    }
+
+    public List<ToastBoxKeywordDTO> getAllToastBoxWords() {
+        return toastBoxRepository.findAll().stream()
+                .map(ToastBoxKeywordDTO::from)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ToastBoxKeywordDTO addToastBoxKeyword(ToastBoxKeywordRequest dto) {
+        if (toastBoxRepository.findByKeyword(dto.getKeyword()).isPresent()) {
+            throw new CustomException(FilteringErrorCode.DUPLICATE_TOAST_BOX_KEYWORD);
+        }
+
+        ToastBoxKeyword keyword = ToastBoxKeyword.builder()
+                .keyword(dto.getKeyword())
+                .title(dto.getTitle())
+                .content(dto.getContent())
+                .linkUrl(dto.getLinkUrl())
+                .imageUrl(dto.getImageUrl())
+                .active(true)
+                .build();
+
+        ToastBoxKeyword save = toastBoxRepository.save(keyword);
+        // todo: 필터링 키워드 때랑 마찬가지
+        refreshToastBoxKeywords();
+        return ToastBoxKeywordDTO.from(save);
+    }
+
+    @Transactional
+    public ToastBoxKeywordDTO updateToastBoxKeyword(Long id, ToastBoxKeywordDTO dto) {
+        ToastBoxKeyword keyword = findToastBoxKeywordById(id);
+
+        if (!keyword.getKeyword().equals(dto.getKeyword())) {
+            if (toastBoxRepository.findByKeyword(dto.getKeyword()).isPresent()) {
+                throw new CustomException(FilteringErrorCode.DUPLICATE_TOAST_BOX_KEYWORD);
+            }
+        }
+
+        keyword.update(dto.getKeyword(), dto.getTitle(), dto.getContent(), dto.getLinkUrl(), dto.getImageUrl());
+
+        ToastBoxKeyword save = toastBoxRepository.save(keyword);
+        // 추가
+        return ToastBoxKeywordDTO.from(save);
+    }
+
+    @Transactional
+    public void deleteToastBoxKeyWord(Long id) {
+        if (!toastBoxRepository.existsById(id)) {
+            throw new CustomException(FilteringErrorCode.TOAST_BOX_KEYWORD_NOT_FOUND);
+        }
+
+        toastBoxRepository.deleteById(id);
+        // 추가
+    }
+
+    @Transactional
+    public ToastBoxKeywordDTO setToastBoxKeywordActive(Long id, boolean active) {
+        ToastBoxKeyword keyword = findToastBoxKeywordById(id);
+
+        keyword.setActive(active);
+        ToastBoxKeyword save = toastBoxRepository.save(keyword);
+        // 추가
+        return ToastBoxKeywordDTO.from(save);
+    }
+
+    public ToastBoxKeyword findToastBoxKeywordById(Long id) {
+        return toastBoxRepository.findById(id)
+                .orElseThrow(() -> new CustomException(FilteringErrorCode.TOAST_BOX_KEYWORD_NOT_FOUND));
     }
 
 }
