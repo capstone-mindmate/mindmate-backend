@@ -34,4 +34,17 @@ public class ToastBoxKeyword extends BaseTimeEntity {
         this.linkUrl = linkUrl;
         this.imageUrl = imageUrl;
     }
+
+    public void update(String keyword, String title, String content, String linkUrl, String imageUrl) {
+        this.keyword = keyword;
+        this.title = title;
+        this.content = content;
+        this.linkUrl = linkUrl;
+        this.imageUrl = imageUrl;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
 }
