@@ -31,7 +31,6 @@ public class ChatMessageResponse {
     private Map<ReactionType, Integer> reactionCounts;
     private ReactionType userReaction;
 
-    private boolean filtered;
     private boolean error;
     private String errorMessage;
 
@@ -65,12 +64,11 @@ public class ChatMessageResponse {
 //                .roomId(message.getChatRoom().getId())
                 .senderId(message.getSender().getId())
                 .senderName(message.getSender().getProfile() != null ? message.getSender().getProfile().getNickname() : "Unknown")
-                .content(message.getFilteredContent() != null ? message.getFilteredContent() : message.getContent())
+                .content(message.getContent())
                 .type(message.getType())
                 .createdAt(message.getCreatedAt())
                 .reactionCounts(reactionCounts)
                 .userReaction(userReaction)
-                .filtered(message.getFilteredContent() != null)
                 .error(false)
                 .customForm(customFormResponse)
                 .build();
@@ -87,7 +85,6 @@ public class ChatMessageResponse {
                 .type(type)
                 .createdAt(LocalDateTime.now())
                 .reactionCounts(new HashMap<>())
-                .filtered(true)
                 .error(false)
                 .build();
     }
@@ -103,7 +100,6 @@ public class ChatMessageResponse {
                 .type(type)
                 .createdAt(LocalDateTime.now())
                 .reactionCounts(new HashMap<>())
-                .filtered(false)
                 .error(true)
                 .errorMessage(errorMessage)
                 .build();

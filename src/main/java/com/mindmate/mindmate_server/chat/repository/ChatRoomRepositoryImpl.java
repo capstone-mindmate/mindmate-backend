@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.chat.repository;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
+import com.mindmate.mindmate_server.chat.domain.MessageType;
 import com.mindmate.mindmate_server.chat.domain.QChatMessage;
 import com.mindmate.mindmate_server.chat.domain.QChatRoom;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
@@ -166,21 +167,37 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
 
     private List<ChatRoomResponse> convertToDto(List<Tuple> results, QChatRoom chatRoom, QChatMessage lastMessage) {
         return results.stream()
-                .map(tuple -> ChatRoomResponse.builder()
-                        .roomId(tuple.get(chatRoom.id))
-                        .matchingId(tuple.get(chatRoom.matching.id))
-                        .chatRoomStatus(tuple.get(chatRoom.chatRoomStatus))
-                        .lastMessageTime(tuple.get(chatRoom.lastMessageTime))
-                        .lastMessage(tuple.get(lastMessage.content))
-                        .isCreator(Boolean.TRUE.equals(tuple.get(5, Boolean.class)))
-                        .matchingTitle(tuple.get(6, String.class))
-                        .oppositeName(tuple.get(7, String.class))
-                        .oppositeImage(tuple.get(8, String.class))
-                        .oppositeId(tuple.get(9, Long.class))
-                        .unreadCount(tuple.get(10, Long.class))
-                        .userRole(tuple.get(11, String.class))
-                        .build())
+                .map(tuple -> {
+                    String lastMessageContent;
+                    MessageType lastMessageType = tuple.get(lastMessage.type);
+
+                    if (lastMessageType == MessageType.TEXT) {
+                        lastMessageContent = "새 메시지가 있습니다";
+                    } else if (lastMessageType == MessageType.CUSTOM_FORM) {
+                        lastMessageContent = "커스텀 폼이 도착했습니다";
+                    } else if (lastMessageType == MessageType.EMOTICON) {
+                        lastMessageContent = "이모티콘이 도착했습니다";
+                    } else {
+                        lastMessageContent = "새 메시지가 있습니다";
+                    }
+
+                    return ChatRoomResponse.builder()
+                            .roomId(tuple.get(chatRoom.id))
+                            .matchingId(tuple.get(chatRoom.matching.id))
+                            .chatRoomStatus(tuple.get(chatRoom.chatRoomStatus))
+                            .lastMessageTime(tuple.get(chatRoom.lastMessageTime))
+                            .lastMessage(lastMessageContent)
+                            .isCreator(Boolean.TRUE.equals(tuple.get(5, Boolean.class)))
+                            .matchingTitle(tuple.get(6, String.class))
+                            .oppositeName(tuple.get(7, String.class))
+                            .oppositeImage(tuple.get(8, String.class))
+                            .oppositeId(tuple.get(9, Long.class))
+                            .unreadCount(tuple.get(10, Long.class))
+                            .userRole(tuple.get(11, String.class))
+                            .build();
+                })
                 .collect(Collectors.toList());
     }
+
 
 }

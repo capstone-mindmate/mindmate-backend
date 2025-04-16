@@ -35,7 +35,7 @@ public class MessageEncryptConsumer {
 
             String encryptedContent = aesGcmEncryptionService.encrypt(message.getContent());
 
-            message.updateContent(encryptedContent);
+            message.updateEncryptedContent(encryptedContent);
             chatMessageService.save(message);
 
         } catch (Exception e) {

@@ -18,11 +18,16 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ChatMessageServiceImpl implements ChatMessageService {
     private final ChatMessageRepository chatMessageRepository;
+    private final AesGcmEncryptionService encryptionService;
 
     @Override
     public ChatMessage findChatMessageById(Long messageId) {
-        return chatMessageRepository.findById(messageId)
+        ChatMessage message = chatMessageRepository.findById(messageId)
                 .orElseThrow(() -> new CustomException(ChatErrorCode.MESSAGE_NOT_FOUND));
+
+        // 암호화된 메시지 복호화
+        decryptMessageIfNeeded(message);
+        return message;
     }
 
     @Override
@@ -32,7 +37,8 @@ public class ChatMessageServiceImpl implements ChatMessageService {
 
     @Override
     public List<ChatMessage> findAllByChatRoomIdOrderByIdAsc(Long roomId) {
-        return chatMessageRepository.findByChatRoomIdOrderByIdAsc(roomId);
+        List<ChatMessage> messages = chatMessageRepository.findByChatRoomIdOrderByIdAsc(roomId);
+        return decryptMessagesIfNeeded(messages);
     }
 
     @Override
@@ -42,30 +48,35 @@ public class ChatMessageServiceImpl implements ChatMessageService {
 
     @Override
     public List<ChatMessage> findMessagesBeforeId(Long roomId, Long messageId, int size) {
-        return chatMessageRepository.findMessagesBeforeIdLimited(roomId, messageId, PageRequest.of(0, size));
+        List<ChatMessage> messages = chatMessageRepository.findMessagesBeforeIdLimited(roomId, messageId, PageRequest.of(0, size));
+        return decryptMessagesIfNeeded(messages);
     }
-
     @Override
     public List<ChatMessage> findMessagesAfterOrEqualId(Long roomId, Long messageId) {
-        return chatMessageRepository.findByChatRoomIdAndIdGreaterThanEqualOrderByIdAsc(roomId, messageId);
+        List<ChatMessage> messages = chatMessageRepository.findByChatRoomIdAndIdGreaterThanEqualOrderByIdAsc(roomId, messageId);
+        return decryptMessagesIfNeeded(messages);
     }
 
     @Override
     public List<ChatMessage> findRecentMessages(Long roomId, int size) {
-        List<ChatMessage> tempMessages = chatMessageRepository
-                .findByChatRoomIdOrderByIdDesc(roomId, PageRequest.of(0, size)).getContent();
-        List<ChatMessage> messages = new ArrayList<>(tempMessages);
-        Collections.reverse(messages);
-        return messages;
+        List<ChatMessage> messages = chatMessageRepository.findByChatRoomIdOrderByIdDesc(roomId, PageRequest.of(0, size)).getContent();
+        List<ChatMessage> decryptedMessages = decryptMessagesIfNeeded(messages);
+
+        List<ChatMessage> reversedMessages = new ArrayList<>(decryptedMessages);
+        Collections.reverse(reversedMessages);
+
+        return reversedMessages;
     }
 
     @Override
     public List<ChatMessage> findPreviousMessages(Long roomId, Long messageId, int size) {
-        List<ChatMessage> tempMessages = chatMessageRepository.findByChatRoomIdAndIdLessThanOrderByIdDesc(
-                roomId, messageId, PageRequest.of(0, size)).getContent();
-        List<ChatMessage> messages = new ArrayList<>(tempMessages);
-        Collections.reverse(messages);
-        return messages;
+        List<ChatMessage> messages = chatMessageRepository.findByChatRoomIdAndIdLessThanOrderByIdDesc(roomId, messageId, PageRequest.of(0, size)).getContent();
+        List<ChatMessage> decryptedMessages = decryptMessagesIfNeeded(messages);
+
+        List<ChatMessage> reversedMessages = new ArrayList<>(decryptedMessages);
+        Collections.reverse(reversedMessages);
+
+        return reversedMessages;
     }
 
     @Override
@@ -85,5 +96,24 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     @Override
     public List<ChatMessage> findByRoomIdAndIdBetween(Long roomId, Long targetMessageId, Long lastMessageId) {
         return chatMessageRepository.findByRoomIdAndIdBetween(roomId, targetMessageId, lastMessageId);
+    }
+
+    // 단일 메시지 확인 시 보고화
+    private void decryptMessageIfNeeded(ChatMessage message) {
+        if (message.isEncrypted()) {
+            try {
+                String decryptedContent = encryptionService.decrypt(message.getContent());
+                message.setDecryptedContent(decryptedContent);
+            } catch (Exception e) {
+            }
+        }
+    }
+
+    // 메서지 목록들 확인 시 복호화
+    private List<ChatMessage> decryptMessagesIfNeeded(List<ChatMessage> messages) {
+        for (ChatMessage message : messages) {
+            decryptMessageIfNeeded(message);
+        }
+        return messages;
     }
 }
