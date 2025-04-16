@@ -15,7 +15,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ContentFilterService {
     private final FilteringWordRepository filteringWordRepository;
-    private final AhoCorasickMatcher ahoCorasickMatcher;
+    private final AhoCorasickMatcher filteringMatcher;
 
     @PostConstruct
     public void initialize() {
@@ -25,7 +25,7 @@ public class ContentFilterService {
     @Scheduled(fixedRate = 86400000) // 24시간마다 갱신
     public void refreshFilteringWords() {
         List<FilteringWord> activeWords = filteringWordRepository.findByActiveTrue();
-        ahoCorasickMatcher.initialize(activeWords);
+        filteringMatcher.initialize(activeWords);
         log.info("필터링 단어 목록 갱신 완료: {} 개", activeWords.size());
     }
 
@@ -36,6 +36,6 @@ public class ContentFilterService {
             return false;
         }
 
-        return ahoCorasickMatcher.findFirstMatch(content).isPresent();
+        return filteringMatcher.findFirstMatch(content).isPresent();
     }
 }
