@@ -1,6 +1,5 @@
 package com.mindmate.mindmate_server.chat.controller;
 
-import com.mindmate.mindmate_server.chat.domain.CustomForm;
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import com.mindmate.mindmate_server.chat.dto.CustomFormRequest;
 import com.mindmate.mindmate_server.chat.dto.CustomFormResponse;

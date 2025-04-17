@@ -2,7 +2,6 @@ package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
-import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +20,6 @@ public class UnreadCountConsumer {
     private final ChatPresenceService chatPresenceService;
     private final ChatService chatService;
     private final UserService userService;
-
-//    private final ChatRoomRepository chatRoomRepository;
 
     @KafkaListener(
             topics = "chat-message-topic",

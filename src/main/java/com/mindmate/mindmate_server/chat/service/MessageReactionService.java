@@ -1,7 +1,6 @@
 package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
-import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.domain.MessageReaction;
 import com.mindmate.mindmate_server.chat.domain.ReactionType;
 import com.mindmate.mindmate_server.chat.dto.MessageReactionResponse;
@@ -30,7 +29,6 @@ public class MessageReactionService {
     public MessageReactionResponse addReaction(Long userId, Long messageId, ReactionType reactionType) {
         User user = userService.findUserById(userId);
         ChatMessage chatMessage = chatMessageService.findChatMessageById(messageId);
-//        ChatRoom chatRoom = chatMessage.getChatRoom();
 
         chatRoomService.validateChatActivity(userId, chatMessage.getChatRoom().getId());
 

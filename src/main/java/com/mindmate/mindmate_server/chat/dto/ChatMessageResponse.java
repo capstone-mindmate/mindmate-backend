@@ -4,7 +4,6 @@ import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.MessageReaction;
 import com.mindmate.mindmate_server.chat.domain.MessageType;
 import com.mindmate.mindmate_server.chat.domain.ReactionType;
-import com.mindmate.mindmate_server.user.domain.RoleType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,7 +19,6 @@ import java.util.Map;
 @AllArgsConstructor
 public class ChatMessageResponse {
     private Long id;
-//    private Long roomId; // 겹치지 않나?
     private Long senderId;
 
     private String senderName;

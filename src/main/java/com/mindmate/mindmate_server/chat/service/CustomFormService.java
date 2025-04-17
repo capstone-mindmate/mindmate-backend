@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CustomFormService {
     private final CustomFormRepository customFormRepository;
-//    private final ChatMessageRepository chatMessageRepository;
 
     private final UserService userService;
     private final ChatRoomService chatRoomService;
@@ -117,8 +116,6 @@ public class CustomFormService {
     }
 
     public List<CustomFormResponse> getCustomFormsByChatRoom(Long chatRoomId) {
-//        ChatRoom chatRoom = chatRoomService.findChatRoomById(chatRoomId);
-
         List<CustomForm> customForms = customFormRepository.findByChatRoomId(chatRoomId);
         return customForms.stream().map(CustomFormResponse::from).collect(Collectors.toList());
     }
