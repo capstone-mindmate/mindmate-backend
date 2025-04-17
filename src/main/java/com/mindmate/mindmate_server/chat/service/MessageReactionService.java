@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class MessageReactionService {
     private final MessageReactionRepository messageReactionRepository;
     private final UserService userService;
@@ -82,7 +83,6 @@ public class MessageReactionService {
 //                .ifPresent(messageReactionRepository::delete);
 //    }
 
-    @Transactional(readOnly = true)
     public List<MessageReactionResponse> getReactions(Long messageId) {
         return messageReactionRepository.findAllByMessageId(messageId).stream()
                 .map(MessageReactionResponse::from)

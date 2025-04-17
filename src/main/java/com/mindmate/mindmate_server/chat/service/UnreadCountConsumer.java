@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
-@Transactional
 @RequiredArgsConstructor
 public class UnreadCountConsumer {
     private final ChatRoomService chatRoomService;
@@ -26,6 +25,7 @@ public class UnreadCountConsumer {
             groupId = "unread-count-group",
             containerFactory = "chatMessageListenerContainerFactory"
     )
+    @Transactional
     public void updateUnreadCount(ConsumerRecord<String, ChatMessageEvent> record) {
         ChatMessageEvent event = record.value();
 

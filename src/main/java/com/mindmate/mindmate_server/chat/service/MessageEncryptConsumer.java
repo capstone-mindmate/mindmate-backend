@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-@Transactional
 public class MessageEncryptConsumer {
     private final AesGcmEncryptionService aesGcmEncryptionService;
     private final ChatMessageService chatMessageService;
@@ -22,6 +21,7 @@ public class MessageEncryptConsumer {
             groupId = "message-encryption-group",
             containerFactory = "chatMessageListenerContainerFactory"
     )
+    @Transactional
     public void encryptMessage(ConsumerRecord<String, ChatMessageEvent> record) {
         ChatMessageEvent event = record.value();
 
