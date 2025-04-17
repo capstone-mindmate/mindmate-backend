@@ -42,10 +42,9 @@ public class ChatMessage extends BaseTimeEntity {
 
     @Column(columnDefinition = "TEXT")
     private String content;
-
-
-    // todo: 삭제??
-    private String filteredContent;
+    
+    @Transient
+    private String decryptedContent;
 
     @Enumerated(EnumType.STRING)
     private MessageType type;
@@ -53,18 +52,15 @@ public class ChatMessage extends BaseTimeEntity {
     private boolean isRead;
     private LocalDateTime readAt;
 
+    private boolean encrypted = false;
+    
     @Builder
     public ChatMessage(ChatRoom chatRoom, User sender, String content, MessageType type) {
         this.chatRoom = chatRoom;
         this.sender = sender;
-//        this.senderRole = senderRole;
         this.content = content;
         this.type = type;
         this.isRead = false;
-    }
-
-    public void setFilteredContent(String filteredContent) {
-        this.filteredContent = filteredContent;
     }
 
     public boolean isCustomForm() {
@@ -73,5 +69,22 @@ public class ChatMessage extends BaseTimeEntity {
 
     public void setCustomForm(CustomForm customForm) {
         this.customForm = customForm;
+    }
+
+    public void updateEncryptedContent(String encryptedContent) {
+        this.content = encryptedContent;
+        this.encrypted = true;
+    }
+    
+    public void setDecryptedContent(String decryptedContent) {
+        this.decryptedContent = decryptedContent;
+    }
+    
+    // 내용 반환 시에 복호화된 내용을 우선적으로 사용
+    public String getContent() {
+        if (decryptedContent != null) {
+            return decryptedContent;
+        }
+        return content;
     }
 }

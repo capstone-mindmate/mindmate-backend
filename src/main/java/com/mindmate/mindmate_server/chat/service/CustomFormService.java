@@ -29,6 +29,7 @@ public class CustomFormService {
     private final ChatRoomService chatRoomService;
     private final ChatService chatService;
     private final ChatMessageService chatMessageService;
+    private final ChatPresenceService chatPresenceService;
 
 
     @Transactional
@@ -58,7 +59,10 @@ public class CustomFormService {
         ChatMessage savedMessage = chatMessageService.save(chatMessage);
         chatRoom.updateLastMessageTime();
 
-        chatService.publishMessageEvent(savedMessage);
+        User recipient = chatRoom.isListener(user) ? chatRoom.getSpeaker() : chatRoom.getListener();
+        boolean isRecipientActive = chatPresenceService.isUserActiveInRoom(recipient.getId(), chatRoom.getId());
+
+        chatService.publishMessageEvent(savedMessage, recipient.getId(), isRecipientActive, "커스텀 폼이 생성되었습니다.");
 
         return CustomFormResponse.from(savedForm);
     }
@@ -73,7 +77,6 @@ public class CustomFormService {
     public CustomFormResponse respondToCustomForm(Long formId, Long userId, RespondToCustomFormRequest request) {
         CustomForm customForm = findCustomFormById(formId);
         User user = userService.findUserById(userId);
-//        ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getChatRoomId());
 
         chatRoomService.validateChatActivity(userId, request.getChatRoomId());
 
@@ -103,8 +106,12 @@ public class CustomFormService {
         ChatMessage savedMessage = chatMessageService.save(responseMessage);
         customForm.getChatRoom().updateLastMessageTime();
 
-        // 저장된 메시지로 이벤트 발행
-        chatService.publishMessageEvent(savedMessage);
+        User recipient = customForm.getChatRoom().isListener(user) ?
+                customForm.getChatRoom().getSpeaker() : customForm.getChatRoom().getListener();
+        boolean isRecipientActive = chatPresenceService.isUserActiveInRoom(
+                recipient.getId(), customForm.getChatRoom().getId());
+
+        chatService.publishMessageEvent(savedMessage, recipient.getId(), isRecipientActive, "커스텀 폼에 응답했습니다.");
 
         return CustomFormResponse.from(updatedForm);
     }

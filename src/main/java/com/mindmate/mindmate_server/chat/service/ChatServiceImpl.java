@@ -3,11 +3,10 @@ package com.mindmate.mindmate_server.chat.service;
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.domain.FilteringWordCategory;
-import com.mindmate.mindmate_server.chat.dto.ChatEventType;
-import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
-import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
-import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
+import com.mindmate.mindmate_server.chat.domain.MessageType;
+import com.mindmate.mindmate_server.chat.dto.*;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
+import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +46,6 @@ public class ChatServiceImpl implements ChatService {
      *
      */
     @Override
-//    @Transactional(propagation = Propagation.REQUIRED)
     public ChatMessageResponse sendMessage(Long userId, ChatMessageRequest request) {
         try {
             ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getRoomId());
@@ -55,7 +53,6 @@ public class ChatServiceImpl implements ChatService {
 
             chatRoomService.validateChatActivity(userId, request.getRoomId());
 
-            // 필터링 동기 처리
             Optional<FilteringWordCategory> filteringCategory =
                     contentFilterService.findFilteringWordCategory(request.getContent());
 
@@ -112,13 +109,16 @@ public class ChatServiceImpl implements ChatService {
         ChatMessage savedMessage = chatMessageService.save(chatMessage);
         chatRoom.updateLastMessageTime();
 
-        publishMessageEvent(savedMessage);
+        User recipient = chatRoom.isListener(sender) ? chatRoom.getSpeaker() : chatRoom.getListener();
+        boolean isRecipientActive = chatPresenceService.isUserActiveInRoom(recipient.getId(), chatRoom.getId());
+
+        publishMessageEvent(savedMessage, recipient.getId(), isRecipientActive, request.getContent());
 
         return ChatMessageResponse.from(savedMessage, sender.getId());
     }
 
     @Override
-    public void publishMessageEvent(ChatMessage savedMessage) {
+    public void publishMessageEvent(ChatMessage savedMessage, Long recipientId, boolean recipientActive, String plainContent) {
         ChatMessageEvent event = ChatMessageEvent.builder()
                 .messageId(savedMessage.getId())
                 .roomId(savedMessage.getChatRoom().getId())
@@ -126,6 +126,11 @@ public class ChatServiceImpl implements ChatService {
                 .content(savedMessage.getContent())
                 .type(savedMessage.getType())
                 .timestamp(savedMessage.getCreatedAt())
+                .recipientId(recipientId)
+                .recipientActive(recipientActive)
+                .filtered(false)
+                .encrypted(false)
+                .plainContent(plainContent)
                 .build();
 
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -151,6 +156,20 @@ public class ChatServiceImpl implements ChatService {
                 "[%s 관련 부적절한 내용이 감지되었습니다]",
                 filteringWordCategory.getDescription());
 
+        // 필터링된 메시지도 이벤트 발행 (분석용)
+        ChatMessageEvent event = ChatMessageEvent.builder()
+                .messageId(null) // 저장되지 않음
+                .roomId(chatRoom.getId())
+                .senderId(sender.getId())
+                .content(request.getContent()) // 원본 내용 (분석용)
+                .type(request.getType())
+                .timestamp(LocalDateTime.now())
+                .filtered(true)
+                .filteringWordCategory(filteringWordCategory)
+                .build();
+
+        sendKafkaMessage(event);
+
         ChatMessageResponse response = ChatMessageResponse.filteredResponse(
                 chatRoom.getId(),
                 sender.getId(),
@@ -162,4 +181,35 @@ public class ChatServiceImpl implements ChatService {
         eventPublisher.publishChatRoomEvent(chatRoom.getId(), ChatEventType.CONTENT_FILTERED, response);
         return response;
     }
+
+//    private void sendChatNotification(ChatMessage message, User recipient, String originalContent) {
+//        try {
+//            User sender = message.getSender();
+//            ChatRoom chatRoom = message.getChatRoom();
+//
+//            String notificationContent;
+//            // todo: 이모티콘은 그냥 이미지만 못 보여주나? 그리고 암호화 여부에 따라 여기서 해당 내용을 보여줄 지 아니면 그냥 일반적인 문구를 보여줄 지 결정
+//            if (message.getType() == MessageType.TEXT) {
+//                notificationContent = originalContent;
+//            } else if (message.getType() == MessageType.CUSTOM_FORM) {
+//                notificationContent = "커스텀폼 메시지가 도착했습니다.";
+//            } else if (message.getType() == MessageType.EMOTICON){
+//                notificationContent = "이모티콘이 도착했습니다.";
+//            } else {
+//                notificationContent = "새 메시지가 도착했습니다.";
+//            }
+//
+//            ChatMessageNotificationEvent notificationEvent = ChatMessageNotificationEvent.builder()
+//                    .recipientId(recipient.getId())
+//                    .senderId(sender.getId())
+//                    .senderName(sender.getProfile().getNickname())
+//                    .roomId(chatRoom.getId())
+//                    .messageContent(notificationContent)
+//                    .messageId(message.getId())
+//                    .build();
+//
+//            notificationService.processNotification(notificationEvent);
+//        } catch (Exception e) {
+//            log.error("채팅 알림 발송 실패: {}", e.getMessage(), e);
+//        }
 }

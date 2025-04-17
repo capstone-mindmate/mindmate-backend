@@ -9,5 +9,5 @@ public interface ChatService {
 
     int markAsRead(Long userId, Long roomId);
 
-    void publishMessageEvent(ChatMessage savedMessage);
+    void publishMessageEvent(ChatMessage savedMessage, Long recipientId, boolean recipientActive, String plainContent);
 }
