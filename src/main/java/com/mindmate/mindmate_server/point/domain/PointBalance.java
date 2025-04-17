@@ -19,8 +19,23 @@ public class PointBalance {
 
     private Integer balance;
 
+    @Version  // 동시성 제어..
+    private Long version;
+
     public PointBalance(User user) {
         this.user = user;
         this.balance = 0;
+    }
+
+    public void addPoints(int amount) {
+        this.balance += amount;
+    }
+
+    public boolean usePoints(int amount) {
+        if (this.balance < amount) {
+            return false;
+        }
+        this.balance -= amount;
+        return true;
     }
 }
