@@ -1,12 +1,19 @@
 package com.mindmate.mindmate_server.chat.service;
 
-import com.mindmate.mindmate_server.chat.domain.FilteringWord;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
-public class AhoCorasickMatcher {
+public class AhoCorasickMatcher<T> {
+
+    public interface MatchableItem {
+        String getPattern();
+        boolean isActive();
+    }
+
     private static class Node{
         Map<Character, Node> children = new HashMap<>();
         Node failureLink;
@@ -19,17 +26,20 @@ public class AhoCorasickMatcher {
 
     private Node root;
     private boolean initialized = false;
+    private Map<String, T> itemMap = new HashMap<>();
 
-    public void initialize(List<FilteringWord> filteringWords) {
+    public void initialize(List<T> items, Function<T, String> patternExtractor, Function<T, Boolean> activeChecker) {
         root = new Node();
+        itemMap.clear();
 
         // 트라이 구축
-        for (FilteringWord word : filteringWords) {
-            if (!word.isActive()) continue;;
+        for (T item : items) {
+            if (!activeChecker.apply(item)) continue;
+
+            String pattern = patternExtractor.apply(item);
+            itemMap.put(pattern, item);
 
             Node current = root;
-            String pattern = word.getWord();
-
             for (char c : pattern.toCharArray()) {
                 current.children.putIfAbsent(c, new Node());
                 current = current.children.get(c);
@@ -72,7 +82,14 @@ public class AhoCorasickMatcher {
         initialized = true;
     }
 
-    // todo: 필터링 시 모든 단어에 대해 탐색할건지 or 필터링 단어 하나만 걸려도 바로 반환할건지
+    public List<T> searchItems(String text) {
+        List<String> patterns = search(text);
+        return patterns.stream()
+                .map(itemMap::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
     public List<String> search(String text) {
         if (!initialized) {
             throw new IllegalStateException("Aho-Corasick matcher is not initialized");
@@ -101,6 +118,11 @@ public class AhoCorasickMatcher {
         }
 
         return results;
+    }
+
+    public Optional<T> findFirstMatchItem(String text) {
+        Optional<String> pattern = findFirstMatch(text);
+        return pattern.map(itemMap::get);
     }
 
     public Optional<String> findFirstMatch(String text) {
