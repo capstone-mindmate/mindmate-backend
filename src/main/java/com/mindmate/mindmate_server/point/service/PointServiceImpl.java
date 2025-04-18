@@ -2,7 +2,6 @@ package com.mindmate.mindmate_server.point.service;
 
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.PointErrorCode;
-import com.mindmate.mindmate_server.point.domain.PointBalance;
 import com.mindmate.mindmate_server.point.domain.PointReasonType;
 import com.mindmate.mindmate_server.point.domain.PointTransaction;
 import com.mindmate.mindmate_server.point.domain.TransactionType;

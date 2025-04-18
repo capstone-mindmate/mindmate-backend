@@ -19,24 +19,34 @@ public class PointTransaction extends BaseTimeEntity {
     private User user;
 
     @Column(nullable = false)
+    private Long version;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TransactionType transactionType;
+
+    @Column(nullable = false)
     private Integer amount;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
-    private TransactionType transactionType;
+    @Column(nullable = false)
+    private PointReasonType reasonType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
-    private PointReasonType reason;
+    private Long entityId;
 
-    // 추가 설명 필요? - 누구를 리뷰 해줘서 얻었는지 이런것
+    @Column(nullable = false)
+    private Integer balance;
 
     @Builder
-    public PointTransaction(User user, Integer amount, TransactionType transactionType,
-                            PointReasonType reason) {
+    public PointTransaction(User user, Long version, TransactionType transactionType,
+                            Integer amount, PointReasonType reasonType, Long entityId,
+                            Integer balance) {
         this.user = user;
-        this.amount = amount;
+        this.version = version;
         this.transactionType = transactionType;
-        this.reason = reason;
+        this.amount = amount;
+        this.reasonType = reasonType;
+        this.entityId = entityId;
+        this.balance = balance;
     }
 }
