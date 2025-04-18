@@ -4,6 +4,7 @@ import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ReportErrorCode;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
+import com.mindmate.mindmate_server.global.util.SlackNotifier;
 import com.mindmate.mindmate_server.matching.service.MatchingService;
 import com.mindmate.mindmate_server.report.domain.Report;
 import com.mindmate.mindmate_server.report.domain.ReportTarget;
@@ -30,6 +31,8 @@ public class ReportServiceImpl implements ReportService {
     private final ReportRepository reportRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedisKeyManager redisKeyManager;
+    private final SlackNotifier slackNotifier;
+
 
     public static final long REPORT_COUNT_WEAK_THRESHOLD = 5;
     public static final long REPORT_COUNT_STRONG_THRESHOLD = 10;
@@ -78,11 +81,18 @@ public class ReportServiceImpl implements ReportService {
     }
 
     private void applySuspension(User user, long suspensionDays) {
-        user.suspend(Duration.ofDays(suspensionDays));
+        Duration suspensionDuration = Duration.ofDays(suspensionDays);
+        user.suspend(suspensionDuration);
 
         String suspensionKey = redisKeyManager.getUserSuspensionKey(user.getId());
         redisTemplate.opsForValue().set(suspensionKey, "suspended");
         redisTemplate.expire(suspensionKey, suspensionDays, TimeUnit.DAYS);
+
+        slackNotifier.sendSuspensionAlert(
+                user,
+                String.format("신고 누적 (신고 횟수: %d)", user.getReportCount()),
+                suspensionDuration
+        );
     }
 
     private void validateTargetExists(ReportTarget reportTarget, Long targetId) {
