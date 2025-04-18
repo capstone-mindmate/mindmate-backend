@@ -10,6 +10,7 @@ import java.time.Duration;
 public class SuspensionRequest {
     private int reportCount;
     private int durationDays;
+    private String reason;
 
     public Duration getDuration() {
         return Duration.ofDays(durationDays);

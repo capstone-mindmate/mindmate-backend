@@ -30,7 +30,7 @@ public class RedisKeyManager {
     }
 
     // 사용자별 채팅방 필터링 횟수 키
-    public String getFilteringCountKey(Long userId, Long roomId) {
+    public String getFilteringCountKey(Long userId, Object roomId) {
         return "filtering:count:" + userId + ":" + roomId;
     }
 
