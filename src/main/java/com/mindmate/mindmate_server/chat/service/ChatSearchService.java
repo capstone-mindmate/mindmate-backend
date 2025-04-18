@@ -13,12 +13,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class ChatSearchService {
     private final ChatMessageService chatMessageService;
     private final ChatRoomService chatRoomService;
 
-    @Transactional(readOnly = true)
     public ChatSearchResponse searchMessages(
             Long userId, Long roomId, String keyword,
             Long oldestLoadedMessageId, Long newestLoadedMessageId) {
@@ -43,7 +43,6 @@ public class ChatSearchService {
                 .build();
     }
 
-    @Transactional(readOnly = true)
     public SearchNavigationResponse navigateToSearchResult(
             Long userId, Long roomId, String keyword, Long targetMessageId, Long oldestLoadedMessageId) {
         chatRoomService.validateChatActivity(userId, roomId);

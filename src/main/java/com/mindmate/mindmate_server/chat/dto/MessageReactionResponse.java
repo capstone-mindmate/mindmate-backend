@@ -13,7 +13,6 @@ public class MessageReactionResponse {
     private Long userId;
     private String userName;
     private ReactionType reactionType;
-//    private boolean removed;
 
     public static MessageReactionResponse from(MessageReaction messageReaction) {
         return MessageReactionResponse.builder()

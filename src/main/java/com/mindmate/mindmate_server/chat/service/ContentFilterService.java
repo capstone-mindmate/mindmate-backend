@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.FilteringWord;
 import com.mindmate.mindmate_server.chat.repository.FilteringWordRepository;
+import com.mindmate.mindmate_server.chat.util.FilteringWordAdapter;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ContentFilterService {
     private final FilteringWordRepository filteringWordRepository;
-    private final AhoCorasickMatcher filteringMatcher;
+    private final FilteringWordAdapter filteringWordAdapter;
 
     @PostConstruct
     public void initialize() {
@@ -25,7 +26,7 @@ public class ContentFilterService {
     @Scheduled(fixedRate = 86400000) // 24시간마다 갱신
     public void refreshFilteringWords() {
         List<FilteringWord> activeWords = filteringWordRepository.findByActiveTrue();
-        filteringMatcher.initialize(activeWords);
+        filteringWordAdapter.initialize(activeWords);
         log.info("필터링 단어 목록 갱신 완료: {} 개", activeWords.size());
     }
 
@@ -36,6 +37,6 @@ public class ContentFilterService {
             return false;
         }
 
-        return filteringMatcher.findFirstMatch(content).isPresent();
+        return filteringWordAdapter.isFiltered(content);
     }
 }

@@ -36,10 +36,6 @@ public class ChatMessage extends BaseTimeEntity {
     @JoinColumn(name = "custom_form_id")
     private CustomForm customForm;
 
-//    @Enumerated(EnumType.STRING)
-//    @Column(nullable = false)
-//    private RoleType senderRole;
-
     @Column(columnDefinition = "TEXT")
     private String content;
     

@@ -2,7 +2,6 @@ package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
-import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
-@Transactional
 @RequiredArgsConstructor
 public class UnreadCountConsumer {
     private final ChatRoomService chatRoomService;
@@ -22,13 +20,12 @@ public class UnreadCountConsumer {
     private final ChatService chatService;
     private final UserService userService;
 
-//    private final ChatRoomRepository chatRoomRepository;
-
     @KafkaListener(
             topics = "chat-message-topic",
             groupId = "unread-count-group",
             containerFactory = "chatMessageListenerContainerFactory"
     )
+    @Transactional
     public void updateUnreadCount(ConsumerRecord<String, ChatMessageEvent> record) {
         ChatMessageEvent event = record.value();
 

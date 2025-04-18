@@ -2,7 +2,6 @@ package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
-import com.mindmate.mindmate_server.chat.dto.ChatEventType;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
@@ -23,13 +22,12 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
-@Transactional
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
     private final KafkaTemplate<String, ChatMessageEvent> kafkaTemplate;
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedisKeyManager redisKeyManager;
-    private final ChatEventPublisher eventPublisher;
 
     private final ChatRoomService chatRoomService;
     private final UserService userService;
@@ -45,6 +43,7 @@ public class ChatServiceImpl implements ChatService {
      *
      */
     @Override
+    @Transactional
     public ChatMessageResponse sendMessage(Long userId, ChatMessageRequest request) {
         try {
             ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getRoomId());
@@ -74,7 +73,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-//    @Transactional(propagation = Propagation.REQUIRED)
+    @Transactional
     public int markAsRead(Long userId, Long roomId) {
         ChatRoom chatRoom = chatRoomService.findChatRoomById(roomId);
         User user = userService.findUserById(userId);
@@ -93,26 +92,6 @@ public class ChatServiceImpl implements ChatService {
         redisTemplate.opsForValue().set(key, LocalDateTime.now().toString());
         redisTemplate.expire(key, 1, TimeUnit.DAYS);
         return 0;
-    }
-
-    private ChatMessageResponse handleNormalMessage(ChatRoom chatRoom, User sender, ChatMessageRequest request) {
-        // 필터링 통과 시 저장 후 비동기 처리 시작
-        ChatMessage chatMessage = ChatMessage.builder()
-                .chatRoom(chatRoom)
-                .sender(sender)
-                .content(request.getContent())
-                .type(request.getType())
-                .build();
-
-        ChatMessage savedMessage = chatMessageService.save(chatMessage);
-        chatRoom.updateLastMessageTime();
-
-        User recipient = chatRoom.isListener(sender) ? chatRoom.getSpeaker() : chatRoom.getListener();
-        boolean isRecipientActive = chatPresenceService.isUserActiveInRoom(recipient.getId(), chatRoom.getId());
-
-        publishMessageEvent(savedMessage, recipient.getId(), isRecipientActive, request.getContent());
-
-        return ChatMessageResponse.from(savedMessage, sender.getId());
     }
 
     @Override
@@ -173,18 +152,25 @@ public class ChatServiceImpl implements ChatService {
                 filteredContent,
                 request.getType()
         );
+    }
 
-//        ChatMessageResponse response = ChatMessageResponse.filteredResponse(
-//                chatRoom.getId(),
-//                sender.getId(),
-//                sender.getProfile().getNickname(),
-//                filteredContent,
-//                request.getType()
-//        );
-//
-//        eventPublisher.publishChatRoomEvent(chatRoom.getId(), ChatEventType.CONTENT_FILTERED, response);
-//        log.info("handle filtering event send to redis");
-//
-//        return response;
+    private ChatMessageResponse handleNormalMessage(ChatRoom chatRoom, User sender, ChatMessageRequest request) {
+        // 필터링 통과 시 저장 후 비동기 처리 시작
+        ChatMessage chatMessage = ChatMessage.builder()
+                .chatRoom(chatRoom)
+                .sender(sender)
+                .content(request.getContent())
+                .type(request.getType())
+                .build();
+
+        ChatMessage savedMessage = chatMessageService.save(chatMessage);
+        chatRoom.updateLastMessageTime();
+
+        User recipient = chatRoom.isListener(sender) ? chatRoom.getSpeaker() : chatRoom.getListener();
+        boolean isRecipientActive = chatPresenceService.isUserActiveInRoom(recipient.getId(), chatRoom.getId());
+
+        publishMessageEvent(savedMessage, recipient.getId(), isRecipientActive, request.getContent());
+
+        return ChatMessageResponse.from(savedMessage, sender.getId());
     }
 }

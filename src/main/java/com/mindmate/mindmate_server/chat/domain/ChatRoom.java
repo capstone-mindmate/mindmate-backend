@@ -25,8 +25,6 @@ public class ChatRoom extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // todo : matching 매핑 + cascade 설정? 매칭이 사라지더라도 해당 데이터는 남길것인가
-//    @OneToOne(mappedBy = "chatRoom")
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "matching_id")
     private Matching matching;

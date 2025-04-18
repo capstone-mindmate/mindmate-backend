@@ -7,7 +7,6 @@ import com.mindmate.mindmate_server.chat.service.ChatPresenceService;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.chat.service.ChatSearchService;
 import com.mindmate.mindmate_server.chat.service.ChatService;
-import com.mindmate.mindmate_server.user.domain.RoleType;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

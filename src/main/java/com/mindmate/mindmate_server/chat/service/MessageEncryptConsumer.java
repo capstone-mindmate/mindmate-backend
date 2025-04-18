@@ -2,7 +2,6 @@ package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -13,7 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-@Transactional
 public class MessageEncryptConsumer {
     private final AesGcmEncryptionService aesGcmEncryptionService;
     private final ChatMessageService chatMessageService;
@@ -23,6 +21,7 @@ public class MessageEncryptConsumer {
             groupId = "message-encryption-group",
             containerFactory = "chatMessageListenerContainerFactory"
     )
+    @Transactional
     public void encryptMessage(ConsumerRecord<String, ChatMessageEvent> record) {
         ChatMessageEvent event = record.value();
 
