@@ -2,11 +2,11 @@ package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
-import com.mindmate.mindmate_server.chat.domain.FilteringWordCategory;
-import com.mindmate.mindmate_server.chat.domain.MessageType;
-import com.mindmate.mindmate_server.chat.dto.*;
+import com.mindmate.mindmate_server.chat.dto.ChatEventType;
+import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
+import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
+import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
-import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,6 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -53,11 +52,10 @@ public class ChatServiceImpl implements ChatService {
 
             chatRoomService.validateChatActivity(userId, request.getRoomId());
 
-            Optional<FilteringWordCategory> filteringCategory =
-                    contentFilterService.findFilteringWordCategory(request.getContent());
+            boolean isFiltered = contentFilterService.isFiltered(request.getContent());
 
-            if (filteringCategory.isPresent()) {
-                return handleFilteredMessage(filteringCategory.get(), chatRoom, sender, request);
+            if (isFiltered) {
+                return handleFilteredMessage(chatRoom, sender, request);
             }
 
             return handleNormalMessage(chatRoom, sender, request);
@@ -151,10 +149,8 @@ public class ChatServiceImpl implements ChatService {
         kafkaTemplate.send("chat-message-topic", event.getRoomId().toString(), event);
     }
 
-    private ChatMessageResponse handleFilteredMessage(FilteringWordCategory filteringWordCategory, ChatRoom chatRoom, User sender, ChatMessageRequest request) {
-        String filteredContent = String.format(
-                "[%s 관련 부적절한 내용이 감지되었습니다]",
-                filteringWordCategory.getDescription());
+    private ChatMessageResponse handleFilteredMessage(ChatRoom chatRoom, User sender, ChatMessageRequest request) {
+        String filteredContent = "[부적절한 내용이 감지되었습니다]";
 
         // 필터링된 메시지도 이벤트 발행 (분석용)
         ChatMessageEvent event = ChatMessageEvent.builder()
@@ -165,12 +161,12 @@ public class ChatServiceImpl implements ChatService {
                 .type(request.getType())
                 .timestamp(LocalDateTime.now())
                 .filtered(true)
-                .filteringWordCategory(filteringWordCategory)
                 .build();
 
+        // todo: 필터링 걸렸을 떄 이벤트 날릴건지? 날린다면 어떤 내용 처리할건가? -> 사용자별 특정 기간 동안의 필터링 횟수를 임시 저장해서 처리하는 방식/
         sendKafkaMessage(event);
 
-        ChatMessageResponse response = ChatMessageResponse.filteredResponse(
+        return ChatMessageResponse.filteredResponse(
                 chatRoom.getId(),
                 sender.getId(),
                 sender.getProfile().getNickname(),
@@ -178,38 +174,17 @@ public class ChatServiceImpl implements ChatService {
                 request.getType()
         );
 
-        eventPublisher.publishChatRoomEvent(chatRoom.getId(), ChatEventType.CONTENT_FILTERED, response);
-        return response;
+//        ChatMessageResponse response = ChatMessageResponse.filteredResponse(
+//                chatRoom.getId(),
+//                sender.getId(),
+//                sender.getProfile().getNickname(),
+//                filteredContent,
+//                request.getType()
+//        );
+//
+//        eventPublisher.publishChatRoomEvent(chatRoom.getId(), ChatEventType.CONTENT_FILTERED, response);
+//        log.info("handle filtering event send to redis");
+//
+//        return response;
     }
-
-//    private void sendChatNotification(ChatMessage message, User recipient, String originalContent) {
-//        try {
-//            User sender = message.getSender();
-//            ChatRoom chatRoom = message.getChatRoom();
-//
-//            String notificationContent;
-//            // todo: 이모티콘은 그냥 이미지만 못 보여주나? 그리고 암호화 여부에 따라 여기서 해당 내용을 보여줄 지 아니면 그냥 일반적인 문구를 보여줄 지 결정
-//            if (message.getType() == MessageType.TEXT) {
-//                notificationContent = originalContent;
-//            } else if (message.getType() == MessageType.CUSTOM_FORM) {
-//                notificationContent = "커스텀폼 메시지가 도착했습니다.";
-//            } else if (message.getType() == MessageType.EMOTICON){
-//                notificationContent = "이모티콘이 도착했습니다.";
-//            } else {
-//                notificationContent = "새 메시지가 도착했습니다.";
-//            }
-//
-//            ChatMessageNotificationEvent notificationEvent = ChatMessageNotificationEvent.builder()
-//                    .recipientId(recipient.getId())
-//                    .senderId(sender.getId())
-//                    .senderName(sender.getProfile().getNickname())
-//                    .roomId(chatRoom.getId())
-//                    .messageContent(notificationContent)
-//                    .messageId(message.getId())
-//                    .build();
-//
-//            notificationService.processNotification(notificationEvent);
-//        } catch (Exception e) {
-//            log.error("채팅 알림 발송 실패: {}", e.getMessage(), e);
-//        }
 }
