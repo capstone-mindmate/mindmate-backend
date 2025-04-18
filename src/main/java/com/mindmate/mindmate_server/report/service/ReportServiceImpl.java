@@ -3,6 +3,7 @@ package com.mindmate.mindmate_server.report.service;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ReportErrorCode;
+import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.matching.service.MatchingService;
 import com.mindmate.mindmate_server.report.domain.Report;
 import com.mindmate.mindmate_server.report.domain.ReportTarget;
@@ -12,10 +13,12 @@ import com.mindmate.mindmate_server.report.repository.ReportRepository;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +28,8 @@ public class ReportServiceImpl implements ReportService {
     private final ChatRoomService chatRoomService;
 
     private final ReportRepository reportRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisKeyManager redisKeyManager;
 
     public static final long REPORT_COUNT_WEAK_THRESHOLD = 5;
     public static final long REPORT_COUNT_STRONG_THRESHOLD = 10;
@@ -66,10 +71,18 @@ public class ReportServiceImpl implements ReportService {
 
     private void checkReportThreshold(User reportedUser) {
         if (reportedUser.getReportCount() >= REPORT_COUNT_STRONG_THRESHOLD) {
-            reportedUser.suspend(Duration.ofDays(REPORT_COUNT_STRONG_SUSPEND));
+            applySuspension(reportedUser, REPORT_COUNT_STRONG_SUSPEND);
         } else if (reportedUser.getReportCount() >= REPORT_COUNT_WEAK_THRESHOLD) {
-            reportedUser.suspend(Duration.ofDays(REPORT_COUNT_WEAK_SUSPEND));
+            applySuspension(reportedUser, REPORT_COUNT_WEAK_SUSPEND);
         }
+    }
+
+    private void applySuspension(User user, long suspensionDays) {
+        user.suspend(Duration.ofDays(suspensionDays));
+
+        String suspensionKey = redisKeyManager.getUserSuspensionKey(user.getId());
+        redisTemplate.opsForValue().set(suspensionKey, "suspended");
+        redisTemplate.expire(suspensionKey, suspensionDays, TimeUnit.DAYS);
     }
 
     private void validateTargetExists(ReportTarget reportTarget, Long targetId) {

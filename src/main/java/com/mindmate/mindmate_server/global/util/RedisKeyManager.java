@@ -39,4 +39,9 @@ public class RedisKeyManager {
         return "filtering:content:" + userId + ":" + roomId;
     }
 
+    // 사용자 suspension 정보 관리
+    public String getUserSuspensionKey(Long userId) {
+        return "user:suspension:" + userId;
+    }
+
 }

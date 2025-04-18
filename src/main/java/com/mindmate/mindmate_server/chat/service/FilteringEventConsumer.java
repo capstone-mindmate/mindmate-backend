@@ -73,6 +73,8 @@ public class FilteringEventConsumer {
         user.suspend(Duration.ofHours(CHAT_FILTERING_SUSPENSION_TIME));
         userService.save(user);
 
-        // todo: 정지 시간을 reids에서 기록해서 정지 해제 스케줄러에서 사용?
+        String suspensionKey = redisKeyManager.getUserSuspensionKey(userId);
+        redisTemplate.opsForValue().set(suspensionKey, "suspended");
+        redisTemplate.expire(suspensionKey, CHAT_FILTERING_SUSPENSION_TIME, TimeUnit.HOURS);
     }
 }
