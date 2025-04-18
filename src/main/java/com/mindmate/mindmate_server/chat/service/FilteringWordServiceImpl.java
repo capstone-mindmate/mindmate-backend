@@ -41,7 +41,7 @@ public class FilteringWordServiceImpl implements FilteringWordService {
         FilteringWord save = filteringWordRepository.save(filteringWord);
 
         // todo: 이거를 바로바로 업데이트 시킬 지 아니면 스케줄로 처리할 지 고민 -> 만약 바로 할거면 아래에 다 추가해야함
-        contentFilterService.refreshFilteringWords();
+//        contentFilterService.refreshFilteringWords();
         log.info("필터링 단어 추가: {}", word);
         return FilteringWordDTO.from(save);
     }

@@ -1,24 +1,21 @@
 package com.mindmate.mindmate_server.chat.service;
 
-import com.mindmate.mindmate_server.chat.domain.FilteringWord;
 import com.mindmate.mindmate_server.chat.domain.ToastBoxKeyword;
 import com.mindmate.mindmate_server.chat.dto.ToastBoxKeywordDTO;
 import com.mindmate.mindmate_server.chat.dto.ToastBoxKeywordRequest;
 import com.mindmate.mindmate_server.chat.repository.ToastBoxRepository;
+import com.mindmate.mindmate_server.chat.util.ToastBoxAdapter;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.FilteringErrorCode;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,9 +24,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class ToastBoxServiceImpl implements ToastBoxService {
     private final ToastBoxRepository toastBoxRepository;
-
-    @Qualifier("toastBoxMatcher")
-    private final AhoCorasickMatcher toastBoxMatcher;
+    private final ToastBoxAdapter toastBoxAdapter;
 
     @PostConstruct
     public void initialize() {
@@ -40,14 +35,7 @@ public class ToastBoxServiceImpl implements ToastBoxService {
     @Override
     public void refreshToastBoxKeywords() {
         List<ToastBoxKeyword> activeKeywords = toastBoxRepository.findByActiveTrue();
-
-        List<FilteringWord> keywords = activeKeywords.stream()
-                .map(keyword -> FilteringWord.builder()
-                        .word(keyword.getKeyword())
-                        .build())
-                .collect(Collectors.toList());
-
-        toastBoxMatcher.initialize(keywords);
+        toastBoxAdapter.initialize(activeKeywords);
     }
 
     @Override
@@ -55,15 +43,7 @@ public class ToastBoxServiceImpl implements ToastBoxService {
         if (content == null || content.trim().isEmpty()) {
             return Collections.emptyList();
         }
-
-        List<String> matchedKeywords = toastBoxMatcher.search(content);
-
-        if (matchedKeywords.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        Set<String> uniqueKeywords = new HashSet<>(matchedKeywords);
-        return toastBoxRepository.findByKeywordInAndActiveTrue(uniqueKeywords);
+        return toastBoxAdapter.findMatchingKeywords(content);
     }
 
     @Override
@@ -91,7 +71,7 @@ public class ToastBoxServiceImpl implements ToastBoxService {
 
         ToastBoxKeyword save = toastBoxRepository.save(keyword);
         // todo: 필터링 키워드 때랑 마찬가지
-        refreshToastBoxKeywords();
+//        refreshToastBoxKeywords();
         return ToastBoxKeywordDTO.from(save);
     }
 
