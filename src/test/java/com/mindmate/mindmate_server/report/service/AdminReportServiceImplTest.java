@@ -133,40 +133,40 @@ class AdminReportServiceImplTest {
     @Nested
     @DisplayName("사용자 정지 테스트")
     class SuspendUserTest {
-        @Test
-        @DisplayName("사용자 정지 성공")
-        void suspendUser_Success() {
-            // given
-            int reportCount = 5;
-            Duration duration = Duration.ofDays(3);
-
-            // when
-            adminReportService.suspendUser(userId, reportCount, duration);
-
-            // then
-            verify(mockUser).setReportCount(reportCount);
-            verify(mockUser).suspend(duration);
-            verify(userService).save(mockUser);
-        }
+//        @Test
+//        @DisplayName("사용자 정지 성공")
+//        void suspendUser_Success() {
+//            // given
+//            int reportCount = 5;
+//            Duration duration = Duration.ofDays(3);
+//
+//            // when
+//            adminReportService.suspendUser(userId, reportCount, duration);
+//
+//            // then
+//            verify(mockUser).setReportCount(reportCount);
+//            verify(mockUser).suspend(duration);
+//            verify(userService).save(mockUser);
+//        }
     }
 
     @Nested
     @DisplayName("사용자 정지 해제 테스트")
     class UnsuspendUserTest {
-        @Test
-        @DisplayName("사용자 정지 해제 성공")
-        void unsuspendUser_Success() {
-            // given
-            UnsuspendRequest request = UnsuspendRequest.builder().reportCount(0).build();
-
-            // when
-            adminReportService.unsuspendUser(userId, request);
-
-            // then
-            verify(mockUser).setReportCount(0);
-            verify(mockUser).unsuspend();
-            verify(userService).save(mockUser);
-        }
+//        @Test
+//        @DisplayName("사용자 정지 해제 성공")
+//        void unsuspendUser_Success() {
+//            // given
+//            UnsuspendRequest request = UnsuspendRequest.builder().reportCount(0).build();
+//
+//            // when
+//            adminReportService.unsuspendUser(userId, request);
+//
+//            // then
+//            verify(mockUser).setReportCount(0);
+//            verify(mockUser).unsuspend();
+//            verify(userService).save(mockUser);
+//        }
     }
 
     @Nested

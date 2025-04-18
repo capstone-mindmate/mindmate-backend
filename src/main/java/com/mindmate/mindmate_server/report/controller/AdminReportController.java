@@ -4,8 +4,6 @@ import com.mindmate.mindmate_server.report.domain.ReportReason;
 import com.mindmate.mindmate_server.report.domain.ReportTarget;
 import com.mindmate.mindmate_server.report.dto.ReportDetailResponse;
 import com.mindmate.mindmate_server.report.dto.ReportStatisticsResponse;
-import com.mindmate.mindmate_server.report.dto.SuspensionRequest;
-import com.mindmate.mindmate_server.report.dto.UnsuspendRequest;
 import com.mindmate.mindmate_server.report.service.AdminReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -44,27 +42,6 @@ public class AdminReportController {
         return ResponseEntity.ok(adminReportService.getReportDetail(reportId));
     }
 
-    /**
-     * 사용자 수동 정지 -> count, suspensionDate 설정
-     */
-    @PostMapping("/users/{userId}/suspend")
-    public ResponseEntity<Void> suspendUser(
-            @PathVariable Long userId,
-            @RequestBody SuspensionRequest request) {
-        adminReportService.suspendUser(userId, request.getReportCount(), request.getDuration());
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * 사용자 정지 해제 -> count 설정 가능 / suspensionDate은 null로 처리
-     */
-    @PostMapping("/users/{userId}/unsuspend")
-    public ResponseEntity<Void> unsuspendUser(
-            @PathVariable Long userId,
-            @RequestBody UnsuspendRequest request) {
-        adminReportService.unsuspendUser(userId, request);
-        return ResponseEntity.noContent().build();
-    }
 
     /**
      * 신고 통계

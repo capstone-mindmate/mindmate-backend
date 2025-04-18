@@ -2,9 +2,7 @@ package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
-import com.mindmate.mindmate_server.global.util.SlackNotifier;
-import com.mindmate.mindmate_server.user.domain.User;
-import com.mindmate.mindmate_server.user.service.UserService;
+import com.mindmate.mindmate_server.user.service.AdminUserSuspensionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -20,9 +18,8 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class FilteringEventConsumer {
     private final RedisTemplate<String, Object> redisTemplate;
-    private final UserService userService;
     private final RedisKeyManager redisKeyManager;
-    private final SlackNotifier slackNotifier;
+    private final AdminUserSuspensionService suspensionService;
 
     private static final int CHAT_FILTERING_SUSPENSION_THRESHOLD = 5; // 필터링 정지 횟수
     private static final int CHAT_FILTERING_SUSPENSION_TIME = 2; // 정지 시간
@@ -70,20 +67,10 @@ public class FilteringEventConsumer {
     }
 
     private void applySuspension(Long userId) {
-        User user = userService.findUserById(userId);
-
-        Duration suspensionDuration = Duration.ofHours(CHAT_FILTERING_SUSPENSION_TIME);
-        user.suspend(suspensionDuration);
-        userService.save(user);
-
-        String suspensionKey = redisKeyManager.getUserSuspensionKey(userId);
-        redisTemplate.opsForValue().set(suspensionKey, "suspended");
-        redisTemplate.expire(suspensionKey, CHAT_FILTERING_SUSPENSION_TIME, TimeUnit.HOURS);
-
-        slackNotifier.sendSuspensionAlert(
-                user,
-                "채팅 필터링 위반 (5회 이상)",
-                suspensionDuration
-        );
+        suspensionService.suspendUser(
+                userId,
+                -1,
+                Duration.ofHours(CHAT_FILTERING_SUSPENSION_TIME),
+                "채팅 필터링 위반 (5회 이상)");
     }
 }

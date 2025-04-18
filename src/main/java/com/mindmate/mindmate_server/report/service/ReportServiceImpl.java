@@ -3,23 +3,22 @@ package com.mindmate.mindmate_server.report.service;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ReportErrorCode;
-import com.mindmate.mindmate_server.global.util.RedisKeyManager;
-import com.mindmate.mindmate_server.global.util.SlackNotifier;
+import com.mindmate.mindmate_server.global.exception.UserErrorCode;
 import com.mindmate.mindmate_server.matching.service.MatchingService;
 import com.mindmate.mindmate_server.report.domain.Report;
 import com.mindmate.mindmate_server.report.domain.ReportTarget;
 import com.mindmate.mindmate_server.report.dto.ReportRequest;
 import com.mindmate.mindmate_server.report.dto.ReportResponse;
 import com.mindmate.mindmate_server.report.repository.ReportRepository;
+import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
+import com.mindmate.mindmate_server.user.service.AdminUserSuspensionService;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -27,12 +26,9 @@ public class ReportServiceImpl implements ReportService {
     private final UserService userService;
     private final MatchingService matchingService;
     private final ChatRoomService chatRoomService;
+    private final AdminUserSuspensionService suspensionService;
 
     private final ReportRepository reportRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
-    private final RedisKeyManager redisKeyManager;
-    private final SlackNotifier slackNotifier;
-
 
     public static final long REPORT_COUNT_WEAK_THRESHOLD = 5;
     public static final long REPORT_COUNT_STRONG_THRESHOLD = 10;
@@ -49,6 +45,10 @@ public class ReportServiceImpl implements ReportService {
     public ReportResponse createReport(Long reporterId, ReportRequest request) {
         User reporter = userService.findUserById(reporterId);
         User reportedUser = userService.findUserById(request.getReportedUserId());
+
+        if (reportedUser.getCurrentRole().equals(RoleType.ROLE_ADMIN)) {
+            throw new CustomException(UserErrorCode.ADMIN_SUSPENSION_NOT_ALLOWED);
+        }
 
         checkDuplicateReport(reporter, reportedUser, request.getReportTarget(), request.getTargetId());
         validateReportRequest(reporter.getId(), reportedUser.getId());
@@ -81,17 +81,11 @@ public class ReportServiceImpl implements ReportService {
     }
 
     private void applySuspension(User user, long suspensionDays) {
-        Duration suspensionDuration = Duration.ofDays(suspensionDays);
-        user.suspend(suspensionDuration);
-
-        String suspensionKey = redisKeyManager.getUserSuspensionKey(user.getId());
-        redisTemplate.opsForValue().set(suspensionKey, "suspended");
-        redisTemplate.expire(suspensionKey, suspensionDays, TimeUnit.DAYS);
-
-        slackNotifier.sendSuspensionAlert(
-                user,
-                String.format("신고 누적 (신고 횟수: %d)", user.getReportCount()),
-                suspensionDuration
+        suspensionService.suspendUser(
+                user.getId(),
+                user.getReportCount(),
+                Duration.ofDays(suspensionDays),
+                String.format("신고 누적 (신고 횟수: %d)", user.getReportCount())
         );
     }
 
