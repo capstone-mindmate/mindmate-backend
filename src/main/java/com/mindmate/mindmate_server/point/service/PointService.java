@@ -12,13 +12,13 @@ import java.time.LocalDateTime;
 
 public interface PointService {
 
-    PointTransaction addPoints(Long userId, int amount, PointReasonType reasonType, Long entityId);
+    PointTransactionResponse addPoints(Long userId, PointAddRequest request);
 
-    PointTransaction usePoints(Long userId, int amount, PointReasonType reasonType, Long entityId);
+    PointTransactionResponse usePoints(Long userId, PointUseRequest request);
 
     int getCurrentBalance(Long userId);
 
-    Page<PointTransaction> getTransactionHistory(Long userId, Pageable pageable);
+    Page<PointTransactionResponse> getTransactionHistory(Long userId, Pageable pageable);
 
     int getTotalEarnedPointsInPeriod(Long userId, LocalDateTime start, LocalDateTime end);
 

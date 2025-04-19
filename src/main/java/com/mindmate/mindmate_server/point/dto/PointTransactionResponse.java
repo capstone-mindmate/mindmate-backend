@@ -12,9 +12,11 @@ import java.time.LocalDateTime;
 @Builder
 public class PointTransactionResponse {
     private Long id;
-    private Integer amount;
     private TransactionType transactionType;
-    private PointReasonType reason;
+    private int amount;
+    private PointReasonType reasonType;
+    private Long entityId;
+    private int balance;
     private LocalDateTime createdAt;
 
     public static PointTransactionResponse from(PointTransaction transaction) {
@@ -22,7 +24,7 @@ public class PointTransactionResponse {
                 .id(transaction.getId())
                 .amount(transaction.getAmount())
                 .transactionType(transaction.getTransactionType())
-                .reason(transaction.getReasonType())
+                .reasonType(transaction.getReasonType())
                 .createdAt(transaction.getCreatedAt())
                 .build();
     }
