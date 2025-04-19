@@ -1,28 +1,32 @@
 package com.mindmate.mindmate_server.point.service;
 
 import com.mindmate.mindmate_server.point.domain.PointReasonType;
-import com.mindmate.mindmate_server.point.dto.PointAddRequest;
-import com.mindmate.mindmate_server.point.dto.PointBalanceResponse;
-import com.mindmate.mindmate_server.point.dto.PointTransactionResponse;
-import com.mindmate.mindmate_server.point.dto.PointUseRequest;
+import com.mindmate.mindmate_server.point.domain.PointTransaction;
+import com.mindmate.mindmate_server.point.dto.*;
 import com.mindmate.mindmate_server.user.domain.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 public interface PointService {
-    @Transactional
-    PointBalanceResponse addPoints(User user, int amount, PointReasonType reason);
 
-    @Transactional
-    PointBalanceResponse usePoints(User user, PointUseRequest request);
+    PointTransaction addPoints(Long userId, int amount, PointReasonType reasonType, Long entityId);
 
-    @Transactional
-    PointBalanceResponse addPointsByAdmin(Long userId, PointAddRequest request);
+    PointTransaction usePoints(Long userId, int amount, PointReasonType reasonType, Long entityId);
 
-    @Transactional(readOnly = true)
-    PointBalanceResponse getBalance(User user);
+    int getCurrentBalance(Long userId);
 
-    @Transactional(readOnly = true)
-    Page<PointTransactionResponse> getTransactionHistory(User user, Pageable pageable);
+    Page<PointTransaction> getTransactionHistory(Long userId, Pageable pageable);
+
+    int getTotalEarnedPointsInPeriod(Long userId, LocalDateTime start, LocalDateTime end);
+
+    int getTotalSpentPointsInPeriod(Long userId, LocalDateTime start, LocalDateTime end);
+
+    int getTotalEarnedPoints(Long userId);
+
+    int getTotalSpentPoints(Long userId);
+
+    PointSummaryResponse getUserPointSummary(Long userId);
 }

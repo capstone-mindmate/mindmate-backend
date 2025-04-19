@@ -22,7 +22,7 @@ public class PointTransactionResponse {
                 .id(transaction.getId())
                 .amount(transaction.getAmount())
                 .transactionType(transaction.getTransactionType())
-                .reason(transaction.getReason())
+                .reason(transaction.getReasonType())
                 .createdAt(transaction.getCreatedAt())
                 .build();
     }
