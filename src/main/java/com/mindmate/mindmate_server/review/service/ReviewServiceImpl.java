@@ -7,6 +7,9 @@ import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.*;
 import com.mindmate.mindmate_server.notification.dto.ReviewCreatedNotificationEvent;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
+import com.mindmate.mindmate_server.point.domain.PointReasonType;
+import com.mindmate.mindmate_server.point.dto.PointAddRequest;
+import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.review.domain.Review;
 import com.mindmate.mindmate_server.review.domain.Tag;
 import com.mindmate.mindmate_server.review.domain.TagType;
@@ -42,6 +45,7 @@ public class ReviewServiceImpl implements ReviewService{
     private final UserService userService;
     private final ProfileService profileService;
     private final NotificationService notificationService;
+    private final PointService pointService;
 
     @Override
     @Transactional
@@ -73,14 +77,19 @@ public class ReviewServiceImpl implements ReviewService{
 
         addReviewTags(review, request.getTags(), tagType, reviewedProfile.getId());
 
-        // profile 업뎃
         reviewedProfile.incrementCounselingCount();
         reviewedProfile.updateAvgRating(request.getRating());
 
         reviewRedisRepository.deleteReviewSummaryCache(reviewedProfile.getId());
 
-        // 리뷰 알림 전송!
         String reviewerName = reviewer.getProfile() != null ? reviewer.getProfile().getNickname() : "사용자";
+
+        pointService.addPoints(userId, PointAddRequest.builder()
+                .amount(50)
+                .reasonType(PointReasonType.REVIEW_WRITTEN)
+                .entityId(chatRoom.getId())
+                .build());
+
 
         ReviewCreatedNotificationEvent event = ReviewCreatedNotificationEvent.builder()
                 .recipientId(reviewedUser.getId())
