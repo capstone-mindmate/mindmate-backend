@@ -78,7 +78,7 @@ public class ChatServiceImpl implements ChatService {
         ChatRoom chatRoom = chatRoomService.findChatRoomById(roomId);
         User user = userService.findUserById(userId);
 
-        chatRoomService.validateChatActivity(userId, roomId);
+        chatRoomService.validateChatRead(userId, roomId);
 
         Long lastMessageId = chatMessageService.findLatestMessageByChatRoomId(roomId)
                 .map(ChatMessage::getId)

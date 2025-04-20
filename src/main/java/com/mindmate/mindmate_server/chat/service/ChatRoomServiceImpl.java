@@ -126,6 +126,16 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     }
 
     @Override
+    public void validateChatRead(Long userId, Long roomId) {
+        User user = userService.findUserById(userId);
+        ChatRoom chatRoom = findChatRoomById(roomId);
+
+        if (!chatRoom.isListener(user) && !chatRoom.isSpeaker(user)) {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+        }
+    }
+
+    @Override
     public Page<ChatRoomResponse> getChatRoomsByUserAndStatus(Long userId, PageRequest pageRequest, ChatRoomStatus status) {
         return chatRoomRepository.findAllByUserIdAndStatus(userId, status, pageRequest);
     }
