@@ -2,10 +2,12 @@ package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomCloseEvent;
+import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
 import com.mindmate.mindmate_server.user.service.ProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,8 @@ public class ResponseTimeCalculationConsumer {
     private final ChatMessageService chatMessageService;
     private final ProfileService profileService;
 
+    private final ChatMessageRepository chatMessageRepository;
+
     @KafkaListener(
             topics = "chat-room-close-topic",
             groupId = "response-time-calculation-group",
@@ -33,27 +37,50 @@ public class ResponseTimeCalculationConsumer {
         ChatRoomCloseEvent event = record.value();
 
         try {
-            List<ChatMessage> messages = chatMessageService.findAllByChatRoomIdOrderByIdAsc(event.getChatRoomId());
             Map<Long, List<Integer>> userResponseTimes = new HashMap<>();
             userResponseTimes.put(event.getSpeakerId(), new ArrayList<>());
             userResponseTimes.put(event.getListenerId(), new ArrayList<>());
 
+            int batchSize = 500;
+            Long lastMessageId = null;
+            boolean hasMore = true;
             ChatMessage previousMessage = null;
-            for (ChatMessage message : messages) {
-                // 이전 메시지 - 현재 메시지 발신자가 다를 경우
-                if (previousMessage != null && !previousMessage.getSender().getId().equals(message.getSender().getId())) {
-                    Duration responseTime = Duration.between(
-                            previousMessage.getCreatedAt(),
-                            message.getCreatedAt()
-                    );
-                    int responseTimeMinutes = (int) responseTime.toMinutes();
 
-                    // 합리적인 응답 시간만 계산 -> 막 2, 3일 뒤에 응답한 것까지 하기에는 아닌 것 같다
-                    if (responseTimeMinutes >= 0 && responseTimeMinutes < 24 * 60) {
-                        userResponseTimes.get(message.getSender().getId()).add(responseTimeMinutes);
-                    }
+            while (hasMore) {
+                List<ChatMessage> messages;
+
+                if (lastMessageId == null) {
+                    // 첫 번째 배치는 처음부터 batchSize만큼 조회
+                    messages = chatMessageRepository.findByChatRoomIdOrderByIdAsc(
+                            event.getChatRoomId(),
+                            PageRequest.of(0, batchSize)
+                    );
+                } else {
+                    messages = chatMessageRepository.findByChatRoomIdAndIdGreaterThanOrderByIdAsc(
+                            event.getChatRoomId(),
+                            lastMessageId,
+                            PageRequest.of(0, batchSize)
+                    );
                 }
-                previousMessage = message;
+
+                if (messages.isEmpty()) {
+                    hasMore = false;
+                    continue;
+                }
+
+                // 이전 배치 마지막 메시지 - 현재 배치 첫 메시지 사이의 시간 계산
+                if (previousMessage != null) {
+                    processResponseTime(previousMessage, messages.get(0), userResponseTimes);
+                }
+
+                for (int i = 0; i < messages.size() - 1; i++) {
+                    processResponseTime(messages.get(i), messages.get(i + 1), userResponseTimes);
+                }
+
+                lastMessageId = messages.get(messages.size() - 1).getId();
+                previousMessage = messages.get(messages.size() - 1);
+
+                hasMore = messages.size() == batchSize;
             }
 
             updateUserResponseTimes(event.getSpeakerId(), userResponseTimes.get(event.getSpeakerId()));
@@ -63,6 +90,22 @@ public class ResponseTimeCalculationConsumer {
         }
 
 
+    }
+
+    private void processResponseTime(ChatMessage previous, ChatMessage current, Map<Long, List<Integer>> userResponseTimes) {
+        // 발신자가 다른 경우만 처리
+        if (!previous.getSender().getId().equals(current.getSender().getId())) {
+            Duration responseTime = Duration.between(
+                    previous.getCreatedAt(),
+                    current.getCreatedAt()
+            );
+            int responseTimeMinutes = (int) responseTime.toMinutes();
+
+            // 합리적인 응답 시간만 계산
+            if (responseTimeMinutes >= 0 && responseTimeMinutes < 24 * 60) {
+                userResponseTimes.get(current.getSender().getId()).add(responseTimeMinutes);
+            }
+        }
     }
 
     private void updateUserResponseTimes(Long userId, List<Integer> responseTimes) {
