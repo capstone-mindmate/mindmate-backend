@@ -2,16 +2,13 @@ package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
+import com.mindmate.mindmate_server.chat.domain.ChatRoomCloseType;
 import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
-import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
-import com.mindmate.mindmate_server.chat.dto.ChatRoomCloseEvent;
-import com.mindmate.mindmate_server.chat.dto.ChatRoomDetailResponse;
-import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
+import com.mindmate.mindmate_server.chat.dto.*;
 import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.matching.domain.Matching;
-import com.mindmate.mindmate_server.notification.dto.ChatCloseRequestNotificationEvent;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.ProfileService;
@@ -102,14 +99,13 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         User user = userService.findUserById(userId);
         ChatRoom chatRoom = findChatRoomById(roomId);
         chatRoom.requestClosure(user);
+        save(chatRoom);
 
         User recipient = chatRoom.isListener(user) ? chatRoom.getSpeaker() : chatRoom.getListener();
-        String requesterName = user.getProfile() != null ? user.getProfile().getNickname() : "사용자";
-
-        ChatCloseRequestNotificationEvent event = ChatCloseRequestNotificationEvent.builder()
+        ChatRoomNotificationEvent event = ChatRoomNotificationEvent.builder()
                 .recipientId(recipient.getId())
-                .chatRoomId(roomId)
-                .requesterNickname(requesterName)
+                .chatRoomId(chatRoom.getId())
+                .closeType(ChatRoomCloseType.REQUEST)
                 .build();
 
         notificationService.processNotification(event);
@@ -149,6 +145,16 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         }
 
         chatRoom.rejectClosure();
+        save(chatRoom);
+
+        User requester = chatRoom.isClosureRequester(chatRoom.getListener()) ? chatRoom.getListener() : chatRoom.getSpeaker();
+
+        ChatRoomNotificationEvent event = ChatRoomNotificationEvent.builder()
+                .recipientId(requester.getId())
+                .chatRoomId(chatRoom.getId())
+                .closeType(ChatRoomCloseType.REJECT)
+                .build();
+        notificationService.processNotification(event);
     }
 
     @Override
