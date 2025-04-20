@@ -1,15 +1,13 @@
 package com.mindmate.mindmate_server.user.domain;
 
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
-import com.mindmate.mindmate_server.review.domain.EvaluationTag;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Entity
 @Table(name = "profiles")
@@ -91,4 +89,19 @@ public class Profile extends BaseTimeEntity {
     public void updateAvgRating(double rating){
         this.avgRating = (this.avgRating*counselingCount + rating)/(counselingCount+1);
     } // 리뷰달 때 동시성 이슈 생길수도 있나?
+
+
+    // 채팅방 종료 시 한 번에 모든 응답 시간 처리 -> 단일 데이터베이스 처리
+    public void addMultipleResponseTimes(List<Integer> responseTimes) {
+        if (responseTimes.isEmpty()) {
+            return;
+        }
+
+        int sum = responseTimes.stream().mapToInt(Integer::intValue).sum();
+        this.totalResponseTime += sum;
+        this.responseTimeCount += responseTimes.size();
+        this.avgResponseTime = this.responseTimeCount > 0
+                ? this.totalResponseTime / this.responseTimeCount
+                : 0;
+    }
 }

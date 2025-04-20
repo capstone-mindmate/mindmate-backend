@@ -126,6 +126,12 @@ public class ProfileServiceImpl implements ProfileService {
         profile.updateResponseTime(responseTime);
     }
 
+    @Override
+    public void updateResponseTimes(Long userId, List<Integer> responseTimes) {
+        Profile profile = getOrCreateProfile(userService.findUserById(userId));
+        profile.addMultipleResponseTimes(responseTimes);
+    }
+
     private Profile findProfileByUserId(Long userId) {
         return profileRepository.findByUserId(userId)
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));

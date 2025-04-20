@@ -51,5 +51,7 @@ public interface ProfileService {
     // 인기 프로필??
 
 
+    void updateResponseTimes(Long userId, List<Integer> responseTimes);
+
     Profile findProfileById(Long profileId);
 }
