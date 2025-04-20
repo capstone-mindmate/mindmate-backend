@@ -4,6 +4,7 @@ import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
+import com.mindmate.mindmate_server.chat.dto.ChatRoomCloseEvent;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomDetailResponse;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
 import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
@@ -13,11 +14,13 @@ import com.mindmate.mindmate_server.matching.domain.Matching;
 import com.mindmate.mindmate_server.notification.dto.ChatCloseRequestNotificationEvent;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.user.domain.User;
+import com.mindmate.mindmate_server.user.service.ProfileService;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +40,9 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     private final ChatMessageService chatMessageService;
     private final UserService userService;
     private final NotificationService notificationService;
+    private final ProfileService profileService;
+
+    private final KafkaTemplate<String ,ChatRoomCloseEvent> kafkaTemplate;
 
     @Override
     public ChatRoom findChatRoomById(Long roomId) {
@@ -159,6 +165,21 @@ public class ChatRoomServiceImpl implements ChatRoomService {
             throw new CustomException(ChatErrorCode.CHAT_ROOM_CANNOT_ACCEPT_OWN);
         }
         chatRoom.acceptClosure();
+        User speaker = chatRoom.getSpeaker();
+        User listener = chatRoom.getListener();
+        profileService.incrementCounselingCount(speaker.getId());
+        profileService.incrementCounselingCount(listener.getId());
+        save(chatRoom);
+
+        ChatRoomCloseEvent event = ChatRoomCloseEvent.builder()
+                .chatRoomId(chatRoom.getId())
+                .speakerId(speaker.getId())
+                .listenerId(listener.getId())
+                .closedAt(chatRoom.getClosedAt())
+                .matchingId(chatRoom.getMatching().getId())
+                .build();
+
+        publishChatRoomCloseEvent(event);
     }
 
     @Override
@@ -209,4 +230,9 @@ public class ChatRoomServiceImpl implements ChatRoomService {
             }
         }
     }
+
+    private void publishChatRoomCloseEvent(ChatRoomCloseEvent event) {
+        kafkaTemplate.send("chat-room-close-topic", event.getChatRoomId().toString(), event);
+    }
+
 }
