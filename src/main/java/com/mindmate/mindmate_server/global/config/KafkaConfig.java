@@ -1,7 +1,9 @@
 package com.mindmate.mindmate_server.global.config;
 
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
+import com.mindmate.mindmate_server.chat.dto.ChatRoomCloseEvent;
 import com.mindmate.mindmate_server.matching.dto.MatchingAcceptedEvent;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -15,7 +17,6 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.*;
-import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
@@ -24,6 +25,7 @@ import java.util.Map;
 
 @Configuration
 @EnableKafka
+@Slf4j
 public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
@@ -33,6 +35,20 @@ public class KafkaConfig {
      */
     @Bean
     public ProducerFactory<String, ChatMessageEvent> chatMessageProducerFactory() {
+        Map<String, Object> config = new HashMap<>();
+
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+
+        return new DefaultKafkaProducerFactory<>(config);
+    }
+
+    /**
+     * Chat Room Close Event Producer 설정
+     */
+    @Bean
+    public ProducerFactory<String, ChatRoomCloseEvent> chatRoomCloseProducerFactory() {
         Map<String, Object> config = new HashMap<>();
 
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -59,6 +75,22 @@ public class KafkaConfig {
     }
 
     /**
+     * Chat Room Close Event Consumer 설정
+     */
+    @Bean
+    public ConsumerFactory<String, ChatRoomCloseEvent> chatRoomCloseConsumerFactory() {
+        Map<String, Object> config = new HashMap<>();
+
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, "chat-room-close-group");
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        config.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+
+        return new DefaultKafkaConsumerFactory<>(config);
+    }
+
+    /**
      * Chat Message Kafka Template
      */
     @Bean
@@ -67,12 +99,32 @@ public class KafkaConfig {
     }
 
     /**
+     * Chat Room Close Event Kafka Template
+     */
+    @Bean
+    public KafkaTemplate<String, ChatRoomCloseEvent> chatRoomCloseKafkaTemplate() {
+        return new KafkaTemplate<>(chatRoomCloseProducerFactory());
+    }
+
+
+    /**
      * Chat Message Listener Container Factory
      */
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, ChatMessageEvent> chatMessageListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, ChatMessageEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(chatMessageConsumerFactory());
+        return factory;
+    }
+
+    /**
+     * Chat Room Close Event Listener Container Factory
+     */
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, ChatRoomCloseEvent> chatRoomCloseListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, ChatRoomCloseEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(chatRoomCloseConsumerFactory());
         return factory;
     }
 
@@ -128,6 +180,22 @@ public class KafkaConfig {
                 ))
                 .build();
     }
+
+    /**
+     * Kafka 토픽 설정 - 채팅방 종료 이벤트
+     */
+    @Bean
+    public NewTopic chatRoomCloseTopic() {
+        return TopicBuilder.name("chat-room-close-topic")
+                .partitions(3)
+                .replicas(1)
+                .configs(Map.of(
+                        TopicConfig.RETENTION_MS_CONFIG, "604800000", // 7일 보관
+                        TopicConfig.CLEANUP_POLICY_CONFIG, "delete"
+                ))
+                .build();
+    }
+
 
     /**
      * Kafka 토픽 설정 - 매칭 이벤트
