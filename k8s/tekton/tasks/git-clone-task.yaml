@@ -1,0 +1,34 @@
+## 기본값 develop -> 코드 변경이 발생할 때마다 자동으로 빌드 및 배포
+
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: git-clone
+spec:
+  workspaces:
+    - name: output
+      description: 저장소가 클론될 작업 공간
+  params:
+    - name: url
+      type: string
+      description: Git 저장소 URL
+    - name: revision
+      type: string
+      description: 체크아웃할 Git 리비전(브랜치, 태그, SHA 등)
+      default: "develop"
+    - name: deleteExisting
+      type: string
+      description: 클론하기 전에 기존 디렉토리를 삭제할지 여부
+      default: "true"
+  steps:
+    - name: clone
+      image: alpine/git
+      script: |
+        if [ "$(params.deleteExisting)" = "true" ] && [ -d "/workspace/output/" ]; then
+          rm -rf /workspace/output/*
+          rm -rf /workspace/output/.[!.]*
+        fi
+        git clone -b $(params.revision) $(params.url) /workspace/output/
+        cd /workspace/output/
+        echo "Repository contents:"
+        ls -la

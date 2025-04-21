@@ -1,0 +1,440 @@
+package com.mindmate.mindmate_server.matching.service;
+
+import com.mindmate.mindmate_server.chat.domain.ChatRoom;
+import com.mindmate.mindmate_server.chat.service.ChatRoomService;
+import com.mindmate.mindmate_server.global.exception.CustomException;
+import com.mindmate.mindmate_server.global.exception.MatchingErrorCode;
+import com.mindmate.mindmate_server.matching.domain.*;
+import com.mindmate.mindmate_server.matching.dto.*;
+import com.mindmate.mindmate_server.matching.repository.MatchingRepository;
+import com.mindmate.mindmate_server.matching.repository.WaitingUserRepository;
+import com.mindmate.mindmate_server.notification.dto.MatchingAcceptedNotificationEvent;
+import com.mindmate.mindmate_server.notification.dto.MatchingAppliedNotificationEvent;
+import com.mindmate.mindmate_server.notification.service.NotificationService;
+import com.mindmate.mindmate_server.point.domain.PointReasonType;
+import com.mindmate.mindmate_server.point.dto.PointUseRequest;
+import com.mindmate.mindmate_server.point.service.PointService;
+import com.mindmate.mindmate_server.user.domain.User;
+import com.mindmate.mindmate_server.user.service.UserService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class MatchingServiceImpl implements MatchingService {
+
+    private final MatchingRepository matchingRepository;
+    private final WaitingUserRepository waitingUserRepository;
+
+    private final UserService userService;
+    private final ChatRoomService chatRoomService;
+    private final RedisMatchingService redisMatchingService;
+    private final NotificationService notificationService;
+    private final PointService pointService;
+    private final MatchingEventProducer matchingEventProducer;
+
+    private static final int  MAX_ACTIVE_MATCHINGS = 3;
+
+    // 매칭 생성 -> + 채팅 생성
+    @Override @Transactional
+    public MatchingCreateResponse createMatching(Long userId, MatchingCreateRequest request) {
+        User user = userService.findUserById(userId);
+
+        // 활성화된 매칭 수 카운트
+        int activeRoomCount = redisMatchingService.getUserActiveMatchingCount(userId);
+        if (activeRoomCount >= MAX_ACTIVE_MATCHINGS) {
+            throw new CustomException(MatchingErrorCode.MATCHING_LIMIT_EXCEED);
+        }
+
+        Matching matching = Matching.builder()
+                .creator(user)
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .category(request.getCategory())
+                .creatorRole(request.getCreatorRole())
+                .anonymous(request.isAnonymous())
+                .allowRandom(request.isAllowRandom())
+                .showDepartment(request.isShowDepartment())
+                .build();
+
+        Matching saved = matchingRepository.save(matching);
+
+        ChatRoom chatRoom = chatRoomService.createChatRoom(matching);
+
+        matching.setChatRoom(chatRoom);
+
+        Long matchingId = saved.getId();
+
+        if(request.isAllowRandom()){
+            redisMatchingService.addMatchingToAvailableSet(matching);
+        } // 레디스 set에 추가
+
+        redisMatchingService.incrementUserActiveMatchingCount(userId);
+
+        return MatchingCreateResponse.builder()
+                .matchingId(matchingId)
+                .chatRoomId(chatRoom.getId())
+                .build();
+    }
+
+    @Override @Transactional // 수동
+    public Long applyForMatching(Long userId, Long matchingId, WaitingUserRequest request) {
+        User user = userService.findUserById(userId);
+
+        Matching matching = matchingRepository.findById(matchingId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+
+        pointService.usePoints(userId, PointUseRequest.builder()
+                .amount(100)
+                .reasonType(PointReasonType.COUNSELING_REQUESTED)
+                .entityId(matchingId)
+                .build());
+
+        // 자기 매칭방 신청 불가
+        if (matching.isCreator(user)) {
+            throw new CustomException(MatchingErrorCode.CANNOT_APPLY_TO_OWN_MATCHING);
+        }
+
+        if (!matching.isOpen()) {
+            throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
+        }
+
+        if (waitingUserRepository.findByMatchingAndWaitingUser(matching, user).isPresent()) {
+            throw new CustomException(MatchingErrorCode.ALREADY_APPLIED_TO_MATCHING);
+        }
+
+        // 수동 매칭 신청 생성
+        WaitingUser waitingUser = WaitingUser.builder()
+                .waitingUser(user)
+                .message(request.getMessage())
+                .matchingType(MatchingType.MANUAL) // 수동 매칭
+                .anonymous(request.isAnonymous())
+                .build();
+
+        matching.addWaitingUser(waitingUser);
+
+        redisMatchingService.incrementUserActiveMatchingCount(userId);
+
+        // 알림 전송 (생성자한테)
+        String applicantName = user.getProfile() != null ?
+                (request.isAnonymous() ? "익명" : user.getProfile().getNickname()) : "사용자";
+
+        MatchingAppliedNotificationEvent event = MatchingAppliedNotificationEvent.builder()
+                .recipientId(matching.getCreator().getId())
+                .matchingId(matching.getId())
+                .matchingTitle(matching.getTitle())
+                .applicantNickname(applicantName)
+                .build();
+
+        notificationService.processNotification(event);
+
+
+        return waitingUserRepository.save(waitingUser).getId();
+    }
+
+    @Override @Transactional
+    public Long acceptMatching(Long userId, Long matchingId, Long waitingId) {
+        Matching matching = validateOpenMatching(userId, matchingId);
+        WaitingUser waitingUser = validateWaitingUser(waitingId, matchingId);
+
+        waitingUser.accept();
+
+        matching.acceptMatching(waitingUser.getWaitingUser());
+        matchingRepository.save(matching);
+
+        // 알림 전송 (신청자한테)
+        MatchingAcceptedNotificationEvent event = MatchingAcceptedNotificationEvent.builder()
+                .recipientId(waitingUser.getWaitingUser().getId())
+                .matchingId(matching.getId())
+                .matchingTitle(matching.getTitle())
+                .build();
+
+        notificationService.processNotification(event);
+
+        List<Long> pendingWaitingUserIds = waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching)
+                .stream()
+                .filter(app -> !app.getId().equals(waitingId) && app.getStatus() == WaitingStatus.PENDING)
+                .map(WaitingUser::getId)
+                .collect(Collectors.toList());
+
+        redisMatchingService.cleanupMatchingKeys(matching);
+
+        if (!pendingWaitingUserIds.isEmpty()) {
+            publishAcceptEventAfterCommit(matching, waitingUser, pendingWaitingUserIds);
+        }
+        return matching.getId();
+    }
+
+    @Override @Transactional
+    public Long autoMatchApply(Long userId, AutoMatchingRequest request) {
+        InitiatorType userRole = request.getUserRole();
+        User user = userService.findUserById(userId);
+
+        int activeRoomCount = redisMatchingService.getUserActiveMatchingCount(userId);
+        if (activeRoomCount >= MAX_ACTIVE_MATCHINGS) {
+            throw new CustomException(MatchingErrorCode.MATCHING_LIMIT_EXCEED);
+        }
+
+        Long matchingId = redisMatchingService.getRandomMatching(user, userRole);
+
+        if (matchingId == null) {
+            throw new CustomException(MatchingErrorCode.NO_MATCHING_AVAILABLE);
+        }
+
+        Matching matching = matchingRepository.findById(matchingId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+
+        // 자동 매칭 신청
+        WaitingUser waitingUser = WaitingUser.builder()
+                .waitingUser(user)
+                .matchingType(MatchingType.AUTO_RANDOM)
+                .anonymous(request.isAnonymous())
+                .build();
+
+        matching.addWaitingUser(waitingUser);
+        Long waitingUserId = waitingUserRepository.save(waitingUser).getId();
+
+        // 매칭 수락
+        try {
+            acceptMatching(matching.getCreator().getId(), matching.getId(), waitingUserId);
+        } catch (CustomException e) {
+            log.error("자동 매칭 수락 실패: {}", e.getMessage());
+            throw new CustomException(MatchingErrorCode.AUTO_MATCHING_FAILED);
+        }
+
+        redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
+
+        return matching.getChatRoom().getId();
+    }
+
+    @Override
+    @Transactional
+    public MatchingDetailResponse updateMatching(Long userId, Long matchingId, MatchingUpdateRequest request) {
+
+        Matching matching = validateOpenMatching(userId, matchingId);
+
+        matching.updateMatchingInfo(
+                request.getTitle(),
+                request.getDescription(),
+                request.getCategory(),
+                request.isAnonymous(),
+                request.isAllowRandom(),
+                request.isShowDepartment()
+        );
+
+        return MatchingDetailResponse.of(matching);
+    }
+
+    @Override @Transactional
+    public void cancelWaiting(Long userId, Long waitingUserId) {
+        User user = userService.findUserById(userId);
+
+        WaitingUser waitingUser = waitingUserRepository.findById(waitingUserId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.WAITING_NOT_FOUND));
+
+        if (!waitingUser.isOwner(user)) {
+            throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
+        }
+
+        if (waitingUser.getStatus() != WaitingStatus.PENDING) {
+            throw new CustomException(MatchingErrorCode.CANNOT_CANCEL_PROCESSED_WAITING);
+        }
+
+        if (!user.addCancelCount()) {
+            throw new CustomException(MatchingErrorCode.DAILY_LIMIT_CANCEL_EXCEED);
+        }
+
+        waitingUserRepository.delete(waitingUser);
+        redisMatchingService.decrementUserActiveMatchingCount(userId);
+    }
+
+    @Override
+    public Page<MatchingResponse> getMatchings(Pageable pageable, MatchingCategory category,
+                                               String department, InitiatorType requiredRole) {
+        Page<Matching> matchings;
+        MatchingStatus requireStatus = MatchingStatus.OPEN;
+
+        if (requiredRole != null) {
+            InitiatorType targetCreatorRole = requiredRole == InitiatorType.SPEAKER
+                    ? InitiatorType.LISTENER
+                    : InitiatorType.SPEAKER;
+
+            matchings = matchingRepository.findByStatusAndCreatorRoleOrderByCreatedAtDesc(
+                    requireStatus, targetCreatorRole, pageable);
+        }
+        else if (category != null && department != null) {
+            matchings = matchingRepository.findByStatusAndCategoryAndDepartment(
+                    requireStatus, category, department, pageable);
+        }
+        else if (category != null) {
+            matchings = matchingRepository.findByStatusAndCategoryOrderByCreatedAtDesc(
+                    requireStatus, category, pageable);
+        }
+        else if (department != null) {
+            matchings = matchingRepository.findOpenMatchingsByDepartment(
+                    requireStatus, department, pageable);
+        }
+        else {
+            matchings = matchingRepository.findByStatusOrderByCreatedAtDesc(requireStatus, pageable);
+        }
+
+        return matchings.map(MatchingResponse::of);
+    }
+
+    @Override
+    public MatchingDetailResponse getMatchingDetail(Long matchingId) {
+
+        Matching matching = matchingRepository.findById(matchingId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+
+        return MatchingDetailResponse.of(matching);
+    }
+
+    @Override
+    public Page<MatchingResponse> searchMatchings(Pageable pageable, MatchingSearchRequest request) {
+        Page<Matching> matchings = matchingRepository.searchMatchingsWithFilters(
+                MatchingStatus.OPEN,
+                request.getKeyword(),
+                request.getCategory(),
+                request.getDepartment(),
+                request.getRequiredRole() != null
+                        ? (request.getRequiredRole() == InitiatorType.SPEAKER ? InitiatorType.LISTENER : InitiatorType.SPEAKER)
+                        : null,
+                pageable
+        );
+
+        return matchings.map(MatchingResponse::of);
+    }
+
+    @Override
+    public Page<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId, Pageable pageable) {
+        User user = userService.findUserById(userId);
+
+        Matching matching = matchingRepository.findById(matchingId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+
+        // 매칭방 소유자 확인
+        if (!matching.isCreator(user)) {
+            throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
+        }
+
+        Page<WaitingUser> waitingUsers = waitingUserRepository.findByMatchingWithWaitingUserProfile(matching, pageable);
+        return waitingUsers.map(WaitingUserResponse::of);
+    }
+
+    @Override
+    public Page<MatchingResponse> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant) {
+
+        User user = userService.findUserById(userId);
+
+        Page<Matching> matchings;
+        if (asParticipant) {
+            matchings = matchingRepository.findByAcceptedUserAndStatusOrderByMatchedAtDesc(
+                    user, MatchingStatus.MATCHED, pageable);
+        } else {
+            matchings = matchingRepository.findByCreatorAndStatusOrderByMatchedAtDesc(
+                    user, MatchingStatus.MATCHED, pageable);
+        }
+
+        return matchings.map(MatchingResponse::of);
+    }
+
+    @Override @Transactional
+    public void cancelMatching(Long userId, Long matchingId) {
+        User user = userService.findUserById(userId);
+
+        Matching matching = matchingRepository.findById(matchingId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+
+        if (!matching.isCreator(user)) {
+            throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
+        }
+
+        if (!matching.isOpen()) {
+            throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
+        }
+
+        waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching).stream()
+                .filter(app -> app.getStatus() == WaitingStatus.PENDING)
+                .forEach(app -> {
+                    app.reject();
+                    redisMatchingService.decrementUserActiveMatchingCount(app.getWaitingUser().getId());
+                });
+
+        matching.cancelMatching();
+
+        redisMatchingService.decrementUserActiveMatchingCount(userId);
+        redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
+        // 채팅이 끝나면 상담횟수 +1 (리스너 역할에만?)
+
+        redisMatchingService.cleanupMatchingKeys(matching);
+    }
+
+    @Override
+    public Matching findMatchingById(Long matchingId) {
+        return matchingRepository.findById(matchingId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+    }
+
+    private Matching validateMatchingOwnership(Long userId, Long matchingId) {
+        User user = userService.findUserById(userId);
+
+        Matching matching = matchingRepository.findById(matchingId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+
+        if (!matching.isCreator(user)) {
+            throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
+        }
+
+        return matching;
+    }
+
+    private Matching validateOpenMatching(Long userId, Long matchingId) {
+        Matching matching = validateMatchingOwnership(userId, matchingId);
+
+        if (!matching.isOpen()) {
+            throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
+        }
+
+        return matching;
+    }
+
+    private WaitingUser validateWaitingUser(Long waitingId, Long matchingId) {
+        WaitingUser waitingUser = waitingUserRepository.findById(waitingId)
+                .orElseThrow(() -> new CustomException(MatchingErrorCode.WAITING_NOT_FOUND));
+
+        if (!waitingUser.getMatching().getId().equals(matchingId)) {
+            throw new CustomException(MatchingErrorCode.INVALID_MATCHING_WAITING);
+        }
+
+        return waitingUser;
+    }
+
+    private void publishAcceptEventAfterCommit(Matching matching, WaitingUser waitingUser, List<Long> others) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                matchingEventProducer.publishMatchingAccepted(
+                        MatchingAcceptedEvent.builder()
+                                .matchingId(matching.getId())
+                                .creatorId(matching.getCreator().getId())
+                                .acceptedUserId(waitingUser.getWaitingUser().getId())
+                                .pendingWaitingUserIds(others)
+                                .build()
+                );
+            }
+        });
+    }
+
+
+}

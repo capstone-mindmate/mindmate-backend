@@ -1,0 +1,16 @@
+package com.mindmate.mindmate_server.user.dto;
+
+import lombok.Builder;
+import lombok.Getter;
+
+import java.time.LocalDateTime;
+
+@Getter
+@Builder
+public class ProfileCreateRequest {
+    private String nickname;
+    private String profileImage;
+    private String department;
+    private Integer entranceTime;
+    private boolean graduation;
+}

@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>WebSocket 채팅 테스트</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; }
+        .form-group input, .form-group textarea { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { padding: 8px 15px; margin-right: 10px; cursor: pointer; }
+        #log { height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; margin-top: 20px; background-color: #f5f5f5; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .warning { color: orange; }
+        .flex-container { display: flex; justify-content: space-between; }
+        .col { flex: 1; margin: 0 10px; }
+        .message-container { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+        .message-sender { font-weight: bold; }
+        .message-time { font-size: 0.8em; color: #666; }
+        .message-content { margin-top: 5px; }
+        .read-status { font-size: 0.8em; color: #666; text-align: right; }
+        .online-status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+        .online { background-color: green; }
+        .offline { background-color: gray; }
+        .reaction-container { display: flex; margin-top: 5px; }
+        .reaction-button { margin-right: 5px; cursor: pointer; padding: 2px 5px; border-radius: 3px; background-color: #f0f0f0; }
+        .reaction-button.active { background-color: #d1e7ff; }
+        .reaction-count { margin-left: 3px; font-size: 0.8em; }
+        .custom-form { background-color: #f5f5f5; padding: 10px; border-radius: 5px; margin-top: 10px; }
+        .custom-form-header { font-weight: bold; margin-bottom: 5px; }
+        .custom-form-question { margin-bottom: 5px; }
+        .custom-form-answer { margin-left: 15px; color: #0066cc; }
+        .custom-form-input { width: 100%; padding: 5px; margin-bottom: 5px; }
+        .toast-box {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 100%;
+            opacity: 1; /* 기본값을 1로 변경 */
+            z-index: 10; /* z-index 추가 */
+            position: relative; /* position 속성 추가 */
+        }
+        
+        .toast-box-header {
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .toast-box-title {
+            font-weight: bold;
+            color: #0066cc;
+        }
+        
+        .toast-box-close {
+            cursor: pointer;
+            font-size: 18px;
+            color: #666;
+        }
+        
+        .toast-box-content {
+            padding: 10px 12px;
+            color: #333;
+        }
+        
+        .toast-box-footer {
+            padding: 8px 12px;
+            border-top: 1px solid #eee;
+            text-align: right;
+        }
+        
+        .toast-box-link {
+            color: #0066cc;
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        
+        .toast-box-link:hover {
+            text-decoration: underline;
+        }
+        
+        .toast-box-image {
+            padding: 0 12px 12px;
+            text-align: center;
+        }
+        
+        .toast-box-image img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 3px;
+        }
+        
+        /* 필터링된 메시지 스타일 개선 */
+        .message-container[data-message-type="FILTERED"] {
+            position: relative;
+        }
+        
+        .message-container[data-message-type="FILTERED"] .message-content {
+            color: #721c24;
+            background-color: #f8d7da;
+            padding: 8px 12px;
+            border-radius: 5px;
+            border-left: 3px solid #f5c6cb;
+            margin: 5px 0;
+            font-style: italic;
+        }
+        
+        .message-container[data-message-type="FILTERED"]::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -5px;
+            width: 3px;
+            height: 100%;
+            background-color: #f5c6cb;
+        }
+        
+    
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>WebSocket 채팅 테스트</h1>
+    
+    <div class="flex-container">
+        <div class="col">
+            <div class="form-group">
+                <label for="token">JWT 토큰:</label>
+                <input type="text" id="token" placeholder="JWT 토큰" value="여기에 JWT 토큰 입력">
+            </div>
+            
+            <div>
+                <button onclick="connect()">연결</button>
+                <button onclick="disconnect()">연결 해제</button>
+            </div>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label for="roomId">채팅방 ID:</label>
+                <input type="text" id="roomId" placeholder="채팅방 ID" value="1">
+                <button onclick="subscribe()">채팅방 입장</button>
+                <button onclick="unsubscribe()">채팅방 퇴장</button>
+            </div>
+            
+            <div class="form-group">
+                <label for="message">메시지:</label>
+                <textarea id="message" placeholder="보낼 메시지를 입력하세요" rows="3"></textarea>
+                <button onclick="sendMessage()">전송</button>
+            </div>
+            
+            <div class="form-group">
+                <button onclick="markAsRead()">읽음 처리</button>
+                <button onclick="fetchMessages()">메시지 조회 (REST)</button>
+                <button onclick="fetchChatRooms()">채팅방 목록 조회</button>
+                <button onclick="showCustomFormCreator()">커스텀폼 생성</button>
+            </div>
+            
+            <!-- 커스텀폼 생성 UI -->
+            <div id="customFormCreator" style="display:none; margin-top: 15px; border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+                <h3>커스텀폼 생성</h3>
+                <div id="questionContainer">
+                    <div class="form-group">
+                        <input type="text" class="custom-form-input" placeholder="질문 1">
+                    </div>
+                </div>
+                <button onclick="addQuestion()">질문 추가</button>
+                <button onclick="createCustomForm()">폼 생성</button>
+                <button onclick="cancelCustomForm()">취소</button>
+            </div>
+        </div>
+        
+        <div class="col">
+            <h3>채팅방 정보</h3>
+            <div id="roomInfo">
+                <p>채팅방: <span id="currentRoomDisplay">없음</span></p>
+                <p>참가자 상태:</p>
+                <ul id="participantStatus">
+                    <li>참가자 정보가 없습니다.</li>
+                </ul>
+                <p>읽지 않은 메시지: <span id="unreadCount">0</span></p>
+            </div>
+            
+            <h3>메시지</h3>
+            <div id="messages"></div>
+        </div>
+    </div>
+    
+    <h3>로그</h3>
+    <div id="log"></div>
+</div>
+
+<script>
+    let stompClient = null;
+    let currentRoomId = null;
+    let subscriptions = {};
+    let userId = null;
+    let messages = [];
+    let participants = {};
+    let baseUrl = 'http://localhost:8080';
+    let heartbeatInterval;
+
+    // 감정표현 이모지 매핑
+    const reactionEmojis = {
+        'LIKE': '👍',
+        'HEART': '❤️',
+        'LAUGH': '😂',
+        'SAD': '😢',
+        'ANGRY': '😡'
+    };
+
+    function connect() {
+        const token = document.getElementById('token').value;
+        if (!token) {
+            logMessage("토큰을 입력해주세요", "error");
+            return;
+        }
+    
+        const socket = new SockJS(baseUrl + '/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.debug = null;
+        
+        logMessage("연결 시도 중...", "info");
+        stompClient.connect(
+            { 'Authorization': 'Bearer ' + token },
+            function(frame) {
+                logMessage('연결 성공: ' + frame, "success");
+                
+                try {
+                    const base64Url = token.split('.')[1];
+                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                    }).join(''));
+                    const payload = JSON.parse(jsonPayload);
+                    userId = payload.userId || payload.sub;
+                    logMessage(`사용자 ID: ${userId}`, "info");
+                } catch (e) {
+                    logMessage('토큰에서 사용자 ID를 추출할 수 없습니다: ' + e, "warning");
+                }
+                
+                // 알림 및 미읽음 메시지 카운트 구독
+                subscriptions['notification'] = stompClient.subscribe('/user/queue/notification', handleNotification);
+                subscriptions['unread'] = stompClient.subscribe('/user/queue/unread', updateUnreadCount);
+                
+                updatePresence('ONLINE');
+                startHeartbeat();
+            },
+            function(error) {
+                logMessage('연결 오류: ' + error, "error");
+            }
+        );
+    }
+
+    function disconnect() {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        if (stompClient !== null) {
+            updatePresence('OFFLINE');
+            Object.values(subscriptions).forEach(sub => {
+                try {
+                    sub.unsubscribe();
+                } catch (e) {}
+            });
+            subscriptions = {};
+            
+            stompClient.disconnect();
+            logMessage('연결이 해제되었습니다', "info");
+            stompClient = null;
+            currentRoomId = null;
+            updateRoomDisplay();
+        }
+    }
+
+    function subscribe() {
+        if (!stompClient) {
+            logMessage("먼저 연결을 해주세요", "error");
+            return;
+        }
+        
+        if (currentRoomId) {
+            unsubscribeRoom(currentRoomId);
+        }
+        
+        currentRoomId = document.getElementById('roomId').value;
+        
+        logMessage(`채팅방 ${currentRoomId} 구독 중...`, "info");
+        
+        // 단일 채널로 모든 메시지 수신 (Redis Pub/Sub 방식 변경 반영)
+        subscriptions[`room_${currentRoomId}`] = stompClient.subscribe(
+            '/topic/chat.room.' + currentRoomId,
+            handleIncomingMessage
+        );
+        
+        // 이벤트별 구독 추가 (Redis Pub/Sub 변경에 맞춰 추가)
+        subscriptions[`read_${currentRoomId}`] = stompClient.subscribe(
+            '/topic/chat.room.' + currentRoomId + '.read',
+            handleReadStatus
+        );
+        
+        subscriptions[`reaction_${currentRoomId}`] = stompClient.subscribe(
+            '/topic/chat.room.' + currentRoomId + '.reaction',
+            handleReactionEvent
+        );
+        
+        subscriptions[`customform_${currentRoomId}`] = stompClient.subscribe(
+            '/topic/chat.room.' + currentRoomId + '.customform',
+            handleCustomFormEvent
+        );
+        
+        subscriptions[`toastbox_${currentRoomId}`] = stompClient.subscribe(
+            '/topic/chat.room.' + currentRoomId + '.toastbox',
+            handleToastBoxEvent
+        );
+    
+        updatePresence('ONLINE', currentRoomId);
+        markAsRead();
+        fetchMessages();
+        updateRoomDisplay();
+        logMessage(`채팅방 ${currentRoomId} 구독 완료`, "success");
+    }
+    
+    function unsubscribeRoom(roomId) {
+        ['room', 'read', 'reaction', 'customform', 'toastbox'].forEach(type => {
+            const subKey = `${type}_${roomId}`;
+            if (subscriptions[subKey]) {
+                try {
+                    subscriptions[subKey].unsubscribe();
+                    delete subscriptions[subKey];
+                } catch (e) {
+                    logMessage(`구독 해제 오류 (${type}): ${e}`, "error");
+                }
+            }
+        });
+    }
+
+    function unsubscribe() {
+        if (!currentRoomId) {
+            logMessage("현재 구독 중인 채팅방이 없습니다", "warning");
+            return;
+        }
+        
+        unsubscribeRoom(currentRoomId);
+        updatePresence('ONLINE', null);
+        currentRoomId = null;
+        updateRoomDisplay();
+        document.getElementById('messages').innerHTML = '';
+        logMessage("채팅방에서 퇴장했습니다", "info");
+    }
+
+    function sendMessage() {
+        if (!stompClient || !currentRoomId) {
+            logMessage("먼저 채팅방에 입장해주세요", "error");
+            return;
+        }
+        
+        const messageContent = document.getElementById('message').value;
+        if (!messageContent) {
+            logMessage("메시지를 입력해주세요", "error");
+            return;
+        }
+        
+        const chatMessage = {
+            roomId: currentRoomId,
+            content: messageContent,
+            type: 'TEXT'
+        };
+        
+        logMessage(`메시지 전송 중: ${JSON.stringify(chatMessage)}`, "info");
+        stompClient.send('/app/chat.send', {}, JSON.stringify(chatMessage));
+        
+        document.getElementById('message').value = '';
+    }
+
+    function markAsRead() {
+        if (!stompClient || !currentRoomId) {
+            logMessage("채팅방에 입장한 상태에서만 읽음 처리가 가능합니다", "warning");
+            return;
+        }
+        
+        const readRequest = { roomId: currentRoomId };
+        stompClient.send('/app/chat.read', {}, JSON.stringify(readRequest));
+        logMessage(`채팅방 ${currentRoomId}의 메시지를 읽음 처리했습니다`, "info");
+    }
+
+    function fetchMessages() {
+        if (!currentRoomId) {
+            logMessage("먼저 채팅방을 선택해주세요", "warning");
+            return;
+        }
+        
+        const token = document.getElementById('token').value;
+        if (!token) {
+            logMessage("토큰을 입력해주세요", "error");
+            return;
+        }
+        
+        logMessage(`채팅방 ${currentRoomId}의 메시지를 조회합니다...`, "info");
+        
+        fetch(`${baseUrl}/api/chat/rooms/${currentRoomId}/messages?page=0&size=20`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('메시지 조회 실패: ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            logMessage(`메시지 조회 성공: ${data.messages.length}개의 메시지`, "success");
+            displayMessages(data);
+            updateParticipantStatus(data);
+        })
+        .catch(error => logMessage('메시지 조회 오류: ' + error.message, "error"));
+    }
+
+    function fetchChatRooms() {
+        const token = document.getElementById('token').value;
+        if (!token) {
+            logMessage("토큰을 입력해주세요", "error");
+            return;
+        }
+        
+        logMessage("채팅방 목록을 조회합니다...", "info");
+        
+        fetch(`${baseUrl}/api/chat/rooms?page=0&size=10`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('채팅방 목록 조회 실패: ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            logMessage(`채팅방 목록 조회 성공: ${data.content.length}개의 채팅방`, "success");
+            displayChatRooms(data);
+        })
+        .catch(error => logMessage('채팅방 목록 조회 오류: ' + error.message, "error"));
+    }
+function handleIncomingMessage(message) {
+    try {
+        const data = JSON.parse(message.body);
+        console.log("Received message on main channel:", data);
+
+        // 이벤트 타입이 있는 경우 처리 (Redis Pub/Sub 이벤트 형식)
+         if (data.type && data.data) {
+            switch (data.type) {
+                case 'MESSAGE':
+                    // 일반 메시지 처리
+                    addMessageToDisplay(data.data);
+                    return;
+                case 'READ_STATUS':
+                    handleReadStatus({ body: JSON.stringify(data.data) });
+                    return;
+                case 'REACTION':
+                    handleReactionEvent({ body: JSON.stringify(data.data) });
+                    return;
+                case 'CUSTOM_FORM':
+                case 'CUSTOM_FORM_RESPONSE':
+                    handleCustomFormEvent({ body: JSON.stringify(data.data) });
+                    return;
+                case 'TOAST_BOX':
+                    handleToastBoxEvent({ body: JSON.stringify(data.data) });
+                    return;
+                case 'CONTENT_FILTERED':
+                    // 필터링된 메시지 처리
+                    addMessageToDisplay(data.data);
+                    return;
+            }
+        }
+
+        // 이전 형식 호환성 유지 (type 필드가 없는 경우)
+        if (data.id !== undefined) { // null도 허용하도록 변경
+            addMessageToDisplay(data);
+        } else if (data.messageId && data.keyword) {
+            // 토스트 박스 이벤트 처리
+            handleToastBoxEvent({ body: JSON.stringify(data) });
+        } else {
+            console.error("Invalid message format:", data);
+        }
+    } catch (e) {
+        console.error("Error processing message:", e, message.body);
+    }
+}
+function handleToastBoxEvent(message) {
+    try {
+        const toastData = JSON.parse(message.body);
+        console.log("Toast box event:", toastData);
+        
+        if (toastData.roomId && toastData.messageId && toastData.keyword) {
+            // 관련 메시지 찾기
+            const messageElement = document.querySelector(`.message-container[data-message-id="${toastData.messageId}"]`);
+            
+            if (messageElement) {
+                // 이미 토스트 박스가 있는지 확인
+                const existingToastBox = messageElement.querySelector(`.toast-box[data-keyword="${toastData.keyword}"]`);
+                if (!existingToastBox) {
+                    // 토스트 박스 UI 생성
+                    const toastBoxElement = createToastBoxElement(toastData);
+                    
+                    // 메시지 내용 다음에 토스트 박스 추가
+                    const messageContent = messageElement.querySelector('.message-content');
+                    messageContent.insertAdjacentElement('afterend', toastBoxElement);
+                    
+                    // 토스트 박스 애니메이션 효과 - 즉시 .show 클래스 추가
+                    toastBoxElement.classList.add('show');
+                    
+                    // 콘솔에 로그 추가
+                    console.log("Toast box added and show class applied:", toastBoxElement);
+                    
+                    logMessage(`토스트 박스가 표시됨: 키워드 "${toastData.keyword}"`, "info");
+                }
+            } else {
+                logMessage(`메시지 ID ${toastData.messageId}에 대한 요소를 찾을 수 없습니다`, "warning");
+            }
+        } else {
+            console.error("Invalid toast box format:", toastData);
+        }
+    } catch (e) {
+        console.error("Error processing toast box:", e);
+    }
+}
+
+
+function createToastBoxElement(toastData) {
+    const toastBox = document.createElement('div');
+    toastBox.className = 'toast-box';
+    toastBox.dataset.keyword = toastData.keyword;
+    
+    let toastContent = `
+        <div class="toast-box-header">
+            <span class="toast-box-title">${toastData.title || '정보'}</span>
+            <span class="toast-box-close" onclick="this.parentNode.parentNode.remove()">×</span>
+        </div>
+        <div class="toast-box-content">
+            ${toastData.content || ''}
+        </div>
+    `;
+    
+    if (toastData.linkUrl) {
+        toastContent += `
+            <div class="toast-box-footer">
+                <a href="${toastData.linkUrl}" target="_blank" class="toast-box-link">자세히 보기</a>
+            </div>
+        `;
+    }
+    
+    if (toastData.imageUrl) {
+        toastContent += `
+            <div class="toast-box-image">
+                <img src="${toastData.imageUrl}" alt="${toastData.keyword}">
+            </div>
+        `;
+    }
+    
+    toastBox.innerHTML = toastContent;
+    return toastBox;
+}
+
+
+
+
+
+// 알림 핸들러
+function handleNotification(message) {
+    try {
+        const notification = JSON.parse(message.body);
+        console.log("Notification received:", notification);
+        
+        // 알림 타입에 따른 처리
+        if (notification.type === 'NEW_MESSAGE') {
+            // 새 메시지 알림
+            logMessage(`새 메시지 알림: 채팅방 ${notification.roomId}에 새 메시지가 있습니다`, "info");
+        } else if (notification.type === 'ROOM_STATUS') {
+            // 채팅방 상태 변경 알림
+            logMessage(`채팅방 상태 변경: 채팅방 ${notification.roomId}의 상태가 ${notification.status}로 변경되었습니다`, "info");
+        } else {
+            logMessage(`알림: ${JSON.stringify(notification)}`, "info");
+        }
+    } catch (e) {
+        console.error("Error processing notification:", e, message.body);
+    }
+}
+    
+    function updatePresence(status, activeRoomId = currentRoomId) {
+        if (stompClient && stompClient.connected) {
+            stompClient.send('/app/presence', {},
+                JSON.stringify({
+                    status: status,
+                    activeRoomId: activeRoomId
+                })
+            );
+            logMessage(`사용자 상태가 ${status}로 변경되었습니다.`, "info");
+        }
+    }
+
+// 미읽음 카운트 업데이트 핸들러
+function updateUnreadCount(message) {
+    const unreadData = JSON.parse(message.body);
+    const roomId = unreadData.roomId;
+    const count = unreadData.unreadCount;
+    
+    if (roomId === currentRoomId) {
+        document.getElementById('unreadCount').textContent = count;
+    }
+    
+    logMessage(`채팅방 ${roomId}의 읽지 않은 메시지: ${count}개`, "info");
+}
+    
+    function updateUnreadCount(message) {
+        const unreadData = JSON.parse(message.body);
+        const roomId = unreadData.roomId;
+        const count = unreadData.unreadCount;
+        
+        if (roomId === currentRoomId) {
+            document.getElementById('unreadCount').textContent = count;
+        }
+        
+        logMessage(`채팅방 ${roomId}의 읽지 않은 메시지: ${count}개`, "info");
+    }
+    
+// 읽음 상태 이벤트 핸들러
+function handleReadStatus(message) {
+    try {
+        const readData = JSON.parse(message.body);
+        console.log("Read status update:", readData);
+
+        // ReadStatusNotification 구조에 맞게 처리
+        if (readData.roomId && readData.userId && readData.timestamp) {
+            const messagesDiv = document.getElementById('messages');
+            const messageElements = messagesDiv.querySelectorAll('.message-container');
+
+            messageElements.forEach(element => {
+                const readStatus = element.querySelector('.read-status');
+                if (readStatus && element.dataset.roomId === String(readData.roomId)) {
+                    readStatus.textContent = '읽음';
+                }
+            });
+
+            logMessage(`사용자 ${readData.userId}가 채팅방 ${readData.roomId}의 메시지를 읽었습니다`, "info");
+        } else {
+            console.error("Invalid read status format:", readData);
+        }
+    } catch (e) {
+        console.error("Error processing read status:", e);
+    }
+}
+
+
+// 감정표현 이벤트 핸들러
+function handleReactionEvent(message) {
+    try {
+        const data = JSON.parse(message.body);
+        console.log("Reaction data:", data);
+
+        // MessageReactionResponse 구조에 맞게 처리
+        if (data.messageId) {
+            const messageId = data.messageId;
+            const messageElement = document.querySelector(`.message-container[data-message-id="${messageId}"]`);
+
+            if (messageElement) {
+                // 사용자가 감정표현을 제거한 경우 (id가 null인 경우)
+                if (data.id === null && data.userId == userId) {
+                    // 해당 타입의 버튼에서 active 클래스 제거
+                    const reactionType = data.reactionType;
+                    const reactionButton = messageElement.querySelector(`.reaction-button[onclick*="${reactionType}"]`);
+                    
+                    if (reactionButton) {
+                        reactionButton.classList.remove('active');
+                        // 카운트 감소
+                        const countSpan = reactionButton.querySelector('.reaction-count');
+                        let count = parseInt(countSpan.textContent || '0');
+                        count = Math.max(0, count - 1);
+                        countSpan.textContent = count > 0 ? count : '';
+                    }
+                }
+                // 새 감정표현 추가 또는 변경
+                else if (data.id !== null) {
+                    const reactionType = data.reactionType;
+                    
+                    // 현재 사용자의 반응인 경우, 이전 active 상태 제거 및 새 버튼 active 설정
+                    if (data.userId == userId) {
+                        // 이전에 active 상태였던 버튼 찾기
+                        const previousActive = messageElement.querySelector('.reaction-button.active');
+                        if (previousActive) {
+                            // 이전 버튼의 active 제거 및 카운트 감소
+                            previousActive.classList.remove('active');
+                            const prevCountSpan = previousActive.querySelector('.reaction-count');
+                            let prevCount = parseInt(prevCountSpan.textContent || '0');
+                            prevCount = Math.max(0, prevCount - 1);
+                            prevCountSpan.textContent = prevCount > 0 ? prevCount : '';
+                        }
+                        
+                        // 새 버튼 active 설정
+                        const reactionButton = messageElement.querySelector(`.reaction-button[onclick*="${reactionType}"]`);
+                        if (reactionButton) {
+                            reactionButton.classList.add('active');
+                            // 카운트 증가
+                            const countSpan = reactionButton.querySelector('.reaction-count');
+                            let count = parseInt(countSpan.textContent || '0');
+                            count += 1;
+                            countSpan.textContent = count > 0 ? count : '';
+                        }
+                    }
+                    // 다른 사용자의 반응인 경우, 해당 버튼의 카운트만 증가
+                    else {
+                        const reactionButton = messageElement.querySelector(`.reaction-button[onclick*="${reactionType}"]`);
+                        if (reactionButton) {
+                            const countSpan = reactionButton.querySelector('.reaction-count');
+                            let count = parseInt(countSpan.textContent || '0');
+                            count += 1;
+                            countSpan.textContent = count > 0 ? count : '';
+                        }
+                    }
+                }
+                
+                logMessage(`${data.userName || '사용자'}님이 메시지 ${messageId}에 ${data.reactionType} 반응을 ${data.id === null ? '제거' : '추가'}했습니다`, "info");
+            } else {
+                logMessage(`메시지 ID ${messageId}에 대한 요소를 찾을 수 없습니다`, "warning");
+                fetchMessages(); // 메시지 목록 새로고침
+            }
+        } else {
+            console.error("Invalid reaction format:", data);
+        }
+    } catch (e) {
+        console.error("Error processing reaction:", e);
+    }
+}
+
+
+// 커스텀폼 이벤트 핸들러
+function handleCustomFormEvent(message) {
+    try {
+        const formData = JSON.parse(message.body);
+        console.log("Custom form data:", formData);
+        
+        // CustomFormResponse 구조에 맞게 처리
+        if (formData.id && formData.chatRoomId && formData.creatorId) {
+            if (!formData.isAnswered) {
+                // 새 커스텀폼 생성
+                const customFormMessage = {
+                    id: `form-${formData.id}`,
+                    senderId: formData.creatorId,
+                    senderName: formData.creatorName,
+                    content: '커스텀폼이 생성되었습니다',
+                    createdAt: formData.createdAt,
+                    type: 'CUSTOM_FORM',
+                    customForm: formData
+                };
+                
+                addMessageToDisplay(customFormMessage);
+                logMessage(`새 커스텀폼이 생성되었습니다: ${formData.id}`, "info");
+            } else {
+                // 커스텀폼 응답 처리
+                const formElement = document.querySelector(`.custom-form[data-form-id="${formData.id}"]`);
+                
+                if (formElement) {
+                    // 폼 헤더 업데이트
+                    const headerElement = formElement.querySelector('.custom-form-header');
+                    if (headerElement) {
+                        headerElement.textContent = `커스텀폼 (응답됨: ${formData.responderName})`;
+                    }
+                    
+                    // 각 질문 항목 업데이트
+                    formData.items.forEach((item, index) => {
+                        const questionElement = formElement.querySelectorAll('.custom-form-question')[index];
+                        
+                        if (questionElement) {
+                            // 입력 필드 제거 및 답변 표시
+                            const inputElement = questionElement.nextElementSibling;
+                            if (inputElement && inputElement.classList.contains('custom-form-input')) {
+                                const answerElement = document.createElement('div');
+                                answerElement.className = 'custom-form-answer';
+                                answerElement.textContent = item.answer || '답변 없음';
+                                questionElement.parentNode.insertBefore(answerElement, inputElement.nextSibling);
+                                inputElement.remove();
+                            }
+                        }
+                    });
+                    
+                    // 응답 버튼 제거
+                    const responseButton = formElement.querySelector('button');
+                    if (responseButton) {
+                        responseButton.remove();
+                    }
+                    
+                    logMessage(`커스텀폼 ${formData.id}에 ${formData.responderName}님이 응답했습니다`, "info");
+                } else {
+                    logMessage(`커스텀폼 ID ${formData.id}에 대한 요소를 찾을 수 없습니다`, "warning");
+                    fetchMessages(); // 메시지 목록 새로고침
+                }
+            }
+        } else {
+            console.error("Invalid custom form format:", formData);
+        }
+    } catch (e) {
+        console.error("Error processing custom form:", e);
+    }
+}
+
+
+    
+    function displayMessages(data) {
+        const messagesDiv = document.getElementById('messages');
+        messagesDiv.innerHTML = '';
+        
+        if (!data.messages || data.messages.length === 0) {
+            messagesDiv.innerHTML = '<p>메시지가 없습니다.</p>';
+            return;
+        }
+        
+        messages = data.messages;
+        
+        messages.forEach(message => {
+            addMessageToDisplay(message, false);
+        });
+        
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+        
+function addMessageToDisplay(message, isNew = true) {
+    if (!message) {
+        console.error("Message object is null or undefined");
+        return;
+    }
+
+    const messagesContainer = document.getElementById('messages');
+    const messageElement = document.createElement('div');
+    messageElement.className = 'message-container';
+    messageElement.dataset.messageId = message.id || `error-${Date.now()}`; // ID가 없는 경우 임시 ID 생성
+    messageElement.dataset.messageType = message.type || 'TEXT';
+    messageElement.dataset.roomId = currentRoomId;
+
+    const isMyMessage = message.senderId == userId;
+
+    // 필터링된 메시지 처리
+    if (message.filtered) {
+        messageElement.dataset.messageType = 'FILTERED';
+        // 필터링 아이콘 추가
+        const filterIcon = '⚠️';
+        message.content = `${filterIcon} ${message.content}`;
+    }
+
+    // 에러 메시지 처리
+    if (message.error) {
+        messageElement.dataset.messageType = 'ERROR';
+    }
+    
+    let messageContent = `
+        <div class="message-header">
+            <span class="message-sender">${message.senderName || '알 수 없음'} ${isMyMessage ? '(나)' : ''}</span>
+            <span class="message-time">${formatTime(message.createdAt)}</span>
+        </div>
+        <div class="message-content">${message.content || ''}</div>
+    `;
+
+    // 에러 메시지 표시
+    if (message.error && message.errorMessage) {
+        messageContent += `<div class="error-message">${message.errorMessage}</div>`;
+    }
+
+    // 커스텀폼 처리
+    if (message.type === 'CUSTOM_FORM' && message.customForm) {
+        const formId = message.customForm.id;
+        const isAnswered = message.customForm.isAnswered;
+        
+        messageContent += `
+            <div class="custom-form" data-form-id="${formId}">
+                <div class="custom-form-header">${isAnswered ? `커스텀폼 (응답됨: ${message.customForm.responderName})` : '커스텀폼'}</div>
+        `;
+        
+        message.customForm.items.forEach(item => {
+            messageContent += `<div class="custom-form-question">${item.question}</div>`;
+            
+            if (isAnswered) {
+                messageContent += `<div class="custom-form-answer">${item.answer || '답변 없음'}</div>`;
+            } else if (message.senderId != userId) {
+                messageContent += `<input type="text" class="custom-form-input" placeholder="답변을 입력하세요">`;
+            } else {
+                messageContent += `<div class="custom-form-answer">대기 중...</div>`;
+            }
+        });
+        
+        if (!isAnswered && message.senderId != userId) {
+            messageContent += `<button onclick="respondToForm('${formId}')">응답 제출</button>`;
+        }
+        
+        messageContent += `</div>`;
+    } else if (message.type !== 'CUSTOM_FORM') {
+        // 일반 메시지에 대한 감정표현 버튼 추가
+        messageContent += `<div class="reaction-container">`;
+
+        Object.entries(reactionEmojis).forEach(([type, emoji]) => {
+            const count = message.reactionCounts && message.reactionCounts[type] ? message.reactionCounts[type] : 0;
+            const isActive = message.userReaction === type;
+
+            messageContent += `
+                <span class="reaction-button ${isActive ? 'active' : ''}"
+                      onclick="addReaction('${message.id}', '${type}')">
+                    ${emoji} <span class="reaction-count">${count > 0 ? count : ''}</span>
+                </span>
+            `;
+        });
+
+        messageContent += `</div>`;
+    }
+
+    messageContent += `<div class="read-status">${isMyMessage ? '전송됨' : '안읽음'}</div>`;
+    messageElement.innerHTML = messageContent;
+
+    if (isNew) {
+        messagesContainer.appendChild(messageElement);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    } else {
+        messagesContainer.appendChild(messageElement);
+    }
+}
+
+
+
+    
+    function addReaction(messageId, reactionType) {
+        if (!stompClient || !currentRoomId) {
+            logMessage("먼저 채팅방에 입장해주세요", "error");
+            return;
+        }
+        
+        const reactionRequest = {
+            messageId: messageId,
+            roomId: currentRoomId,
+            reactionType: reactionType
+        };
+        
+        stompClient.send('/app/chat.reaction', {}, JSON.stringify(reactionRequest));
+        logMessage(`메시지 ${messageId}에 ${reactionType} 감정표현을 추가합니다`, "info");
+    }
+    
+    function showCustomFormCreator() {
+        if (!currentRoomId) {
+            logMessage("먼저 채팅방에 입장해주세요", "error");
+            return;
+        }
+        
+        document.getElementById('customFormCreator').style.display = 'block';
+    }
+    
+    function addQuestion() {
+        const container = document.getElementById('questionContainer');
+        const questionCount = container.children.length + 1;
+        
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'form-group';
+        questionDiv.innerHTML = `<input type="text" class="custom-form-input" placeholder="질문 ${questionCount}">`;
+        
+        container.appendChild(questionDiv);
+    }
+    
+    function createCustomForm() {
+        if (!stompClient || !currentRoomId) {
+            logMessage("먼저 채팅방에 입장해주세요", "error");
+            return;
+        }
+        
+        const questions = [];
+        document.querySelectorAll('#questionContainer input').forEach(input => {
+            if (input.value.trim()) {
+                questions.push(input.value.trim());
+            }
+        });
+        
+        if (questions.length === 0) {
+            logMessage("최소 하나 이상의 질문을 입력해주세요", "error");
+            return;
+        }
+        
+        const formRequest = {
+            chatRoomId: currentRoomId,
+            questions: questions
+        };
+        
+        stompClient.send('/app/chat.customform.create', {}, JSON.stringify(formRequest));
+        logMessage(`커스텀폼을 생성합니다: ${questions.length}개의 질문`, "info");
+        
+        cancelCustomForm();
+    }
+    
+    function cancelCustomForm() {
+        document.getElementById('customFormCreator').style.display = 'none';
+        document.getElementById('questionContainer').innerHTML = `
+            <div class="form-group">
+                <input type="text" class="custom-form-input" placeholder="질문 1">
+            </div>
+        `;
+    }
+    
+    function respondToForm(formId) {
+        if (!stompClient || !currentRoomId) {
+            logMessage("먼저 채팅방에 입장해주세요", "error");
+            return;
+        }
+        
+        const answers = [];
+        document.querySelectorAll(`.custom-form[data-form-id="${formId}"] .custom-form-input`).forEach(input => {
+            answers.push(input.value.trim() || "답변 없음");
+        });
+        
+        if (answers.length === 0) {
+            logMessage("답변을 입력해주세요", "error");
+            return;
+        }
+        
+        const responseRequest = {
+            formId: formId,
+            answers: answers
+        };
+        
+        stompClient.send('/app/chat.customform.respond', {}, JSON.stringify(responseRequest));
+        logMessage(`커스텀폼 ${formId}에 응답합니다`, "info");
+    }
+
+
+
+
+
+    
+    function updateParticipantStatus(data) {
+        if (!data.participants) return;
+        
+        participants = data.participants || {};
+        const statusList = document.getElementById('participantStatus');
+        statusList.innerHTML = '';
+        
+        Object.entries(participants).forEach(([participantId, participant]) => {
+            const li = document.createElement('li');
+            const isOnline = participant.online;
+            
+            li.innerHTML = `
+                <span class="online-status ${isOnline ? 'online' : 'offline'}"></span>
+                ${participant.name} (${isOnline ? '온라인' : '오프라인'})
+            `;
+            
+            statusList.appendChild(li);
+        });
+    }
+    
+    function updateRoomDisplay() {
+        document.getElementById('currentRoomDisplay').textContent = currentRoomId || '없음';
+    }
+    
+    function displayChatRooms(data) {
+        const rooms = data.content || [];
+        let html = '<h3>채팅방 목록</h3><ul>';
+        
+        rooms.forEach(room => {
+            html += `<li>
+                <strong>${room.roomName || '채팅방 ' + room.id}</strong>
+                (ID: ${room.id}, 상태: ${room.status})
+                <button onclick="enterRoom(${room.id})">입장</button>
+            </li>`;
+        });
+        
+        html += '</ul>';
+        
+        const logDiv = document.getElementById('log');
+        logDiv.innerHTML += html;
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }
+    
+    function enterRoom(roomId) {
+        document.getElementById('roomId').value = roomId;
+        subscribe();
+    }
+    
+    function formatTime(timestamp) {
+        if (!timestamp) return '';
+        
+        const date = new Date(timestamp);
+        return date.toLocaleString();
+    }
+    
+    function logMessage(message, type = "info") {
+        const logDiv = document.getElementById('log');
+        const messageElement = document.createElement('div');
+        messageElement.className = type;
+        messageElement.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        
+        logDiv.appendChild(messageElement);
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }
+    
+    function startHeartbeat() {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        
+        heartbeatInterval = setInterval(() => {
+            if (stompClient && stompClient.connected) {
+                updatePresence(currentRoomId ? 'ONLINE' : 'ONLINE', currentRoomId);
+            } else {
+                clearInterval(heartbeatInterval);
+            }
+        }, 30000); // 30초마다 상태 업데이트
+    }
+    
+    // 페이지 가시성 변경 감지
+    document.addEventListener('visibilitychange', function() {
+        // AWAY 대신 OFFLINE 사용
+        const status = document.hidden ? 'OFFLINE' : 'ONLINE';
+        updatePresence(status);
+        if (status === 'ONLINE' && currentRoomId) {
+            markAsRead();
+        }
+    });
+</script>
+</body>
+</html>
+
+
