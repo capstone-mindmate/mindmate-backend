@@ -1,7 +1,9 @@
 package com.mindmate.mindmate_server.global.config;
 
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
+import com.mindmate.mindmate_server.chat.dto.ChatRoomCloseEvent;
 import com.mindmate.mindmate_server.matching.dto.MatchingAcceptedEvent;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -15,7 +17,6 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.*;
-import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
@@ -24,119 +25,156 @@ import java.util.Map;
 
 @Configuration
 @EnableKafka
+@Slf4j
 public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
     /**
-     * Chat Message Producer 설정
+     * 공통 Producer 설정
      */
-    @Bean
-    public ProducerFactory<String, ChatMessageEvent> chatMessageProducerFactory() {
+    private <T> Map<String, Object> getProducerConfigs() {
         Map<String, Object> config = new HashMap<>();
-
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
 
-        return new DefaultKafkaProducerFactory<>(config);
+        return config;
     }
 
     /**
-     * Chat Message Consumer 설정
+     * 공통 Consumer 설정
      */
-    @Bean
-    public ConsumerFactory<String, ChatMessageEvent> chatMessageConsumerFactory() {
+    private <T> Map<String, Object> getConsumerConfigs(String groupId) {
         Map<String, Object> config = new HashMap<>();
-
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, "chat-group");
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        config.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
 
-        return new DefaultKafkaConsumerFactory<>(config);
+        return config;
     }
 
     /**
-     * Chat Message Kafka Template
+     * Generic Kafka Template
      */
     @Bean
-    public KafkaTemplate<String, ChatMessageEvent> chatMessageKafkaTemplate() {
-        return new KafkaTemplate<>(chatMessageProducerFactory());
+    public <T> ProducerFactory<String, T> producerFactory() {
+        return new DefaultKafkaProducerFactory<>(getProducerConfigs());
     }
 
     /**
-     * Chat Message Listener Container Factory
+     * Generic Kafka Template
      */
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, ChatMessageEvent> chatMessageListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, ChatMessageEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(chatMessageConsumerFactory());
+    public <T> KafkaTemplate<String, T> kafkaTemplate() {
+        return new KafkaTemplate<>(producerFactory());
+    }
+
+    /**
+     * Consumer Factory 생성
+     */
+    private <T> ConsumerFactory<String, T> consumerFactory(String groupId, Class<T> valueType) {
+        Map<String, Object> props = getConsumerConfigs(groupId);
+
+        JsonDeserializer<T> deserializer = new JsonDeserializer<>(valueType);
+        deserializer.addTrustedPackages("*");
+
+        return new DefaultKafkaConsumerFactory<>(
+                props,
+                new StringDeserializer(),
+                deserializer
+        );
+    }
+
+    /**
+     * Listener Container Factory 생성
+     */
+    private <T> ConcurrentKafkaListenerContainerFactory<String, T> listenerContainerFactory(String groupId, Class<T> valueType) {
+        ConcurrentKafkaListenerContainerFactory<String, T> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory(groupId, valueType));
+        factory.setConcurrency(3);
         return factory;
     }
 
     /**
-     * Matching Producer 설정
+     * 토픽 설정
+     */
+    private NewTopic createTopic(String name, int partitions, short replicas, Map<String, String> configs) {
+        return TopicBuilder.name(name)
+                .partitions(partitions)
+                .replicas(replicas)
+                .configs(configs)
+                .build();
+    }
+
+    /**
+     * 기본 토픽 설정
+     */
+    private Map<String, String> getDefaultTopicConfigs() {
+        return Map.of(
+                TopicConfig.RETENTION_MS_CONFIG, "604800000", // 7일 유효 기간
+                TopicConfig.CLEANUP_POLICY_CONFIG, "delete"
+        );
+    }
+
+
+    /**
+     * ChatMessageEvent 처리
      */
     @Bean
-    public ProducerFactory<String, MatchingAcceptedEvent> matchingProducerFactory() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        return new DefaultKafkaProducerFactory<>(props);
+    public ConsumerFactory<String, ChatMessageEvent> chatMessageConsumerFactory() {
+        return consumerFactory("chat-group", ChatMessageEvent.class);
     }
 
     @Bean
-    public KafkaTemplate<String, MatchingAcceptedEvent> matchingKafkaTemplate() {
-        return new KafkaTemplate<>(matchingProducerFactory());
+    public ConcurrentKafkaListenerContainerFactory<String, ChatMessageEvent> chatMessageListenerContainerFactory() {
+        return listenerContainerFactory("chat-group", ChatMessageEvent.class);
+    }
+
+
+    /**
+     * ChatRoomEvent 처리
+     */
+    @Bean
+    public ConsumerFactory<String, ChatRoomCloseEvent> chatRoomCloseConsumerFactory() {
+        return consumerFactory("chat-room-close-group", ChatRoomCloseEvent.class);
     }
 
     @Bean
-    public ConsumerFactory<String, MatchingAcceptedEvent> consumerFactory() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "matching-group");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        return new DefaultKafkaConsumerFactory<>(props);
+    public ConcurrentKafkaListenerContainerFactory<String, ChatRoomCloseEvent> chatRoomCloseListenerContainerFactory() {
+        return listenerContainerFactory("chat-room-close-group", ChatRoomCloseEvent.class);
+    }
+
+
+    
+    // MatchingAcceptedEvent 처리
+    @Bean
+    public ConsumerFactory<String, MatchingAcceptedEvent> matchingConsumerFactory() {
+        return consumerFactory("matching-group", MatchingAcceptedEvent.class);
     }
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, MatchingAcceptedEvent> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, MatchingAcceptedEvent> factory =
-                new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(consumerFactory());
-        factory.setConcurrency(3);
-
-        return factory;
+        return listenerContainerFactory("matching-group", MatchingAcceptedEvent.class);
     }
 
+
     /**
-     * Kafka 토픽 설정 - 채팅
+     * Topic 처리
      */
     @Bean
     public NewTopic chatMessageTopic() {
-        return TopicBuilder.name("chat-message-topic")
-                .partitions(3)
-                .replicas(1)
-                .configs(Map.of(
-                        TopicConfig.RETENTION_MS_CONFIG, "604800000",
-                        TopicConfig.CLEANUP_POLICY_CONFIG, "delete"
-                ))
-                .build();
+        return createTopic("chat-message-topic", 3, (short) 1, getDefaultTopicConfigs());
     }
 
-    /**
-     * Kafka 토픽 설정 - 매칭 이벤트
-     */
+    @Bean
+    public NewTopic chatRoomCloseTopic() {
+        return createTopic("chat-room-close-topic", 3, (short) 1, getDefaultTopicConfigs());
+    }
+
     @Bean
     public NewTopic matchingAcceptedTopic() {
-        return TopicBuilder.name("matching-accepted")
-                .partitions(3)
-                .replicas(1)
-                .build();
+        return createTopic("matching-accepted", 3, (short) 1, getDefaultTopicConfigs());
     }
+
 }
