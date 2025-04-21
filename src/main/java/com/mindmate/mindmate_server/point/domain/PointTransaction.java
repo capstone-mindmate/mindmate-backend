@@ -18,6 +18,7 @@ public class PointTransaction extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Version
     @Column(nullable = false)
     private Long version;
 

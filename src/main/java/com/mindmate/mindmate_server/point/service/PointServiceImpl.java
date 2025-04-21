@@ -138,7 +138,6 @@ public class PointServiceImpl implements PointService {
                 .findTopByUserOrderByVersionDesc(user)
                 .orElse(null);
 
-        long newVersion = lastTx != null ? lastTx.getVersion() + 1 : 1;
         int currentBalance = lastTx != null ? lastTx.getBalance() : 0;
 
         int newBalance;
@@ -150,7 +149,6 @@ public class PointServiceImpl implements PointService {
 
         PointTransaction newTx = PointTransaction.builder()
                 .user(user)
-                .version(newVersion)
                 .transactionType(transactionType)
                 .amount(amount)
                 .reasonType(reasonType)

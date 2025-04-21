@@ -26,6 +26,8 @@ public class PointTransactionResponse {
                 .transactionType(transaction.getTransactionType())
                 .reasonType(transaction.getReasonType())
                 .createdAt(transaction.getCreatedAt())
+                .entityId(transaction.getEntityId())
+                .balance(transaction.getBalance())
                 .build();
     }
 }
