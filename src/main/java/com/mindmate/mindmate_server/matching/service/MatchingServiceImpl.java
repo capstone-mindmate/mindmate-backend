@@ -11,6 +11,9 @@ import com.mindmate.mindmate_server.matching.repository.WaitingUserRepository;
 import com.mindmate.mindmate_server.notification.dto.MatchingAcceptedNotificationEvent;
 import com.mindmate.mindmate_server.notification.dto.MatchingAppliedNotificationEvent;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
+import com.mindmate.mindmate_server.point.domain.PointReasonType;
+import com.mindmate.mindmate_server.point.dto.PointUseRequest;
+import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +40,7 @@ public class MatchingServiceImpl implements MatchingService {
     private final ChatRoomService chatRoomService;
     private final RedisMatchingService redisMatchingService;
     private final NotificationService notificationService;
-
+    private final PointService pointService;
     private final MatchingEventProducer matchingEventProducer;
 
     private static final int  MAX_ACTIVE_MATCHINGS = 3;
@@ -90,6 +93,12 @@ public class MatchingServiceImpl implements MatchingService {
 
         Matching matching = matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+
+        pointService.usePoints(userId, PointUseRequest.builder()
+                .amount(100)
+                .reasonType(PointReasonType.COUNSELING_REQUESTED)
+                .entityId(matchingId)
+                .build());
 
         // 자기 매칭방 신청 불가
         if (matching.isCreator(user)) {
