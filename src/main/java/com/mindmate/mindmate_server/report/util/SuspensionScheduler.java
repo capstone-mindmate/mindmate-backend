@@ -15,8 +15,8 @@ import java.util.List;
 public class SuspensionScheduler {
     private final UserService userService;
 
-    // todo: unsuspend하는 방식 다른 방식 고려 -> AOP 이용해서 api 호출 시 확인? 너무 비효율적 아닌가
-    @Scheduled(fixedRate = 3600000)
+    // redis 이벤트 누락 시 처리
+    @Scheduled(fixedRate = 21600000)
     public void checkAndUnsuspendUsers() {
         List<User> susendedUsers = userService.findByCurrentRoleAndSuspensionEndTimeBefore(
                 RoleType.ROLE_SUSPENDED, LocalDateTime.now()

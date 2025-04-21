@@ -3,13 +3,16 @@ package com.mindmate.mindmate_server.report.service;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ReportErrorCode;
+import com.mindmate.mindmate_server.global.exception.UserErrorCode;
 import com.mindmate.mindmate_server.matching.service.MatchingService;
 import com.mindmate.mindmate_server.report.domain.Report;
 import com.mindmate.mindmate_server.report.domain.ReportTarget;
 import com.mindmate.mindmate_server.report.dto.ReportRequest;
 import com.mindmate.mindmate_server.report.dto.ReportResponse;
 import com.mindmate.mindmate_server.report.repository.ReportRepository;
+import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
+import com.mindmate.mindmate_server.user.service.AdminUserSuspensionService;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ public class ReportServiceImpl implements ReportService {
     private final UserService userService;
     private final MatchingService matchingService;
     private final ChatRoomService chatRoomService;
+    private final AdminUserSuspensionService suspensionService;
 
     private final ReportRepository reportRepository;
 
@@ -41,6 +45,10 @@ public class ReportServiceImpl implements ReportService {
     public ReportResponse createReport(Long reporterId, ReportRequest request) {
         User reporter = userService.findUserById(reporterId);
         User reportedUser = userService.findUserById(request.getReportedUserId());
+
+        if (reportedUser.getCurrentRole().equals(RoleType.ROLE_ADMIN)) {
+            throw new CustomException(UserErrorCode.ADMIN_SUSPENSION_NOT_ALLOWED);
+        }
 
         checkDuplicateReport(reporter, reportedUser, request.getReportTarget(), request.getTargetId());
         validateReportRequest(reporter.getId(), reportedUser.getId());
@@ -66,10 +74,19 @@ public class ReportServiceImpl implements ReportService {
 
     private void checkReportThreshold(User reportedUser) {
         if (reportedUser.getReportCount() >= REPORT_COUNT_STRONG_THRESHOLD) {
-            reportedUser.suspend(Duration.ofDays(REPORT_COUNT_STRONG_SUSPEND));
+            applySuspension(reportedUser, REPORT_COUNT_STRONG_SUSPEND);
         } else if (reportedUser.getReportCount() >= REPORT_COUNT_WEAK_THRESHOLD) {
-            reportedUser.suspend(Duration.ofDays(REPORT_COUNT_WEAK_SUSPEND));
+            applySuspension(reportedUser, REPORT_COUNT_WEAK_SUSPEND);
         }
+    }
+
+    private void applySuspension(User user, long suspensionDays) {
+        suspensionService.suspendUser(
+                user.getId(),
+                user.getReportCount(),
+                Duration.ofDays(suspensionDays),
+                String.format("신고 누적 (신고 횟수: %d)", user.getReportCount())
+        );
     }
 
     private void validateTargetExists(ReportTarget reportTarget, Long targetId) {

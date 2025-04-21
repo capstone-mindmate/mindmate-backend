@@ -28,4 +28,20 @@ public class RedisKeyManager {
     public String getReadStatusKey(Long roomId, Long userId) {
         return "chat:room:" + roomId + ":read:" + userId;
     }
+
+    // 사용자별 채팅방 필터링 횟수 키
+    public String getFilteringCountKey(Long userId, Object roomId) {
+        return "filtering:count:" + userId + ":" + roomId;
+    }
+
+    // 필터링 내용 저장 키? todo: 해당 내용을 따로 db에 저장을 해야할까 아니면 짧게짧게 redis로만 관리할까
+    public String getFilteringContentKey(Long userId, Long roomId) {
+        return "filtering:content:" + userId + ":" + roomId;
+    }
+
+    // 사용자 suspension 정보 관리
+    public String getUserSuspensionKey(Long userId) {
+        return "user:suspension:" + userId;
+    }
+
 }
