@@ -7,7 +7,7 @@ import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import java.util.List;
 
 public interface MagazinePopularityService {
-    void incrementViewCount(Magazine magazine, Long userId, String ipAddress);
+    void incrementViewCount(Magazine magazine, Long userId);
 
     void initializePopularityScore(Magazine magazine);
 

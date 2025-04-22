@@ -86,9 +86,8 @@ public class MagazineController {
     @GetMapping("/{magazineId}")
     public ResponseEntity<MagazineDetailResponse> getMagazine(
             @AuthenticationPrincipal UserPrincipal principal,
-            @PathVariable Long magazineId,
-            HttpServletRequest request) {
-        MagazineDetailResponse response = magazineService.getMagazine(magazineId, principal.getUserId(), request.getRemoteAddr());
+            @PathVariable Long magazineId) {
+        MagazineDetailResponse response = magazineService.getMagazine(magazineId, principal.getUserId());
         return ResponseEntity.ok(response);
     }
 

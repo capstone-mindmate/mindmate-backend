@@ -17,7 +17,7 @@ public interface MagazineService {
 
     Page<MagazineResponse> getMagazines(Long userId, MagazineSearchFilter filter, Pageable pageable);
 
-    MagazineDetailResponse getMagazine(Long magazineId, Long userId, String ipAddress);
+    MagazineDetailResponse getMagazine(Long magazineId, Long userId);
 
     Magazine findMagazineById(Long magazineId);
 

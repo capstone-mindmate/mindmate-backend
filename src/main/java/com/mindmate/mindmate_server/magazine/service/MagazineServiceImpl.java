@@ -157,7 +157,7 @@ public class MagazineServiceImpl implements MagazineService {
     }
 
     @Override
-    public MagazineDetailResponse getMagazine(Long magazineId, Long userId, String ipAddress) {
+    public MagazineDetailResponse getMagazine(Long magazineId, Long userId) {
         Magazine magazine = findMagazineById(magazineId);
         User user = userService.findUserById(userId);
 
@@ -168,7 +168,7 @@ public class MagazineServiceImpl implements MagazineService {
         }
 
         // todo: 동일 ipAddress view 차단
-        magazinePopularityService.incrementViewCount(magazine, userId, ipAddress);
+        magazinePopularityService.incrementViewCount(magazine, userId);
 
         boolean isAuthor = magazine.getAuthor().equals(user);
         boolean isLiked = magazineLikeRepository.existsByMagazineAndUser(magazine, user);

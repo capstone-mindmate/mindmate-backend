@@ -41,7 +41,7 @@ public class MagazinePopularityServiceImpl implements MagazinePopularityService 
      * 사용자가 매거진을 조회할 떄마다 점수 부여 -> 30분 이내 중복 조회 방지
      */
     @Override
-    public void incrementViewCount(Magazine magazine, Long userId, String ipAddress) {
+    public void incrementViewCount(Magazine magazine, Long userId) {
         try {
             String viewKey = redisKeyManager.getMagazineViewedKey(userId, magazine.getId());
             Boolean isFirstView = redisTemplate.opsForValue().setIfAbsent(viewKey, "1", 30, TimeUnit.MINUTES);
