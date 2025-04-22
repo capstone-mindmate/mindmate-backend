@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.magazine.service;
 
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MagazineErrorCode;
+import com.mindmate.mindmate_server.global.util.SlackNotifier;
 import com.mindmate.mindmate_server.magazine.domain.Magazine;
 import com.mindmate.mindmate_server.magazine.domain.MagazineImage;
 import com.mindmate.mindmate_server.magazine.domain.MagazineLike;
@@ -45,6 +46,7 @@ public class MagazineServiceImpl implements MagazineService {
     private final MagazineImageRepository magazineImageRepository;
 
     private final KafkaTemplate<String, MagazineEngagementEvent> kafkaTemplate;
+    private final SlackNotifier slackNotifier;
 
     public final static long MAX_IMAGE_SIZE = 10;
 
@@ -79,6 +81,7 @@ public class MagazineServiceImpl implements MagazineService {
         }
 
         Magazine savedMagazine = magazineRepository.save(magazine);
+        slackNotifier.sendMagazineCreateAlert(savedMagazine, user);
         return MagazineResponse.from(savedMagazine);
     }
 
@@ -120,6 +123,8 @@ public class MagazineServiceImpl implements MagazineService {
                 }
             }
         }
+
+        slackNotifier.sendMagazineUpdateAlert(magazine, user);
 
         return MagazineResponse.from(magazine);
     }
