@@ -5,6 +5,8 @@ import com.mindmate.mindmate_server.magazine.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
+
 public interface MagazineService {
 
     MagazineResponse createMagazine(Long userId, MagazineCreateRequest request);
@@ -15,7 +17,7 @@ public interface MagazineService {
 
     Page<MagazineResponse> getMagazines(Long userId, MagazineSearchFilter filter, Pageable pageable);
 
-    MagazineDetailResponse getMagazine(Long magazineId, Long userId);
+    MagazineDetailResponse getMagazine(Long magazineId, Long userId, String ipAddress);
 
     Magazine findMagazineById(Long magazineId);
 
@@ -25,4 +27,9 @@ public interface MagazineService {
 
     LikeResponse toggleLike(Long magazineId, Long userId);
 
+    void handleEngagement(Long userId, Long magazineId, MagazineEngagementRequest request);
+
+    List<MagazineResponse> getPopularMagazines(int limit);
+
+    List<MagazineResponse> getPopularMagazinesByCategory(String category, int limit);
 }
