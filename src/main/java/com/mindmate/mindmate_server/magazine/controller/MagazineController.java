@@ -4,19 +4,16 @@ import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import com.mindmate.mindmate_server.magazine.dto.*;
 import com.mindmate.mindmate_server.magazine.service.MagazineService;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.util.List;
 
 @RestController
@@ -123,7 +120,7 @@ public class MagazineController {
      * 인기 메거진
      */
     @GetMapping("/popular")
-    public ResponseEntity<List<MagazineResponse>> getPopularMagaziens(
+    public ResponseEntity<List<MagazineResponse>> getPopularMagazines(
             @RequestParam(defaultValue = "10") int limit) {
         List<MagazineResponse> popularMagazines = magazineService.getPopularMagazines(limit);
         return ResponseEntity.ok(popularMagazines);

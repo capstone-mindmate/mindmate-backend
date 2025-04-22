@@ -4,16 +4,19 @@ import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.magazine.dto.MagazineEngagementEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class MagazineEngagementConsumer {
-    private final RedisTemplate<String, String> redisTemplate;
-    private final RedisKeyManager keyManager;
+    private final MagazinePopularityService popularityService;
+    private final StringRedisTemplate redisTemplate;
+    private final RedisKeyManager redisKeyManager;
 
     @KafkaListener(
             topics = "magazine-engagement-topic",
@@ -21,25 +24,23 @@ public class MagazineEngagementConsumer {
     )
     public void processEngagement(MagazineEngagementEvent event) {
         try {
-            // 체류 시간 처리
-            if (event.getDwellTime() != null && event.getDwellTime() > 0) {
-                String dwellTimeKey = keyManager.getMagazineDwellTimeKey(event.getMagazineId());
-                redisTemplate.opsForZSet().add(dwellTimeKey, event.getUserId().toString(), event.getDwellTime());
+            String eventId = event.getUserId() + ":" + event.getMagazineId() + ":" + event.getTimestamp().toEpochMilli();
+            String processedKey = redisKeyManager.getMagazineProcessedEventKey(eventId);
 
-                double dwellTimeMinutes = event.getDwellTime() / (1000.0 * 60);
-                double weight = Math.min(dwellTimeMinutes, 5.0) * 0.5; // 최대 5분
+            Boolean isFirstProcess = redisTemplate.opsForValue().setIfAbsent(processedKey, "1", 30, TimeUnit.MINUTES);
 
-                String popularityKey = keyManager.getMagazinePopularityKey();
-                redisTemplate.opsForZSet().incrementScore(popularityKey, event.getMagazineId().toString(), weight);
+            if (Boolean.FALSE.equals(isFirstProcess)) {
+                log.info("매거진 이벤트 30분 이내 중복 이벤트 무시: {}", event);
+                return;
             }
 
-            // 스크롤 처리
-            if (event.getScrollPercentage() != null && event.getScrollPercentage() > 0) {
-                if (event.getScrollPercentage() >= 80) {
-                    String popularityKey = keyManager.getMagazinePopularityKey();
-                    redisTemplate.opsForZSet().incrementScore(popularityKey, event.getMagazineId().toString(), 2.0);
-                }
-            }
+            popularityService.processEngagement(
+                    event.getMagazineId(),
+                    event.getUserId(),
+                    event.getDwellTime(),
+                    event.getScrollPercentage()
+            );
+
             log.info("매거진 참여 이벤트 처리 완료: magazineId={}", event.getMagazineId());
         } catch (Exception e) {
             log.error("매거진 참여 이벤트 처리 중 오류 발생", e);
