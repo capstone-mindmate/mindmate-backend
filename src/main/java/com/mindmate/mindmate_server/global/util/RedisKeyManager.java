@@ -44,4 +44,36 @@ public class RedisKeyManager {
         return "user:suspension:" + userId;
     }
 
+
+    // 매거진 조회수 키
+    public String getMagazineViewCountKey(Long magazineId) {
+        return "magazine:views:" + magazineId;
+    }
+
+    // 매거진 인기도
+    public String getMagazinePopularityKey() {
+        return "magazine:popularity";
+    }
+
+    // 카테고리별 인기 매거진
+    public String getCategoryPopularityKey(String category) {
+        return "magazine:category:" + category + ":popularity";
+    }
+
+    // 사용자 매거진 조회 중복 방지
+    public String getMagazineViewedKey(Long userId, Long magazineId) {
+        return "magazine:viewed:" + userId + ":" + magazineId;
+    }
+
+    // 사용자 매거진 체류 시간
+    public String getMagazineDwellTimeKey(Long magazineId) {
+        return "magazine:dwell:" + magazineId;
+    }
+
+    // 매거진 이벤트 중복 처리 키 관리
+    public String getMagazineProcessedEventKey(String eventId) {
+        return "magazine:processed:" + eventId;
+    }
+
+
 }
