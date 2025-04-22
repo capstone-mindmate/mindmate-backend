@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.global.config;
 
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomCloseEvent;
+import com.mindmate.mindmate_server.magazine.dto.MagazineEngagementEvent;
 import com.mindmate.mindmate_server.matching.dto.MatchingAcceptedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -158,6 +159,19 @@ public class KafkaConfig {
         return listenerContainerFactory("matching-group", MatchingAcceptedEvent.class);
     }
 
+    /**
+     * MagazineEngagementEvent 처리
+     */
+    @Bean
+    public ConsumerFactory<String, MagazineEngagementEvent> magazineEngagementConsumerFactory() {
+        return consumerFactory("magazine-engagement-group", MagazineEngagementEvent.class);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, MagazineEngagementEvent> magazineEngagementListenerContainerFactory() {
+        return listenerContainerFactory("magazine-engagement-group", MagazineEngagementEvent.class);
+    }
+
 
     /**
      * Topic 처리
@@ -175,6 +189,11 @@ public class KafkaConfig {
     @Bean
     public NewTopic matchingAcceptedTopic() {
         return createTopic("matching-accepted", 3, (short) 1, getDefaultTopicConfigs());
+    }
+
+    @Bean
+    public NewTopic magazineEngagementTopic() {
+        return createTopic("magazine-engagement-topic", 3, (short) 1, getDefaultTopicConfigs());
     }
 
 }

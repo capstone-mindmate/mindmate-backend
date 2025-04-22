@@ -1,12 +1,16 @@
 package com.mindmate.mindmate_server.magazine.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
 @Getter
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class MagazineEngagementEvent {
     private Long userId;
     private Long magazineId;
