@@ -5,10 +5,7 @@ import com.mindmate.mindmate_server.global.exception.PointErrorCode;
 import com.mindmate.mindmate_server.point.domain.PointReasonType;
 import com.mindmate.mindmate_server.point.domain.PointTransaction;
 import com.mindmate.mindmate_server.point.domain.TransactionType;
-import com.mindmate.mindmate_server.point.dto.PointAddRequest;
-import com.mindmate.mindmate_server.point.dto.PointSummaryResponse;
-import com.mindmate.mindmate_server.point.dto.PointTransactionResponse;
-import com.mindmate.mindmate_server.point.dto.PointUseRequest;
+import com.mindmate.mindmate_server.point.dto.*;
 import com.mindmate.mindmate_server.point.repository.PointTransactionRepository;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
@@ -26,36 +23,25 @@ import java.util.function.Supplier;
 @RequiredArgsConstructor
 @Transactional
 public class PointServiceImpl implements PointService {
+
     private final PointTransactionRepository pointTransactionRepository;
     private final UserService userService;
 
     @Override
     public PointTransactionResponse addPoints(Long userId, PointAddRequest request) {
-        if (request.getAmount() <= 0) {
-            throw new CustomException(PointErrorCode.INVALID_POINT_AMOUNT);
-        }
-
-        PointTransaction transaction = executeWithRetry(() -> createTransaction(userId, TransactionType.EARN,
-                request.getAmount(), request.getReasonType(), request.getEntityId()));
-
-        return PointTransactionResponse.from(transaction);
+        validateAmount(request.getAmount());
+        return PointTransactionResponse.from(
+                executeWithRetry(() -> createTransaction(userId, TransactionType.EARN, request))
+        );
     }
 
     @Override
     public PointTransactionResponse usePoints(Long userId, PointUseRequest request) {
-        if (request.getAmount() <= 0) {
-            throw new CustomException(PointErrorCode.INVALID_POINT_AMOUNT);
-        }
-
-        int balance = getCurrentBalance(userId);
-        if (balance < request.getAmount()) {
-            throw new CustomException(PointErrorCode.INSUFFICIENT_POINTS);
-        }
-
-        PointTransaction transaction = executeWithRetry(() -> createTransaction(userId, TransactionType.SPEND,
-                request.getAmount(), request.getReasonType(), request.getEntityId()));
-
-        return PointTransactionResponse.from(transaction);
+        validateAmount(request.getAmount());
+        ensureSufficientBalance(userId, request.getAmount());
+        return PointTransactionResponse.from(
+                executeWithRetry(() -> createTransaction(userId, TransactionType.SPEND, request))
+        );
     }
 
     @Override
@@ -71,31 +57,20 @@ public class PointServiceImpl implements PointService {
     @Transactional(readOnly = true)
     public Page<PointTransactionResponse> getTransactionHistory(Long userId, Pageable pageable) {
         User user = userService.findUserById(userId);
-        Page<PointTransaction> page = pointTransactionRepository.findByUserOrderByCreatedAtDesc(user, pageable);
-
-        return page.map(PointTransactionResponse::from);
+        return pointTransactionRepository.findByUserOrderByCreatedAtDesc(user, pageable)
+                .map(PointTransactionResponse::from);
     }
 
     @Override
     @Transactional(readOnly = true)
     public int getTotalEarnedPointsInPeriod(Long userId, LocalDateTime start, LocalDateTime end) {
-        User user = userService.findUserById(userId);
-        return pointTransactionRepository.findByUserAndCreatedAtBetweenAndTransactionType(
-                        user, start, end, TransactionType.EARN)
-                .stream()
-                .mapToInt(PointTransaction::getAmount)
-                .sum();
+        return getTotalPointsInPeriod(userId, start, end, TransactionType.EARN);
     }
 
     @Override
     @Transactional(readOnly = true)
     public int getTotalSpentPointsInPeriod(Long userId, LocalDateTime start, LocalDateTime end) {
-        User user = userService.findUserById(userId);
-        return pointTransactionRepository.findByUserAndCreatedAtBetweenAndTransactionType(
-                        user, start, end, TransactionType.SPEND)
-                .stream()
-                .mapToInt(PointTransaction::getAmount)
-                .sum();
+        return getTotalPointsInPeriod(userId, start, end, TransactionType.SPEND);
     }
 
     @Override
@@ -113,50 +88,52 @@ public class PointServiceImpl implements PointService {
     @Override
     @Transactional(readOnly = true)
     public PointSummaryResponse getUserPointSummary(Long userId) {
-        int currentBalance = getCurrentBalance(userId);
-
-        int totalEarned = getTotalEarnedPoints(userId);
-        int totalSpent = getTotalSpentPoints(userId);
-
         return PointSummaryResponse.builder()
-                .currentBalance(currentBalance)
-                .totalEarned(totalEarned)
-                .totalSpent(totalSpent)
+                .currentBalance(getCurrentBalance(userId))
+                .totalEarned(getTotalEarnedPoints(userId))
+                .totalSpent(getTotalSpentPoints(userId))
                 .build();
     }
 
-
-    private PointTransaction createTransaction(
-            Long userId,
-            TransactionType transactionType,
-            int amount,
-            PointReasonType reasonType,
-            Long entityId) {
-        User user = userService.findUserById(userId);
-
-        PointTransaction lastTx = pointTransactionRepository
-                .findTopByUserOrderByVersionDesc(user)
-                .orElse(null);
-
-        int currentBalance = lastTx != null ? lastTx.getBalance() : 0;
-
-        int newBalance;
-        if (transactionType == TransactionType.EARN) {
-            newBalance = currentBalance + amount;
-        } else {
-            newBalance = currentBalance - amount;
+    private void validateAmount(int amount) {
+        if (amount <= 0) {
+            throw new CustomException(PointErrorCode.INVALID_POINT_AMOUNT);
         }
+    }
 
-        PointTransaction newTx = PointTransaction.builder()
-                .user(user)
-                .transactionType(transactionType)
-                .amount(amount)
-                .reasonType(reasonType)
-                .entityId(entityId)
-                .balance(newBalance)
-                .build();
+    private void ensureSufficientBalance(Long userId, int amount) {
+        if (getCurrentBalance(userId) < amount) {
+            throw new CustomException(PointErrorCode.INSUFFICIENT_POINTS);
+        }
+    }
 
-        return pointTransactionRepository.save(newTx);
+    private int getTotalPointsInPeriod(Long userId, LocalDateTime start, LocalDateTime end, TransactionType type) {
+        User user = userService.findUserById(userId);
+        return pointTransactionRepository.findByUserAndCreatedAtBetweenAndTransactionType(user, start, end, type)
+                .stream()
+                .mapToInt(PointTransaction::getAmount)
+                .sum();
+    }
+
+    private PointTransaction createTransaction(Long userId, TransactionType type, PointRequest request) {
+        User user = userService.findUserById(userId);
+        PointTransaction lastTx = pointTransactionRepository.findTopByUserOrderByVersionDesc(user).orElse(null);
+        int currentBalance = (lastTx != null) ? lastTx.getBalance() : 0;
+
+        int newBalance = (type == TransactionType.EARN)
+                ? currentBalance + request.getAmount()
+                : currentBalance - request.getAmount();
+
+        return pointTransactionRepository.save(
+                PointTransaction.builder()
+                        .user(user)
+                        .transactionType(type)
+                        .amount(request.getAmount())
+                        .reasonType(request.getReasonType())
+                        .entityId(request.getEntityId())
+                        .balance(newBalance)
+                        .build()
+        );
     }
 
     private PointTransaction executeWithRetry(Supplier<PointTransaction> operation) {

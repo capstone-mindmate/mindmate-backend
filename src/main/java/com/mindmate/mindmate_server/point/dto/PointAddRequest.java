@@ -8,7 +8,7 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class PointAddRequest {
+public class PointAddRequest implements PointRequest{
     private int amount;
     private PointReasonType reasonType;
     private Long entityId;
