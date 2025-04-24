@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.emoticon.service;
 
 import com.mindmate.mindmate_server.emoticon.domain.Emoticon;
 import com.mindmate.mindmate_server.emoticon.domain.EmoticonStatus;
+import com.mindmate.mindmate_server.emoticon.domain.EmoticonType;
 import com.mindmate.mindmate_server.emoticon.domain.UserEmoticon;
 import com.mindmate.mindmate_server.emoticon.dto.EmoticonDetailResponse;
 import com.mindmate.mindmate_server.emoticon.dto.EmoticonResponse;
@@ -11,6 +12,7 @@ import com.mindmate.mindmate_server.emoticon.repository.EmoticonRepository;
 import com.mindmate.mindmate_server.emoticon.repository.UserEmoticonRepository;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.EmoticonErrorCode;
+import com.mindmate.mindmate_server.global.util.SlackNotifier;
 import com.mindmate.mindmate_server.point.domain.PointReasonType;
 import com.mindmate.mindmate_server.point.dto.PointUseRequest;
 import com.mindmate.mindmate_server.point.service.PointService;
@@ -37,8 +39,10 @@ import java.util.stream.Collectors;
 public class EmoticonServiceImpl implements EmoticonService {
     private final EmoticonRepository emoticonRepository;
     private final UserEmoticonRepository userEmoticonRepository;
+
     private final UserService userService;
     private final PointService pointService;
+    private final SlackNotifier slackNotifier;
 
 
     @Value("${emoticon.dir}")
@@ -162,17 +166,15 @@ public class EmoticonServiceImpl implements EmoticonService {
             throw new CustomException(EmoticonErrorCode.ALREADY_PURCHASED);
         }
 
-        if (emoticon.isDefault()) {
-            UserEmoticon userEmoticon = UserEmoticon.builder()
-                    .user(user)
-                    .emoticon(emoticon)
-                    .isPurchased(false)
-                    .purchasePrice(0)
-                    .build();
+        EmoticonType type;
+        int purchasePrice = 0;
 
-            userEmoticonRepository.save(userEmoticon);
+        if (emoticon.isDefault()) {
+            type = EmoticonType.DEFAULT;
         } else {
-            if (pointService.getCurrentBalance(userId) < emoticon.getPrice()) {
+            type = EmoticonType.PURCHASED;
+            purchasePrice = emoticon.getPrice();
+            if (pointService.getCurrentBalance(userId) < purchasePrice) {
                 throw new CustomException(EmoticonErrorCode.INSUFFICIENT_POINTS);
             }
             PointUseRequest request = PointUseRequest.builder()
@@ -181,31 +183,20 @@ public class EmoticonServiceImpl implements EmoticonService {
                     .entityId(emoticonId)
                     .build();
             pointService.usePoints(userId, request);
-
-            UserEmoticon userEmoticon = UserEmoticon.builder()
-                    .user(user)
-                    .emoticon(emoticon)
-                    .isPurchased(true)
-                    .purchasePrice(emoticon.getPrice())
-                    .build();
-            userEmoticonRepository.save(userEmoticon);
         }
-
+        UserEmoticon userEmoticon = UserEmoticon.builder()
+                .user(user)
+                .emoticon(emoticon)
+                .type(type)
+                .purchasePrice(purchasePrice)
+                .build();
+        userEmoticonRepository.save(userEmoticon);
         return EmoticonResponse.from(emoticon);
     }
 
     @Override
     @Transactional
     public EmoticonResponse uploadEmoticon(MultipartFile file, EmoticonUploadRequest request, Long userId) throws IOException {
-        log.info("File name: {}", file.getName());
-        log.info("Original file name: {}", file.getOriginalFilename());
-        log.info("Content Type: {}", file.getContentType());
-        log.info("File size: {}", file.getSize());
-        log.info("Is file empty: {}", file.isEmpty());
-        log.info("Request name: {}", request.getName());
-        log.info("Request price: {}", request.getPrice());
-
-
         if (file == null || file.isEmpty()) {
             throw new CustomException(EmoticonErrorCode.EMPTY_FILE);
         }
@@ -231,6 +222,7 @@ public class EmoticonServiceImpl implements EmoticonService {
             ImageIO.write(originalIamge, extension, destFile);
 
             String imageUrl = emoticonUrlPrefix + storedFileName;
+            User creator = userService.findUserById(userId);
 
             Emoticon emoticon = Emoticon.builder()
                     .name(request.getName())
@@ -240,10 +232,12 @@ public class EmoticonServiceImpl implements EmoticonService {
                     .fileSize(destFile.length())
                     .price(request.getPrice().intValue())
                     .isDefault(false)
+                    .creator(creator)
                     .build();
 
-            log.info("Emoticon saved to database with ID: {}", emoticon.getId());
-            return EmoticonResponse.from(emoticonRepository.save(emoticon));
+            Emoticon savedEmoticon = emoticonRepository.save(emoticon);
+            slackNotifier.sendEmoticonUploadAlert(savedEmoticon, creator);
+            return EmoticonResponse.from(savedEmoticon);
         } catch (Exception e) {
             if (destFile.exists()) {
                 destFile.delete();
