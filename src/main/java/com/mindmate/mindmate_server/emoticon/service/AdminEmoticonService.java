@@ -61,14 +61,7 @@ public class AdminEmoticonService {
                         .build();
 
                 userEmoticonRepository.save(userEmoticon);
-
-                EmoticonNotificationEvent event = EmoticonNotificationEvent.builder()
-                        .recipientId(creator.getId())
-                        .emoticonId(emoticonId)
-                        .emoticonName(emoticon.getName())
-                        .status(EmoticonStatus.ACCEPT)
-                        .build();
-                notificationService.processNotification(event);
+                notifyCreator(emoticon, EmoticonStatus.ACCEPT);
             }
         }
     }
@@ -81,13 +74,19 @@ public class AdminEmoticonService {
         // todo: reject 후의 이모티콘의 처리가 존재 x
 
         if (emoticon.getCreator() != null) {
-            EmoticonNotificationEvent event = EmoticonNotificationEvent.builder()
-                    .recipientId(emoticon.getCreator().getId())
-                    .emoticonId(emoticonId)
-                    .emoticonName(emoticon.getName())
-                    .status(EmoticonStatus.REJECT)
-                    .build();
-            notificationService.processNotification(event);
+            notifyCreator(emoticon, EmoticonStatus.REJECT);
         }
+
     }
+
+    private void notifyCreator(Emoticon emoticon, EmoticonStatus status) {
+        EmoticonNotificationEvent event = EmoticonNotificationEvent.builder()
+                .recipientId(emoticon.getCreator().getId())
+                .emoticonId(emoticon.getId())
+                .emoticonName(emoticon.getName())
+                .status(status)
+                .build();
+        notificationService.processNotification(event);
+    }
+
 }
