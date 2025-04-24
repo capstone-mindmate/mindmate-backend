@@ -24,17 +24,18 @@ public class UserEmoticon {
     @JoinColumn(name = "emoticon_id", nullable = false)
     private Emoticon emoticon;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private boolean isPurchased;
+    private EmoticonType type;
 
     @Column
     private int purchasePrice;
 
     @Builder
-    public UserEmoticon(User user, Emoticon emoticon, boolean isPurchased, int purchasePrice) {
+    public UserEmoticon(User user, Emoticon emoticon, EmoticonType type, int purchasePrice) {
         this.user = user;
         this.emoticon = emoticon;
-        this.isPurchased = isPurchased;
+        this.type = type;
         this.purchasePrice = purchasePrice;
     }
 }
