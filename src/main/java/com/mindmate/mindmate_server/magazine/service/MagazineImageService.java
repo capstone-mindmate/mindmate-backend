@@ -1,8 +1,9 @@
 package com.mindmate.mindmate_server.magazine.service;
 
-import com.luciad.imageio.webp.WebPWriteParam;
+import com.mindmate.mindmate_server.global.dto.FileInfo;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MagazineErrorCode;
+import com.mindmate.mindmate_server.global.service.FileStorageService;
 import com.mindmate.mindmate_server.magazine.domain.MagazineImage;
 import com.mindmate.mindmate_server.magazine.dto.ImageResponse;
 import com.mindmate.mindmate_server.magazine.repository.MagazineImageRepository;
@@ -12,17 +13,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.imageio.IIOImage;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageWriter;
-import javax.imageio.stream.FileImageOutputStream;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import static com.mindmate.mindmate_server.magazine.service.MagazineServiceImpl.MAX_IMAGE_SIZE;
 
@@ -30,6 +25,7 @@ import static com.mindmate.mindmate_server.magazine.service.MagazineServiceImpl.
 @RequiredArgsConstructor
 public class MagazineImageService {
     private final MagazineImageRepository magazineImageRepository;
+    private final FileStorageService fileStorageService;
     public static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 최대 파일 크기 10mb
 
     @Value("${image.dir}")
@@ -40,59 +36,24 @@ public class MagazineImageService {
 
     @Transactional
     public MagazineImage uploadImage(MultipartFile file) throws IOException {
-        if (file == null || file.isEmpty()) {
-            throw new CustomException(MagazineErrorCode.EMPTY_FILE);
-        }
-
-        String originalFileName = file.getOriginalFilename();
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new CustomException(MagazineErrorCode.INVALID_FILE_TYPE);
-        }
+        fileStorageService.validateFile(file);
 
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new CustomException(MagazineErrorCode.FILE_TOO_LARGE);
         }
 
-        String extension = "webp";
-        String storedFileName = UUID.randomUUID() + "." + extension;
+        FileInfo fileInfo = fileStorageService.storeFileAsWebp(file, imageDir);
+        String imageUrl = imageUrlPrefix + fileInfo.getStoredFileName();
 
-        File directory = new File(imageDir);
-        if (!directory.exists()) {
-            directory.mkdirs();
-        }
+        MagazineImage image = MagazineImage.builder()
+                .originalName(fileInfo.getOriginalFileName())
+                .storedName(fileInfo.getStoredFileName())
+                .imageUrl(imageUrl)
+                .contentType("image/webp")
+                .fileSize(fileInfo.getFileSize())
+                .build();
 
-        File destFile = new File(directory, storedFileName);
-
-        BufferedImage originalImage = ImageIO.read(file.getInputStream());
-        ImageWriter writer = ImageIO.getImageWritersByMIMEType("image/webp").next();
-
-        WebPWriteParam writeParam = new WebPWriteParam(writer.getLocale());
-        writeParam.setCompressionMode(WebPWriteParam.MODE_DEFAULT);
-
-        try {
-            writer.setOutput(new FileImageOutputStream(destFile));
-            writer.write(null, new IIOImage(originalImage, null, null), writeParam);
-            writer.dispose();
-
-            String imageUrl = imageUrlPrefix + storedFileName;
-
-            MagazineImage image = MagazineImage.builder()
-                    .originalName(originalFileName)
-                    .storedName(storedFileName)
-                    .imageUrl(imageUrl)
-                    .contentType("image/webp")
-                    .fileSize(destFile.length())
-                    .build();
-
-            return magazineImageRepository.save(image);
-        } catch (Exception e) {
-            if (destFile.exists()) {
-                destFile.delete();
-            }
-            throw e;
-        }
-
+        return magazineImageRepository.save(image);
     }
 
     @Transactional
