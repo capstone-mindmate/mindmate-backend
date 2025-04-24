@@ -9,8 +9,8 @@ import lombok.Getter;
 @Getter
 @Builder
 public class ChatRoomNotificationEvent implements NotificationEvent {
-    private Long recipientId;
-    private Long chatRoomId;
+    private final Long recipientId;
+    private final Long chatRoomId;
     private final ChatRoomCloseType closeType;
     // private final String senderName 상대방 이름이 익명인 경우와 닉네임인 경우 있으니까 굳이 보여주지 않기
 

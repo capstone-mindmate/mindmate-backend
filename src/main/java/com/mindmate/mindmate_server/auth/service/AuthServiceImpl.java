@@ -163,7 +163,6 @@ public class AuthServiceImpl implements AuthService {
         validatePassword(email, request.getPassword(), user.getPassword());
         loginAttemptService.loginSucceeded(email);
 
-        // todo: 일단 리프레시 토큰만 무효화 -> 액세스 토큰에 대한 처리는 없긴 함, 어차피 유효 시간이 있긴 하니가?
         TokenData existingToken = tokenService.getRefreshToken(user.getId());
         if (existingToken != null) {
             tokenService.addToBlackList(existingToken.getRefreshToken());
