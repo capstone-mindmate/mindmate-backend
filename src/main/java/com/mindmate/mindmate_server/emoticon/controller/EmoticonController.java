@@ -3,20 +3,23 @@ package com.mindmate.mindmate_server.emoticon.controller;
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import com.mindmate.mindmate_server.emoticon.dto.EmoticonDetailResponse;
 import com.mindmate.mindmate_server.emoticon.dto.EmoticonResponse;
+import com.mindmate.mindmate_server.emoticon.dto.EmoticonUploadRequest;
 import com.mindmate.mindmate_server.emoticon.dto.UserEmoticonResponse;
 import com.mindmate.mindmate_server.emoticon.service.EmoticonService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 @RequestMapping("/api/emoticons")
 public class EmoticonController {
     private final EmoticonService emoticonService;
@@ -34,7 +37,7 @@ public class EmoticonController {
      * 이모티콘 상세 조회
      * -> 샾에서 해당 이모티콘 클릭했을 때 이미지, 가격, 다른 구매 가능한 이모티콘 보여주기
      */
-    @GetMapping("/{emoticon}")
+    @GetMapping("/{emoticonId}")
     public ResponseEntity<EmoticonDetailResponse> getEmoticonDetail(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long emoticonId) {
@@ -65,4 +68,32 @@ public class EmoticonController {
     /**
      * 이모티콘 구매하기
      */
+    @PostMapping("/{emoticonId}/purchase")
+    public ResponseEntity<EmoticonResponse> purchaseEmoticon(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long emoticonId) {
+        EmoticonResponse response = emoticonService.purchaseEmoticon(principal.getUserId(), emoticonId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 이모티콘 등록
+     */
+    @PostMapping("/upload")
+    public ResponseEntity<EmoticonResponse> uploadEmoticon(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestPart("file") MultipartFile file,
+            @RequestPart("request") EmoticonUploadRequest request) {
+        try {
+            EmoticonResponse emoticon = emoticonService.uploadEmoticon(file, request, principal.getUserId());
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(emoticon);
+        } catch (IOException e) {
+            log.error("IOException during file upload", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        } catch (Exception e) {
+            log.error("Unexpected error during file upload", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }
