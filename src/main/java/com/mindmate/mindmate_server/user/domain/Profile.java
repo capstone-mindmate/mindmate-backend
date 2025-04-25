@@ -43,6 +43,10 @@ public class Profile extends BaseTimeEntity {
     private int responseTimeCount = 0;
 
     private double avgRating = 0;
+    private double ratingSum = 0;
+
+    @Version
+    private Long version;
 
     @Builder
     public Profile(User user, String nickname, String department, Integer entranceTime, boolean graduation, String profileImage) {
@@ -87,8 +91,9 @@ public class Profile extends BaseTimeEntity {
     }
 
     public void updateAvgRating(double rating){
-        this.avgRating = (this.avgRating*counselingCount + rating)/(counselingCount+1);
-    } // 리뷰달 때 동시성 이슈 생길수도 있나?
+        this.ratingSum += rating;
+        this.avgRating = this.counselingCount > 0 ? this.ratingSum / this.counselingCount : 0;
+    }
 
 
     // 채팅방 종료 시 한 번에 모든 응답 시간 처리 -> 단일 데이터베이스 처리
