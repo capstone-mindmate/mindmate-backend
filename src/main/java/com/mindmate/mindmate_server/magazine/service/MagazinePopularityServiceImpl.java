@@ -92,7 +92,7 @@ public class MagazinePopularityServiceImpl implements MagazinePopularityService 
         }
 
         if (scrollPercentage != null && scrollPercentage > 0) {
-            totalScore = (scrollPercentage / 100.0) * SCROLL_COMPLETE_WEIGHT;
+            totalScore += (scrollPercentage / 100.0) * SCROLL_COMPLETE_WEIGHT;
         }
 
         if (totalScore > 0) {

@@ -24,7 +24,8 @@ public class MagazineEngagementConsumer {
     )
     public void processEngagement(MagazineEngagementEvent event) {
         try {
-            String eventId = event.getUserId() + ":" + event.getMagazineId() + ":" + event.getTimestamp().toEpochMilli();
+            long normalizedTime = (event.getTimestamp().toEpochMilli() / 1800000) * 1800000;
+            String eventId = event.getUserId() + ":" + event.getMagazineId() + ":" + normalizedTime;
             String processedKey = redisKeyManager.getMagazineProcessedEventKey(eventId);
 
             Boolean isFirstProcess = redisTemplate.opsForValue().setIfAbsent(processedKey, "1", 30, TimeUnit.MINUTES);
