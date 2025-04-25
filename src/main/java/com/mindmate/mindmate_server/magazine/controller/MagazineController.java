@@ -130,7 +130,7 @@ public class MagazineController {
      */
     @GetMapping("/popular/category/{category}")
     public ResponseEntity<List<MagazineResponse>> getPopularMagazinesByCategory (
-            @PathVariable String category,
+            @PathVariable MatchingCategory category,
             @RequestParam(defaultValue = "10") int limit) {
         List<MagazineResponse> popularMagazines = magazineService.getPopularMagazinesByCategory(category, limit);
         return ResponseEntity.ok(popularMagazines);

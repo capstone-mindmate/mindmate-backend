@@ -148,19 +148,19 @@ public class MagazinePopularityServiceImpl implements MagazinePopularityService 
      * 해당 카테고리의 매거진들 중 인기도 값 정렬
      */
     @Override
-    public List<MagazineResponse> getPopularMagazinesByCategory(String category, int limit) {
-        String categoryKey = redisKeyManager.getCategoryPopularityKey(category);
+    public List<MagazineResponse> getPopularMagazinesByCategory(MatchingCategory category, int limit) {
+        String categoryKey = redisKeyManager.getCategoryPopularityKey(category.getTitle());
         Set<String> topMagazineIds = redisTemplate.opsForZSet().reverseRange(categoryKey, 0, limit - 1);
 
         if (topMagazineIds == null || topMagazineIds.isEmpty()) {
             try {
                 return magazineRepository.findByMagazineStatusAndCategoryOrderByLikeCountDesc(
-                                MagazineStatus.PUBLISHED, MatchingCategory.valueOf(category))
+                                MagazineStatus.PUBLISHED, MatchingCategory.valueOf(category.getTitle()))
                         .stream()
                         .map(MagazineResponse::from)
                         .collect(Collectors.toList());
             } catch (IllegalArgumentException e) {
-                log.error("유효하지 않은 카테고리: {}", category, e);
+                log.error("유효하지 않은 카테고리: {}", category.getTitle(), e);
                 return Collections.emptyList();
             }
         }

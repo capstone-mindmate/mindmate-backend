@@ -19,5 +19,5 @@ public interface MagazinePopularityService {
 
     List<MagazineResponse> getPopularMagazines(int limit);
 
-    List<MagazineResponse> getPopularMagazinesByCategory(String category, int limit);
+    List<MagazineResponse> getPopularMagazinesByCategory(MatchingCategory category, int limit);
 }

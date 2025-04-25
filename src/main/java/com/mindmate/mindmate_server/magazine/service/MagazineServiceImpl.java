@@ -11,6 +11,7 @@ import com.mindmate.mindmate_server.magazine.dto.*;
 import com.mindmate.mindmate_server.magazine.repository.MagazineImageRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineLikeRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineRepository;
+import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import com.mindmate.mindmate_server.notification.dto.MagazineApprovedNotificationEvent;
 import com.mindmate.mindmate_server.notification.dto.MagazineRejectedNotificationEvent;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
@@ -272,7 +273,7 @@ public class MagazineServiceImpl implements MagazineService {
     }
 
     @Override
-    public List<MagazineResponse> getPopularMagazinesByCategory(String category, int limit) {
+    public List<MagazineResponse> getPopularMagazinesByCategory(MatchingCategory category, int limit) {
         return magazinePopularityService.getPopularMagazinesByCategory(category, limit);
     }
 
