@@ -16,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -71,7 +72,7 @@ public class ProfileServiceImpl implements ProfileService {
         }
 
         validateDuplicateNickname(request.getNickname());
-        // todo: 입학 연도 유효성 검사
+        validateEntranceTime(request.getEntranceTime());
 
         Profile profile = Profile.builder()
                 .user(user)
@@ -105,6 +106,7 @@ public class ProfileServiceImpl implements ProfileService {
             profile.updateDepartment(request.getDepartment());
         }
         if (request.getEntranceTime() != null) {
+            validateEntranceTime(request.getEntranceTime());
             profile.updateEntranceTime(request.getEntranceTime());
         }
         if (request.getGraduation() != null) {
@@ -212,4 +214,11 @@ public class ProfileServiceImpl implements ProfileService {
 //    }
 
     // 프로필 검색은 필요없?
+
+    private void validateEntranceTime(Integer entranceTime) {
+        int currentYear = LocalDate.now().getYear();
+        if (entranceTime < 1950 || entranceTime > currentYear + 1) {
+            throw new CustomException(ProfileErrorCode.INVALID_ENTRANCE_TIME);
+        }
+    }
 }
