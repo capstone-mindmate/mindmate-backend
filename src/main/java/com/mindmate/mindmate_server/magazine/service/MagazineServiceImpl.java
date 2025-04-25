@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.magazine.service;
 
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MagazineErrorCode;
+import com.mindmate.mindmate_server.global.util.SlackNotifier;
 import com.mindmate.mindmate_server.magazine.domain.Magazine;
 import com.mindmate.mindmate_server.magazine.domain.MagazineImage;
 import com.mindmate.mindmate_server.magazine.domain.MagazineLike;
@@ -10,6 +11,7 @@ import com.mindmate.mindmate_server.magazine.dto.*;
 import com.mindmate.mindmate_server.magazine.repository.MagazineImageRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineLikeRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineRepository;
+import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import com.mindmate.mindmate_server.notification.dto.MagazineApprovedNotificationEvent;
 import com.mindmate.mindmate_server.notification.dto.MagazineRejectedNotificationEvent;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
@@ -17,11 +19,14 @@ import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -29,16 +34,20 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional(readOnly = true)
 public class MagazineServiceImpl implements MagazineService {
     private final UserService userService;
     private final MagazineImageService magazineImageService;
-
     private final NotificationService notificationService;
+    private final MagazinePopularityService magazinePopularityService;
 
     private final MagazineRepository magazineRepository;
     private final MagazineLikeRepository magazineLikeRepository;
     private final MagazineImageRepository magazineImageRepository;
+
+    private final KafkaTemplate<String, MagazineEngagementEvent> kafkaTemplate;
+    private final SlackNotifier slackNotifier;
 
     public final static long MAX_IMAGE_SIZE = 10;
 
@@ -73,6 +82,7 @@ public class MagazineServiceImpl implements MagazineService {
         }
 
         Magazine savedMagazine = magazineRepository.save(magazine);
+        slackNotifier.sendMagazineCreateAlert(savedMagazine, user);
         return MagazineResponse.from(savedMagazine);
     }
 
@@ -115,6 +125,8 @@ public class MagazineServiceImpl implements MagazineService {
             }
         }
 
+        slackNotifier.sendMagazineUpdateAlert(magazine, user);
+
         return MagazineResponse.from(magazine);
     }
 
@@ -136,6 +148,7 @@ public class MagazineServiceImpl implements MagazineService {
             magazineImageService.deleteImage(image.getStoredName());
         }
 
+        magazinePopularityService.removePopularityScores(magazineId, magazine.getCategory());
         magazineRepository.delete(magazine);
     }
 
@@ -154,6 +167,9 @@ public class MagazineServiceImpl implements MagazineService {
                 magazine.getMagazineStatus() != MagazineStatus.PUBLISHED) {
             throw new CustomException(MagazineErrorCode.MAGAZINE_NOT_FOUND);
         }
+
+        // todo: 동일 ipAddress view 차단
+        magazinePopularityService.incrementViewCount(magazine, userId);
 
         boolean isAuthor = magazine.getAuthor().equals(user);
         boolean isLiked = magazineLikeRepository.existsByMagazineAndUser(magazine, user);
@@ -179,6 +195,8 @@ public class MagazineServiceImpl implements MagazineService {
 
         if (isAccepted) {
             magazine.setStatus(MagazineStatus.PUBLISHED);
+
+            magazinePopularityService.initializePopularityScore(magazine);
 
             MagazineApprovedNotificationEvent authorEvent = MagazineApprovedNotificationEvent.builder()
                     .recipientId(magazine.getAuthor().getId())
@@ -209,7 +227,6 @@ public class MagazineServiceImpl implements MagazineService {
         return pendingMagazines.map(MagazineResponse::from);
     }
 
-    // todo: 동시성 처리 고려?
     @Override
     @Transactional
     public LikeResponse toggleLike(Long magazineId, Long userId) {
@@ -221,6 +238,8 @@ public class MagazineServiceImpl implements MagazineService {
         if (isLiked) {
             magazineLikeRepository.deleteByMagazineAndUser(magazine, user);
             magazine.removeLike(user);
+
+            magazinePopularityService.updateLikeScore(magazine, false);
             return LikeResponse.of(false, magazine.getLikeCount());
         } else {
             MagazineLike like = MagazineLike.builder()
@@ -229,8 +248,33 @@ public class MagazineServiceImpl implements MagazineService {
                     .build();
             magazineLikeRepository.save(like);
             magazine.addLike(user);
-            return LikeResponse.of(true, magazine.getLikeCount());
 
+            magazinePopularityService.updateLikeScore(magazine, true);
+            return LikeResponse.of(true, magazine.getLikeCount());
         }
     }
+
+    @Override
+    public void handleEngagement(Long userId, Long magazineId, MagazineEngagementRequest request) {
+        MagazineEngagementEvent event = MagazineEngagementEvent.builder()
+                .userId(userId)
+                .magazineId(magazineId)
+                .dwellTime(request.getDwellTime())
+                .scrollPercentage(request.getScrollPercentage())
+                .timestamp(Instant.now())
+                .build();
+
+        kafkaTemplate.send("magazine-engagement-topic", event);
+    }
+
+    @Override
+    public List<MagazineResponse> getPopularMagazines(int limit) {
+        return magazinePopularityService.getPopularMagazines(limit);
+    }
+
+    @Override
+    public List<MagazineResponse> getPopularMagazinesByCategory(MatchingCategory category, int limit) {
+        return magazinePopularityService.getPopularMagazinesByCategory(category, limit);
+    }
+
 }
