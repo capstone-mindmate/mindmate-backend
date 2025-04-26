@@ -3,6 +3,7 @@ package com.mindmate.mindmate_server.user.service;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
 import com.mindmate.mindmate_server.matching.service.MatchingService;
+import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.review.domain.Review;
 import com.mindmate.mindmate_server.review.dto.ReviewResponse;
 import com.mindmate.mindmate_server.review.repository.ReviewRepository;
@@ -32,6 +33,7 @@ public class ProfileServiceImpl implements ProfileService {
     private final ReviewRepository reviewRepository;
     private final MatchingService matchingService;
     private final ReviewService reviewService;
+    private final PointService pointService;
 
     @Override
     @Transactional(readOnly = true)
@@ -194,6 +196,8 @@ public class ProfileServiceImpl implements ProfileService {
         Map<String, Integer> tagCounts = reviewService.getTagCountsByProfileId(profileId);
         Map<String, Integer> categoryMatchCounts = matchingService.getCategoryCountsByUserId(userId);
 
+        int points = pointService.getCurrentBalance(userId);
+
         return ProfileDetailResponse.builder()
                 .id(profileId)
                 .userId(userId)
@@ -206,6 +210,7 @@ public class ProfileServiceImpl implements ProfileService {
                 .avgResponseTime(profile.getAvgResponseTime())
                 .averageRating(averageRating)
                 .tagCounts(tagCounts)
+                .points(points)
                 .categoryCounts(categoryMatchCounts)
                 .reviews(recentReviews)
                 .createdAt(profile.getCreatedAt())
