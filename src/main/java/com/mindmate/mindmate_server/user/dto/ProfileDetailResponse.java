@@ -27,7 +27,7 @@ public class ProfileDetailResponse {
     private int avgResponseTime;
     private Double averageRating;
 
-    private Map<String, Integer> evaluationTagCounts;
+    private Map<String, Integer> tagCounts;
     private Map<String, Integer> categoryCounts;
 
     private int speakerRoleCount;

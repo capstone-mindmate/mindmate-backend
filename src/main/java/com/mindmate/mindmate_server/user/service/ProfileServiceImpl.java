@@ -2,9 +2,11 @@ package com.mindmate.mindmate_server.user.service;
 
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
+import com.mindmate.mindmate_server.matching.service.MatchingService;
 import com.mindmate.mindmate_server.review.domain.Review;
 import com.mindmate.mindmate_server.review.dto.ReviewResponse;
 import com.mindmate.mindmate_server.review.repository.ReviewRepository;
+import com.mindmate.mindmate_server.review.service.ReviewService;
 import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -27,6 +30,8 @@ public class ProfileServiceImpl implements ProfileService {
     private final UserService userService;
     private final ProfileRepository profileRepository;
     private final ReviewRepository reviewRepository;
+    private final MatchingService matchingService;
+    private final ReviewService reviewService;
 
     @Override
     @Transactional(readOnly = true)
@@ -181,11 +186,16 @@ public class ProfileServiceImpl implements ProfileService {
 
     private ProfileDetailResponse buildProfileDetailResponse(Profile profile, User user) {
         Long userId = user.getId();
+        Long profileId = profile.getId();
+
         List<ReviewResponse> recentReviews = getRecentReviews(userId);
         Double averageRating = getAverageRating(userId);
 
+        Map<String, Integer> tagCounts = reviewService.getTagCountsByProfileId(profileId);
+        Map<String, Integer> categoryMatchCounts = matchingService.getCategoryCountsByUserId(userId);
+
         return ProfileDetailResponse.builder()
-                .id(profile.getId())
+                .id(profileId)
                 .userId(userId)
                 .nickname(profile.getNickname())
                 .profileImage(profile.getProfileImage())
@@ -195,25 +205,12 @@ public class ProfileServiceImpl implements ProfileService {
                 .totalCounselingCount(profile.getCounselingCount())
                 .avgResponseTime(profile.getAvgResponseTime())
                 .averageRating(averageRating)
-//                .evaluationTags(profile.getEvaluationTags())
+                .tagCounts(tagCounts)
+                .categoryCounts(categoryMatchCounts)
                 .reviews(recentReviews)
                 .createdAt(profile.getCreatedAt())
                 .build();
     }
-
-//    private List<ReviewResponse> mapReviews(List<Review> reviews) {
-//        return reviews.stream()
-//                .map(review -> ReviewResponse.builder()
-//                        .id(review.getId())
-//                        .tags(review.getReviewTags().stream().map(r->r.getTagContent().getContent()).collect(Collectors.toList()))
-//                        .rating(review.getRating())
-//                        .reply(review.getReply())
-//                        .createdAt(review.getCreatedAt())
-//                        .build())
-//                .collect(Collectors.toList());
-//    }
-
-    // 프로필 검색은 필요없?
 
     private void validateEntranceTime(Integer entranceTime) {
         int currentYear = LocalDate.now().getYear();
