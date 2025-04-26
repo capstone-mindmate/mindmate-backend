@@ -23,4 +23,8 @@ public interface ReviewService {
     ProfileReviewSummaryResponse getProfileReviewSummary(Long profileId);
 
     Map<String, Integer> getTagCountsByProfileId(Long profileId);
+
+    List<ReviewResponse> getRecentReviewsByUserId(Long userId, int limit);
+
+    Double getAverageRatingByUserId(Long userId);
 }

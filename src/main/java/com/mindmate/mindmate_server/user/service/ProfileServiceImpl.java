@@ -20,8 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -30,7 +32,6 @@ import java.util.Map;
 public class ProfileServiceImpl implements ProfileService {
     private final UserService userService;
     private final ProfileRepository profileRepository;
-    private final ReviewRepository reviewRepository;
     private final MatchingService matchingService;
     private final ReviewService reviewService;
     private final PointService pointService;
@@ -58,7 +59,7 @@ public class ProfileServiceImpl implements ProfileService {
     public ProfileSimpleResponse getProfileSimple(Long userId) {
         User user = userService.findUserById(userId);
         Profile profile = findProfileByUserId(userId);
-        Double averageRating = getAverageRating(userId);
+        Double averageRating = reviewService.getAverageRatingByUserId(userId);
 
         return ProfileSimpleResponse.builder()
                 .id(profile.getId())
@@ -169,30 +170,12 @@ public class ProfileServiceImpl implements ProfileService {
                 });
     }
 
-    // 사용자의 최근 리뷰 5개 조회
-    private List<ReviewResponse> getRecentReviews(Long userId) {
-        List<Review> recentReviews = reviewRepository.findRecentReviewsByRevieweeId(
-                userId,
-                PageRequest.of(0, 5)
-        );
-
-//        return mapReviews(recentReviews);
-        return null;
-    }
-
-    // 사용자 평균 평점 계산
-    private Double getAverageRating(Long userId) {
-        return reviewRepository.calculateAverageRatingByRevieweeId(userId)
-                .orElse(0.0);
-    }
-
     private ProfileDetailResponse buildProfileDetailResponse(Profile profile, User user) {
         Long userId = user.getId();
         Long profileId = profile.getId();
 
-        List<ReviewResponse> recentReviews = getRecentReviews(userId);
-        Double averageRating = getAverageRating(userId);
-
+        List<ReviewResponse> recentReviews = reviewService.getRecentReviewsByUserId(userId, 5);
+        Double averageRating = reviewService.getAverageRatingByUserId(userId);
         Map<String, Integer> tagCounts = reviewService.getTagCountsByProfileId(profileId);
         Map<String, Integer> categoryMatchCounts = matchingService.getCategoryCountsByUserId(userId);
 
@@ -223,4 +206,5 @@ public class ProfileServiceImpl implements ProfileService {
             throw new CustomException(ProfileErrorCode.INVALID_ENTRANCE_TIME);
         }
     }
+
 }
