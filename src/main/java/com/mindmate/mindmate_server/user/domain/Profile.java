@@ -43,8 +43,6 @@ public class Profile extends BaseTimeEntity {
     private int avgResponseTime = 0;
     private int totalResponseTime = 0;
     private int responseTimeCount = 0;
-
-    private double avgRating = 0;
     private double ratingSum = 0;
 
     @Version
@@ -68,14 +66,6 @@ public class Profile extends BaseTimeEntity {
         this.counselingCount++;
     }
 
-    public void updateResponseTime(int newResponseTime) {
-        this.totalResponseTime += newResponseTime;
-        this.responseTimeCount++;
-        this.avgResponseTime = this.responseTimeCount > 0
-                ? this.totalResponseTime / this.responseTimeCount
-                : 0;
-    }
-
     public void updateDepartment(String department) {
         this.department = department;
     }
@@ -92,9 +82,13 @@ public class Profile extends BaseTimeEntity {
         this.nickname = nickname;
     }
 
-    public void updateAvgRating(double rating){
+    public double getAvgRating() {
+        return this.counselingCount > 0
+                ? this.ratingSum / this.counselingCount
+                : 0;
+    }
+    public void updateRating(double rating){
         this.ratingSum += rating;
-        this.avgRating = this.counselingCount > 0 ? this.ratingSum / this.counselingCount : 0;
     }
 
     public void addMultipleResponseTimes(List<Integer> responseTimes) {
