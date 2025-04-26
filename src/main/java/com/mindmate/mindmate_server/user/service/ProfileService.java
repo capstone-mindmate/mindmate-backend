@@ -43,13 +43,6 @@ public interface ProfileService {
      */
     void incrementCounselingCount(Long userId);
 
-    /**
-     * 평균 응답 시간 업데이트
-     */
-    void updateResponseTime(Long userId, Integer responseTime);
-
-    // 인기 프로필??
-
 
     void updateResponseTimes(Long userId, List<Integer> responseTimes);
 

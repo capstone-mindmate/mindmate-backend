@@ -40,7 +40,7 @@ public class ProfileServiceImpl implements ProfileService {
     @Transactional(readOnly = true)
     public ProfileDetailResponse getProfileDetail(Long userId) {
         User user = userService.findUserById(userId);
-        Profile profile = findProfileByUserId(userId);
+        Profile profile = findProfileByUser(user);
 
         return buildProfileDetailResponse(profile, user);
     }
@@ -58,17 +58,10 @@ public class ProfileServiceImpl implements ProfileService {
     @Transactional(readOnly = true)
     public ProfileSimpleResponse getProfileSimple(Long userId) {
         User user = userService.findUserById(userId);
-        Profile profile = findProfileByUserId(userId);
+        Profile profile = findProfileByUser(user);
         Double averageRating = reviewService.getAverageRatingByUserId(userId);
 
-        return ProfileSimpleResponse.builder()
-                .id(profile.getId())
-                .userId(user.getId())
-                .nickname(profile.getNickname())
-                .profileImage(profile.getProfileImage())
-                .totalCounselingCount(profile.getCounselingCount())
-                .averageRating(averageRating)
-                .build();
+        return buildProfileSimpleResponse(profile, user, averageRating);
     }
 
     @Override
@@ -79,17 +72,10 @@ public class ProfileServiceImpl implements ProfileService {
             throw new CustomException(ProfileErrorCode.PROFILE_ALREADY_EXIST);
         }
 
-        validateDuplicateNickname(request.getNickname());
+        validateNickname(request.getNickname());
         validateEntranceTime(request.getEntranceTime());
 
-        Profile profile = Profile.builder()
-                .user(user)
-                .nickname(request.getNickname())
-                .profileImage(request.getProfileImage())
-                .department(request.getDepartment())
-                .entranceTime(request.getEntranceTime())
-                .graduation(request.isGraduation())
-                .build();
+        Profile profile = buildProfileFromRequest(user, request);
 
         profileRepository.save(profile);
         user.updateRole(RoleType.ROLE_PROFILE);
@@ -102,24 +88,7 @@ public class ProfileServiceImpl implements ProfileService {
         User user = userService.findUserById(userId);
         Profile profile = getOrCreateProfile(user);
 
-        if (request.getNickname() != null && !request.getNickname().equals(profile.getNickname())) {
-            validateDuplicateNickname(request.getNickname());
-            profile.updateNickname(request.getNickname());
-        }
-        // 이걸 여기 두는 게 맞나?
-        if (request.getProfileImage() != null) {
-            profile.updateProfileImage(request.getProfileImage());
-        }
-        if (request.getDepartment() != null) {
-            profile.updateDepartment(request.getDepartment());
-        }
-        if (request.getEntranceTime() != null) {
-            validateEntranceTime(request.getEntranceTime());
-            profile.updateEntranceTime(request.getEntranceTime());
-        }
-        if (request.getGraduation() != null) {
-            profile.updateGraduation(request.getGraduation());
-        }
+        updateProfileFields(profile, request);
 
         return ProfileResponse.of(profile.getId(), profile.getNickname(), "프로필이 업데이트되었습니다.");
     }
@@ -131,19 +100,13 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
-    public void updateResponseTime(Long userId, Integer responseTime) {
-        Profile profile = getOrCreateProfile(userService.findUserById(userId));
-        profile.updateResponseTime(responseTime);
-    }
-
-    @Override
     public void updateResponseTimes(Long userId, List<Integer> responseTimes) {
         Profile profile = getOrCreateProfile(userService.findUserById(userId));
         profile.addMultipleResponseTimes(responseTimes);
     }
 
-    private Profile findProfileByUserId(Long userId) {
-        return profileRepository.findByUserId(userId)
+    private Profile findProfileByUser(User user) {
+        return profileRepository.findByUser(user)
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
     }
 
@@ -153,7 +116,7 @@ public class ProfileServiceImpl implements ProfileService {
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
     }
 
-    private void validateDuplicateNickname(String nickname) {
+    private void validateNickname(String nickname) {
         if (profileRepository.existsByNickname(nickname)) {
             throw new CustomException(ProfileErrorCode.DUPLICATE_NICKNAME);
         }
@@ -168,6 +131,41 @@ public class ProfileServiceImpl implements ProfileService {
                             .build();
                     return profileRepository.save(newProfile);
                 });
+    }
+
+    private Profile buildProfileFromRequest(User user, ProfileCreateRequest request) {
+        return Profile.builder()
+                .user(user)
+                .nickname(request.getNickname())
+                .profileImage(request.getProfileImage())
+                .department(request.getDepartment())
+                .entranceTime(request.getEntranceTime())
+                .graduation(request.isGraduation())
+                .build();
+    }
+
+    private void updateProfileFields(Profile profile, ProfileUpdateRequest request) {
+        if (request.getNickname() != null && !request.getNickname().equals(profile.getNickname())) {
+            validateNickname(request.getNickname());
+            profile.updateNickname(request.getNickname());
+        }
+
+        if (request.getProfileImage() != null) {
+            profile.updateProfileImage(request.getProfileImage());
+        }
+
+        if (request.getDepartment() != null) {
+            profile.updateDepartment(request.getDepartment());
+        }
+
+        if (request.getEntranceTime() != null) {
+            validateEntranceTime(request.getEntranceTime());
+            profile.updateEntranceTime(request.getEntranceTime());
+        }
+
+        if (request.getGraduation() != null) {
+            profile.updateGraduation(request.getGraduation());
+        }
     }
 
     private ProfileDetailResponse buildProfileDetailResponse(Profile profile, User user) {
@@ -197,6 +195,17 @@ public class ProfileServiceImpl implements ProfileService {
                 .categoryCounts(categoryMatchCounts)
                 .reviews(recentReviews)
                 .createdAt(profile.getCreatedAt())
+                .build();
+    }
+
+    private ProfileSimpleResponse buildProfileSimpleResponse(Profile profile, User user, Double averageRating) {
+        return ProfileSimpleResponse.builder()
+                .id(profile.getId())
+                .userId(user.getId())
+                .nickname(profile.getNickname())
+                .profileImage(profile.getProfileImage())
+                .totalCounselingCount(profile.getCounselingCount())
+                .averageRating(averageRating)
                 .build();
     }
 
