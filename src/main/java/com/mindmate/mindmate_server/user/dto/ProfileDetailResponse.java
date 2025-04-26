@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 @Getter
 @Builder
@@ -23,13 +23,16 @@ public class ProfileDetailResponse {
     private Integer entranceTime;
     private boolean graduation;
 
-    // 활동 정보
     private int totalCounselingCount;
     private int avgResponseTime;
     private Double averageRating;
-    private Set<String> evaluationTags;
 
-    // 리뷰 정보
+    private Map<String, Integer> evaluationTagCounts;
+    private Map<String, Integer> categoryCounts;
+
+    private int speakerRoleCount;
+    private int listenerRoleCount;
+
     private List<ReviewResponse> reviews;
     private int points;
     private LocalDateTime createdAt;

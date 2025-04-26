@@ -1,13 +1,16 @@
 package com.mindmate.mindmate_server.user.domain;
 
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
+import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Entity
 @Table(name = "profiles")
@@ -36,7 +39,6 @@ public class Profile extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean graduation;
 
-    // 활동 정보
     private int counselingCount = 0;
     private int avgResponseTime = 0;
     private int totalResponseTime = 0;
@@ -44,6 +46,19 @@ public class Profile extends BaseTimeEntity {
 
     private double avgRating = 0;
     private double ratingSum = 0;
+
+    @ElementCollection
+    @CollectionTable(name = "profile_category_counts", joinColumns = @JoinColumn(name = "profile_id"))
+    @MapKeyEnumerated(EnumType.STRING)
+    @MapKeyColumn(name = "category")
+    @Column(name = "count")
+    private Map<MatchingCategory, Integer> categoryCounts = new HashMap<>();
+
+    @ElementCollection
+    @CollectionTable(name = "profile_tag_counts", joinColumns = @JoinColumn(name = "profile_id"))
+    @MapKeyColumn(name = "tag_content")
+    @Column(name = "count")
+    private Map<String, Integer> tagCounts = new HashMap<>();
 
     @Version
     private Long version;
@@ -95,6 +110,15 @@ public class Profile extends BaseTimeEntity {
         this.avgRating = this.counselingCount > 0 ? this.ratingSum / this.counselingCount : 0;
     }
 
+    public void incrementCategoryCount(MatchingCategory category) {
+        int currentCount = categoryMatchCounts.getOrDefault(category, 0);
+        categoryMatchCounts.put(category, currentCount + 1);
+    }
+
+    public void incrementTagCount(String tagContent) {
+        int currentCount = tagCounts.getOrDefault(tagContent, 0);
+        tagCounts.put(tagContent, currentCount + 1);
+    }
 
     // 채팅방 종료 시 한 번에 모든 응답 시간 처리 -> 단일 데이터베이스 처리
     public void addMultipleResponseTimes(List<Integer> responseTimes) {
