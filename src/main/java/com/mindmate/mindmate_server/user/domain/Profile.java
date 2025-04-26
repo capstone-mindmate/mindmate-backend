@@ -22,7 +22,7 @@ public class Profile extends BaseTimeEntity {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", unique = true) // nullable = false,
+    @JoinColumn(name = "user_id", unique = true)
     private User user;
 
     private String profileImage;
@@ -97,7 +97,6 @@ public class Profile extends BaseTimeEntity {
         this.avgRating = this.counselingCount > 0 ? this.ratingSum / this.counselingCount : 0;
     }
 
-    // 채팅방 종료 시 한 번에 모든 응답 시간 처리 -> 단일 데이터베이스 처리
     public void addMultipleResponseTimes(List<Integer> responseTimes) {
         if (responseTimes.isEmpty()) {
             return;

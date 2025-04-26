@@ -68,10 +68,7 @@ public class ProfileServiceImpl implements ProfileService {
     public ProfileResponse createProfile(Long userId, ProfileCreateRequest request) {
         User user = userService.findUserById(userId);
 
-        if (profileRepository.findByUserId(userId).isPresent()) {
-            throw new CustomException(ProfileErrorCode.PROFILE_ALREADY_EXIST);
-        }
-
+        checkDuplicateProfile(userId);
         validateNickname(request.getNickname());
         validateEntranceTime(request.getEntranceTime());
 
@@ -122,7 +119,12 @@ public class ProfileServiceImpl implements ProfileService {
         }
     }
 
-    // 조회 아니면 생성
+    private void checkDuplicateProfile(Long userId){
+        if (profileRepository.findByUserId(userId).isPresent()) {
+            throw new CustomException(ProfileErrorCode.PROFILE_ALREADY_EXIST);
+        }
+    }
+
     private Profile getOrCreateProfile(User user) {
         return profileRepository.findByUserId(user.getId())
                 .orElseGet(() -> {
