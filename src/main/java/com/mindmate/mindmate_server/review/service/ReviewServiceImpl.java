@@ -317,4 +317,47 @@ public class ReviewServiceImpl implements ReviewService{
         return summaryResponse;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Integer> getTagCountsByProfileId(Long profileId) {
+        List<Object[]> tagCountResults = reviewRepository.countTagsByProfileId(profileId);
+        Map<String, Integer> tagCounts = new HashMap<>();
+
+        for (Object[] result : tagCountResults) {
+            String tagContent = (String) result[0];
+            Integer count = ((Long) result[1]).intValue();
+            tagCounts.put(tagContent, count);
+        }
+
+        return tagCounts;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReviewResponse> getRecentReviewsByUserId(Long userId, int limit) {
+        List<Review> recentReviews = reviewRepository.findRecentReviewsByRevieweeId(
+                userId,
+                PageRequest.of(0, limit)
+        );
+
+        return recentReviews.stream()
+                .map(review -> ReviewResponse.builder()
+                        .id(review.getId())
+                        .tags(review.getReviewTags().stream()
+                                .map(tag -> tag.getTagContent().getContent())
+                                .collect(Collectors.toList()))
+                        .rating(review.getRating())
+                        .comment(review.getComment())
+                        .createdAt(review.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getAverageRatingByUserId(Long userId) {
+        return reviewRepository.calculateAverageRatingByRevieweeId(userId)
+                .orElse(0.0);
+    }
+
 }
