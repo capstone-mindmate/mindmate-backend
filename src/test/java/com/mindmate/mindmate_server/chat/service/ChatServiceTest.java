@@ -2,9 +2,10 @@ package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
-import com.mindmate.mindmate_server.chat.domain.FilteringWordCategory;
 import com.mindmate.mindmate_server.chat.domain.MessageType;
-import com.mindmate.mindmate_server.chat.dto.*;
+import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
+import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
+import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
 import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
@@ -16,6 +17,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -24,10 +29,13 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -46,7 +54,6 @@ class ChatServiceTest {
     @Mock private RedisTemplate<String, Object> redisTemplate;
     @Mock private RedisKeyManager redisKeyManager;
     @Mock private ValueOperations<String, Object> valueOperations;
-    @Mock private ChatEventPublisher eventPublisher;
 
     @InjectMocks
     private ChatServiceImpl chatService;
@@ -80,6 +87,8 @@ class ChatServiceTest {
         // user1 = 스피커 / user2 = 리스너
         when(mockChatRoom.isSpeaker(mockUser1)).thenReturn(true);
         when(mockChatRoom.isListener(mockUser2)).thenReturn(true);
+        when(mockChatRoom.getListener()).thenReturn(mockUser2);
+        when(mockChatRoom.getSpeaker()).thenReturn(mockUser1);
 
         when(userService.findUserById(userId1)).thenReturn(mockUser1);
         when(userService.findUserById(userId2)).thenReturn(mockUser2);
@@ -88,6 +97,17 @@ class ChatServiceTest {
 
         when(redisKeyManager.getReadStatusKey(anyLong(), anyLong())).thenReturn("read:status:key");
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
+        doNothing().when(chatRoomService).validateChatActivity(userId1, roomId);
+        doNothing().when(chatRoomService).validateChatActivity(userId2, roomId);
+        doThrow(new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED))
+                .when(chatRoomService).validateChatActivity(userId3, roomId);
+
+        doNothing().when(chatRoomService).validateChatRead(userId1, roomId);
+        doNothing().when(chatRoomService).validateChatRead(userId2, roomId);
+        doThrow(new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED))
+                .when(chatRoomService).validateChatRead(userId3, roomId);
+
     }
 
 
@@ -100,6 +120,10 @@ class ChatServiceTest {
             // given
             ChatMessageRequest request = new ChatMessageRequest(roomId, "Hello!", MessageType.TEXT);
             ChatMessage mockMessage = mock(ChatMessage.class);
+            Profile mockProfile = mock(Profile.class);
+
+            when(mockUser1.getProfile()).thenReturn(mockProfile);
+            when(mockProfile.getNickname()).thenReturn("사용자1");
 
             when(mockMessage.getId()).thenReturn(1L);
             when(mockMessage.getCreatedAt()).thenReturn(LocalDateTime.now());
@@ -107,7 +131,9 @@ class ChatServiceTest {
             when(mockMessage.getSender()).thenReturn(mockUser1);
             when(mockMessage.getContent()).thenReturn("Hello!");
             when(mockMessage.getType()).thenReturn(MessageType.TEXT);
+
             when(chatMessageService.save(any(ChatMessage.class))).thenReturn(mockMessage);
+            when(chatPresenceService.isUserActiveInRoom(userId2, roomId)).thenReturn(true);
 
             // when
             ChatMessageResponse response = chatService.sendMessage(userId1, request);
@@ -124,63 +150,162 @@ class ChatServiceTest {
         void sendMessage_Filtered() {
             // given
             ChatMessageRequest request = new ChatMessageRequest(roomId, "부적절한 내용", MessageType.TEXT);
-            FilteringWordCategory mockCategory = mock(FilteringWordCategory.class);
             Profile mockProfile = mock(Profile.class);
 
-            when(mockCategory.getDescription()).thenReturn("욕설");
             when(mockUser1.getProfile()).thenReturn(mockProfile);
             when(mockProfile.getNickname()).thenReturn("사용자1");
-            when(contentFilterService.findFilteringWordCategory("부적절한 내용"))
-                    .thenReturn(Optional.of(mockCategory));
+            when(contentFilterService.isFiltered("부적절한 내용")).thenReturn(true);
 
             // when
             ChatMessageResponse response = chatService.sendMessage(userId1, request);
 
             // then
             assertNotNull(response);
-            assertTrue(response.getContent().contains("욕설 관련 부적절한 내용이 감지되었습니다"));
+            assertTrue(response.getContent().contains("부적절한 내용이 감지되었습니다"));
             assertEquals(mockUser1.getId(), response.getSenderId());
             verify(chatMessageService, never()).save(any(ChatMessage.class));
-            verify(eventPublisher).publishChatRoomEvent(
-                    eq(roomId),
-                    eq(ChatEventType.CONTENT_FILTERED),
-                    any(ChatMessageResponse.class)
-            );
+            verify(kafkaTemplate).send(eq("chat-message-topic"), anyString(), any(ChatMessageEvent.class));
+        }
+
+        @Test
+        @DisplayName("권한 없는 사용자의 메시지 전송 실패")
+        void sendMessage_Unauthorized() {
+            // given
+            ChatMessageRequest request = new ChatMessageRequest(roomId, "Hello!", MessageType.TEXT);
+
+            // when
+            ChatMessageResponse response = chatService.sendMessage(userId3, request);
+
+            // then
+            assertNotNull(response);
+            assertTrue(response.isError());
+            assertNotNull(response.getErrorMessage());
+            verify(chatMessageService, never()).save(any(ChatMessage.class));
+        }
+
+        @Test
+        @DisplayName("예외 발생 시 에러 응답 반환")
+        void sendMessage_Error() {
+            // given
+            ChatMessageRequest request = new ChatMessageRequest(roomId, "Hello!", MessageType.TEXT);
+            when(chatMessageService.save(any(ChatMessage.class))).thenThrow(new RuntimeException("Test exception"));
+
+            // when
+            ChatMessageResponse response = chatService.sendMessage(userId1, request);
+
+            // then
+            assertNotNull(response);
+            assertTrue(response.isError());
+            assertEquals("메시지 전송에 실패했습니다. 잠시 후 다시 시도해주세요.", response.getErrorMessage());
         }
     }
 
     @Nested
     @DisplayName("읽음 상태 업데이트 테스트")
     class MarkAsReadTest {
-        @Test
-        @DisplayName("스피커 사용자의 읽음 상태 업데이트 성공")
-        void markAsRead_Success_Speaker() {
+        @ParameterizedTest
+        @MethodSource("markAsReadScenarios")
+        void markAsRead_Scenarios(
+                String desc,
+                Long userId,
+                Optional<Long> latestMessageId,
+                boolean isAuthorized,
+                boolean shouldThrow) {
             // given
-            when(chatMessageService.findLatestMessageByChatRoomId(roomId)).thenReturn(Optional.empty());
+            if (latestMessageId.isPresent()) {
+                ChatMessage mockLatestMessage = mock(ChatMessage.class);
+                when(mockLatestMessage.getId()).thenReturn(latestMessageId.get());
+                when(chatMessageService.findLatestMessageByChatRoomId(roomId)).thenReturn(Optional.of(mockLatestMessage));
+            } else {
+                when(chatMessageService.findLatestMessageByChatRoomId(roomId)).thenReturn(Optional.empty());
+            }
 
-            // when
-            int result = chatService.markAsRead(userId1, roomId);
-
-            // then
-            assertEquals(0, result);
-            verify(chatPresenceService).resetUnreadCount(roomId, userId1);
-            verify(mockChatRoom).markAsRead(mockUser1, 0L);
-            verify(chatRoomService).save(mockChatRoom);
-            verify(redisTemplate.opsForValue()).set(anyString(), anyString());
-            verify(redisTemplate).expire(anyString(), anyLong(), any(TimeUnit.class));
-        }
-
-        @Test
-        @DisplayName("권한 없는 사용자의 읽음 상태 업데이트 실패")
-        void markAsRead_Failure_NoAccess() {
-            // given
-            doThrow(new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED))
-                    .when(chatRoomService).validateChatActivity(userId3, roomId);
+            if (!isAuthorized) {
+                doThrow(new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED))
+                        .when(chatRoomService).validateChatRead(userId, roomId);
+            }
 
             // when & then
-            assertThrows(CustomException.class, () -> chatService.markAsRead(userId3, roomId));
-            verify(chatPresenceService, never()).resetUnreadCount(anyLong(), anyLong());
-            verify(chatRoomService, never()).save(any(ChatRoom.class));
+            if (shouldThrow) {
+                assertThrows(CustomException.class, () -> chatService.markAsRead(userId, roomId));
+                verify(chatPresenceService, never()).resetUnreadCount(anyLong(), anyLong());
+                verify(chatRoomService, never()).save(any(ChatRoom.class));
+            } else {
+                int result = chatService.markAsRead(userId, roomId);
+                assertEquals(0, result);
+                verify(chatPresenceService).resetUnreadCount(roomId, userId);
+                verify(chatRoomService).save(mockChatRoom);
+                verify(redisTemplate.opsForValue()).set(anyString(), anyString());
+                verify(redisTemplate).expire(anyString(), anyLong(), any(TimeUnit.class));
+            }
         }
+
+        static Stream<Arguments> markAsReadScenarios() {
+            return Stream.of(
+                    Arguments.of("최신 메시지가 있을 때", 1L, Optional.of(10L), true, false),
+                    Arguments.of("최신 메시지가 없을 때", 2L, Optional.empty(), true, false),
+                    Arguments.of("권한 없는 사용자", 3L, Optional.empty(), false, true)
+            );
+        }
+    }
+
+    @Nested
+    @DisplayName("메시지 이벤트 발행 테스트")
+    class PublishMessageEventTest {
+        @Test
+        @DisplayName("메시지 이벤트 발행 성공")
+        void publishMessageEvent_Success() {
+            // given
+            ChatMessage mockMessage = mock(ChatMessage.class);
+            when(mockMessage.getId()).thenReturn(1L);
+            when(mockMessage.getChatRoom()).thenReturn(mockChatRoom);
+            when(mockMessage.getSender()).thenReturn(mockUser1);
+            when(mockMessage.getContent()).thenReturn("Hello!");
+            when(mockMessage.getType()).thenReturn(MessageType.TEXT);
+            when(mockMessage.getCreatedAt()).thenReturn(LocalDateTime.now());
+
+            // when
+            chatService.publishMessageEvent(mockMessage, userId2, true, "Hello!");
+
+            // then
+            ArgumentCaptor<ChatMessageEvent> eventCaptor = ArgumentCaptor.forClass(ChatMessageEvent.class);
+            verify(kafkaTemplate).send(eq("chat-message-topic"), anyString(), eventCaptor.capture());
+
+            ChatMessageEvent capturedEvent = eventCaptor.getValue();
+            assertEquals(1L, capturedEvent.getMessageId());
+            assertEquals(roomId, capturedEvent.getRoomId());
+            assertEquals(userId1, capturedEvent.getSenderId());
+            assertEquals("Hello!", capturedEvent.getContent());
+            assertEquals(MessageType.TEXT, capturedEvent.getType());
+            assertEquals(userId2, capturedEvent.getRecipientId());
+            assertTrue(capturedEvent.isRecipientActive());
+            assertFalse(capturedEvent.isFiltered());
+            assertEquals("Hello!", capturedEvent.getPlainContent());
+        }
+
+        @Test
+        @DisplayName("트랜잭션 동기화 활성화 시 afterCommit에서 메시지 발행")
+        void publishMessageEvent_TransactionSynchronizationActive() {
+            // given
+            ChatMessage mockMessage = mock(ChatMessage.class);
+            when(mockMessage.getId()).thenReturn(1L);
+            when(mockMessage.getChatRoom()).thenReturn(mockChatRoom);
+            when(mockMessage.getSender()).thenReturn(mockUser1);
+            when(mockMessage.getContent()).thenReturn("Hello!");
+            when(mockMessage.getType()).thenReturn(MessageType.TEXT);
+            when(mockMessage.getCreatedAt()).thenReturn(LocalDateTime.now());
+
+            TransactionSynchronizationManager.initSynchronization();
+
+            try {
+                chatService.publishMessageEvent(mockMessage, userId2, true, "Hello!");;
+
+                TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+                verify(kafkaTemplate).send(eq("chat-message-topic"), anyString(), any(ChatMessageEvent.class));
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization();
+            }
+        }
+
     }
 }
