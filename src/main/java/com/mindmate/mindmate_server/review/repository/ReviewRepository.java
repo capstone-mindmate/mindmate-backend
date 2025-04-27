@@ -24,7 +24,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.reviewedProfile.user.id = :revieweeId")
     Optional<Double> calculateAverageRatingByRevieweeId(@Param("revieweeId") Long revieweeId);
 
-
     List<Review> findByChatRoom(ChatRoom chatRoom);
 
     boolean existsByChatRoomAndReviewer(ChatRoom chatRoom, User reviewer);
@@ -53,5 +52,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             "GROUP BY rt.tagContent")
     List<Object[]> countAllTagsByProfile(@Param("profile") Profile profile);
 
-
+    @Query("SELECT et.tagContent, COUNT(et) FROM EvaluationTag et " +
+            "JOIN et.review r WHERE r.reviewedProfile.id = :profileId " +
+            "GROUP BY et.tagContent")
+    List<Object[]> countTagsByProfileId(@Param("profileId") Long profileId);
 }
