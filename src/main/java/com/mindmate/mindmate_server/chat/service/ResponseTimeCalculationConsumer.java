@@ -22,7 +22,6 @@ import java.util.Map;
 @Slf4j
 @RequiredArgsConstructor
 public class ResponseTimeCalculationConsumer {
-    private final ChatMessageService chatMessageService;
     private final ProfileService profileService;
 
     private final ChatMessageRepository chatMessageRepository;
