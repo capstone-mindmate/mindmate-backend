@@ -6,6 +6,7 @@ import com.mindmate.mindmate_server.review.dto.ReviewResponse;
 import org.springframework.data.domain.Page;
 
 import java.util.List;
+import java.util.Map;
 
 public interface ReviewService {
 
@@ -20,4 +21,10 @@ public interface ReviewService {
     boolean canReview(Long userId, Long chatRoomId);
 
     ProfileReviewSummaryResponse getProfileReviewSummary(Long profileId);
+
+    Map<String, Integer> getTagCountsByProfileId(Long profileId);
+
+    List<ReviewResponse> getRecentReviewsByUserId(Long userId, int limit);
+
+    Double getAverageRatingByUserId(Long userId);
 }
