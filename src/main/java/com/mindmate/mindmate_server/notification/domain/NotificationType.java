@@ -12,7 +12,8 @@ public enum NotificationType {
     REVIEW_CREATED("새로운 리뷰"),
     CHAT_MESSAGE("새 메시지"),
     ANNOUNCEMENT("공지사항"),
-    CHAT_CLOSED("채팅 종료");
+    CHAT_CLOSED("채팅 종료"),
+    EMOTICON_UPLOAD("이모티콘 등록");
 
     private final String displayName;
 
