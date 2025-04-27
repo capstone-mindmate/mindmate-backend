@@ -7,5 +7,5 @@ import lombok.Getter;
 @Builder
 public class EmoticonUploadRequest {
     private String name;
-    private Long price;
+    private int price;
 }

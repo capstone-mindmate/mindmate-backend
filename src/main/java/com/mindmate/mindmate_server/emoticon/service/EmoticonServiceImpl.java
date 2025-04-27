@@ -21,6 +21,7 @@ import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -83,13 +84,15 @@ public class EmoticonServiceImpl implements EmoticonService {
 
         // todo: 어떤거 유사한 이모티콘들을 보여줄지? 일단 지금은 가격 기준
         int priceRange = 100;
-        List<Emoticon> similarPriceEmoticons = emoticonRepository.findByStatusAndIsDefaultOrderByCreatedAtDesc(
-                        EmoticonStatus.ACCEPT, emoticon.isDefault())
-                .stream()
-                .filter(e -> e.getId() != emoticonId)
-                .filter(e -> Math.abs(e.getPrice() - emoticon.getPrice()) <= priceRange)
-                .limit(10)
-                .collect(Collectors.toList());
+        List<Emoticon> similarPriceEmoticons = emoticonRepository.findSimilarPriceEmoticons(
+                EmoticonStatus.ACCEPT,
+                emoticon.isDefault(),
+                emoticonId,
+                emoticon.getPrice(),
+                priceRange,
+                PageRequest.of(0, 10)
+        );
+
 
         List<EmoticonResponse> similarEmoticonResponses = new ArrayList<>();
         if (userId != null) {
@@ -230,7 +233,7 @@ public class EmoticonServiceImpl implements EmoticonService {
                     .imageUrl(imageUrl)
                     .contentType(contentType)
                     .fileSize(destFile.length())
-                    .price(request.getPrice().intValue())
+                    .price(request.getPrice())
                     .isDefault(false)
                     .creator(creator)
                     .build();
