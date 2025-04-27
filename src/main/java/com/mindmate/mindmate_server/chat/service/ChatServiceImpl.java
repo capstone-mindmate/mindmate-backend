@@ -35,12 +35,7 @@ public class ChatServiceImpl implements ChatService {
     private final ContentFilterService contentFilterService;
     private final ChatMessageService chatMessageService;
     /**
-     * 필터링 + 메시지 저장 동기적 처리
-     * 1. 읽음 안읽음 처리
-     * 2. 알림 서비스
-     * 3. 필터링 기반 토스트 박스
-     * todo: 평균 응답 속도, 사진 처리, Redis/Kafka 장애 대처(재시도 매커니즘같은)
-     *
+     * 필터링 + 메시지 저장 동기적 처리 이후 비동기 처리
      */
     @Override
     @Transactional
@@ -142,7 +137,6 @@ public class ChatServiceImpl implements ChatService {
                 .filtered(true)
                 .build();
 
-        // todo: 필터링 걸렸을 떄 이벤트 날릴건지? 날린다면 어떤 내용 처리할건가? -> 사용자별 특정 기간 동안의 필터링 횟수를 임시 저장해서 처리하는 방식/
         sendKafkaMessage(event);
 
         return ChatMessageResponse.filteredResponse(

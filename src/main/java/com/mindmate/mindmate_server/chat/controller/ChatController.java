@@ -32,7 +32,6 @@ public class ChatController {
 
     /**
      * 사용자의 모든 채팅방 목록 조회
-     * todo: 채팅방 상태에 따른 목록 조회를 따로 api 뺼건지, 프론트에서 어차피 값 있으니까 렌더링만 바꿔서 보여줄지
      */
     @GetMapping("/rooms")
     public ResponseEntity<Page<ChatRoomResponse>> getChatRooms(
@@ -83,7 +82,6 @@ public class ChatController {
 
     /**
      * 채팅방 입장 시 메시지 조회
-     * todo: custom-form 답변 시 system 답변 필요하지 않나?
      */
     @GetMapping("/rooms/{roomId}/messages")
     public ResponseEntity<ChatRoomDetailResponse> getChatRoomWithMessages(

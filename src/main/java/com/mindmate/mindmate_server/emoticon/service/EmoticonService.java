@@ -9,6 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 public interface EmoticonService {
     List<EmoticonResponse> getShopEmoticons(Long userId);
@@ -16,6 +17,8 @@ public interface EmoticonService {
     EmoticonDetailResponse getEmoticonDetail(Long emoticonId, Long userId);
 
     UserEmoticonResponse getUserEmoticons(Long userId);
+
+    Set<Long> getOwnedEmoticonIds(Long userId);
 
     List<EmoticonResponse> getAvailableEmoticons(Long userId);
 
@@ -25,4 +28,6 @@ public interface EmoticonService {
     EmoticonResponse uploadEmoticon(MultipartFile file, EmoticonUploadRequest request, Long userId) throws IOException;
 
     EmoticonResponse purchaseEmoticon(Long userId, Long emoticonId);
+
+    boolean isEmoticonOwnedByUser(Long userId, Long emoticonId);
 }

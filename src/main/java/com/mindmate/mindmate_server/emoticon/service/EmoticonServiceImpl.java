@@ -10,8 +10,10 @@ import com.mindmate.mindmate_server.emoticon.dto.EmoticonUploadRequest;
 import com.mindmate.mindmate_server.emoticon.dto.UserEmoticonResponse;
 import com.mindmate.mindmate_server.emoticon.repository.EmoticonRepository;
 import com.mindmate.mindmate_server.emoticon.repository.UserEmoticonRepository;
+import com.mindmate.mindmate_server.global.dto.FileInfo;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.EmoticonErrorCode;
+import com.mindmate.mindmate_server.global.service.FileStorageService;
 import com.mindmate.mindmate_server.global.util.SlackNotifier;
 import com.mindmate.mindmate_server.point.domain.PointReasonType;
 import com.mindmate.mindmate_server.point.dto.PointUseRequest;
@@ -26,9 +28,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -44,6 +43,7 @@ public class EmoticonServiceImpl implements EmoticonService {
     private final UserService userService;
     private final PointService pointService;
     private final SlackNotifier slackNotifier;
+    private final FileStorageService fileStorageService;
 
 
     @Value("${emoticon.dir}")
@@ -56,31 +56,23 @@ public class EmoticonServiceImpl implements EmoticonService {
     public List<EmoticonResponse> getShopEmoticons(Long userId) {
         List<Emoticon> emoticons = emoticonRepository.findByStatusOrderByCreatedAtDesc(EmoticonStatus.ACCEPT);
 
-        Set<Long> purchasedEmotionIds = new HashSet<>();
-        if (userId != null) {
-            purchasedEmotionIds = userEmoticonRepository.findByUserId(userId)
-                    .stream()
-                    .map(ue -> ue.getEmoticon().getId())
-                    .collect(Collectors.toSet());
-        }
+        Set<Long> purchasedEmotionIds = userId != null
+                ? getOwnedEmoticonIds(userId)
+                : Collections.emptySet();
 
-        List<EmoticonResponse> result = new ArrayList<>();
-        for (Emoticon emoticon : emoticons) {
-            boolean isPurchased = purchasedEmotionIds.contains(emoticon.getId());
-            result.add(EmoticonResponse.from(emoticon, isPurchased));
-        }
-
-        return result;
+        return emoticons.stream()
+                .map(emoticon -> EmoticonResponse.from(
+                        emoticon,
+                        purchasedEmotionIds.contains(emoticon.getId())
+                ))
+                .collect(Collectors.toList());
     }
 
     @Override
     public EmoticonDetailResponse getEmoticonDetail(Long emoticonId, Long userId) {
         Emoticon emoticon = findEmoticonById(emoticonId);
 
-        boolean isPurchased = false;
-        if (userId != null) {
-            isPurchased = userEmoticonRepository.existsByUserIdAndEmoticonId(userId, emoticonId);
-        }
+        boolean isPurchased = userId != null && isEmoticonOwnedByUser(userId, emoticonId);
 
         // todo: 어떤거 유사한 이모티콘들을 보여줄지? 일단 지금은 가격 기준
         int priceRange = 100;
@@ -94,17 +86,12 @@ public class EmoticonServiceImpl implements EmoticonService {
         );
 
 
-        List<EmoticonResponse> similarEmoticonResponses = new ArrayList<>();
+        List<EmoticonResponse> similarEmoticonResponses;
         if (userId != null) {
-            Set<Long> purchasedEmoticonIds = userEmoticonRepository.findByUserId(userId)
-                    .stream()
-                    .map(ue -> ue.getEmoticon().getId())
-                    .collect(Collectors.toSet());
-
-            for (Emoticon similar : similarPriceEmoticons) {
-                boolean isSimilarPurchased = purchasedEmoticonIds.contains(similar.getId());
-                similarEmoticonResponses.add(EmoticonResponse.from(similar, isSimilarPurchased));
-            }
+            Set<Long> ownedIds = getOwnedEmoticonIds(userId);
+            similarEmoticonResponses = similarPriceEmoticons.stream()
+                    .map(e -> EmoticonResponse.from(e, ownedIds.contains(e.getId())))
+                    .collect(Collectors.toList());
         } else {
             similarEmoticonResponses = similarPriceEmoticons.stream()
                     .map(EmoticonResponse::from)
@@ -119,29 +106,28 @@ public class EmoticonServiceImpl implements EmoticonService {
 
     @Override
     public UserEmoticonResponse getUserEmoticons(Long userId) {
-        List<UserEmoticon> userEmoticons = userEmoticonRepository.findByUserId(userId);
-
-        Set<Long> ownedEmoticonIds = userEmoticons.stream()
-                .map(ue -> ue.getEmoticon().getId())
-                .collect(Collectors.toSet());
-
+        Set<Long> ownedEmoticonIds = getOwnedEmoticonIds(userId);
         List<Emoticon> allEmoticons = emoticonRepository.findByStatusOrderByCreatedAtDesc(EmoticonStatus.ACCEPT);
 
-        List<EmoticonResponse> ownedEmoticons = new ArrayList<>();
-        List<EmoticonResponse> notOwnedEmoticons = new ArrayList<>();
-
-        for (Emoticon emoticon : allEmoticons) {
-            if (ownedEmoticonIds.contains(emoticon.getId())) {
-                ownedEmoticons.add(EmoticonResponse.from(emoticon));
-            } else {
-                notOwnedEmoticons.add(EmoticonResponse.from(emoticon));
-            }
-        }
+        Map<Boolean, List<EmoticonResponse>> partitionedEmoticons = allEmoticons.stream()
+                .map(EmoticonResponse::from)
+                .collect(Collectors.partitioningBy(
+                        emoticon -> ownedEmoticonIds.contains(emoticon.getId())
+                ));
 
         return UserEmoticonResponse.builder()
-                .ownedEmoticons(ownedEmoticons)
-                .notOwnedEmoticons(notOwnedEmoticons)
+                .ownedEmoticons(partitionedEmoticons.get(true))
+                .notOwnedEmoticons(partitionedEmoticons.get(false))
                 .build();
+    }
+
+    @Override
+    public Set<Long> getOwnedEmoticonIds(Long userId) {
+        if (userId == null) return Collections.emptySet();
+
+        return userEmoticonRepository.findByUserId(userId).stream()
+                .map(ue -> ue.getEmoticon().getId())
+                .collect(Collectors.toSet());
     }
 
     @Override
@@ -165,7 +151,7 @@ public class EmoticonServiceImpl implements EmoticonService {
         User user = userService.findUserById(userId);
         Emoticon emoticon = findEmoticonById(emoticonId);
 
-        if (userEmoticonRepository.existsByUserIdAndEmoticonId(userId, emoticonId)) {
+        if (isEmoticonOwnedByUser(userId, emoticonId)) {
             throw new CustomException(EmoticonErrorCode.ALREADY_PURCHASED);
         }
 
@@ -200,60 +186,30 @@ public class EmoticonServiceImpl implements EmoticonService {
     @Override
     @Transactional
     public EmoticonResponse uploadEmoticon(MultipartFile file, EmoticonUploadRequest request, Long userId) throws IOException {
-        if (file == null || file.isEmpty()) {
-            throw new CustomException(EmoticonErrorCode.EMPTY_FILE);
-        }
+        fileStorageService.validateFile(file);
 
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new CustomException(EmoticonErrorCode.INVALID_FILE_TYPE);
-        }
+        FileInfo fileInfo = fileStorageService.storeFile(file, emoticonDir);
+        User creator = userService.findUserById(userId);
 
-        String originalFileName = file.getOriginalFilename();
-        String extension = getExtension(file.getOriginalFilename());
-        String storedFileName = UUID.randomUUID() + "." + extension;
+        Emoticon emoticon = Emoticon.builder()
+                .name(request.getName())
+                .storedName(fileInfo.getStoredFileName())
+                .imageUrl(emoticonUrlPrefix + fileInfo.getStoredFileName())
+                .contentType(fileInfo.getContentType())
+                .fileSize(fileInfo.getFileSize())
+                .price(request.getPrice())
+                .isDefault(false)
+                .creator(creator)
+                .build();
 
-        File directory = new File(emoticonDir);
-        if (!directory.exists()) {
-            directory.mkdirs();
-        }
+        Emoticon savedEmoticon = emoticonRepository.save(emoticon);
+        slackNotifier.sendEmoticonUploadAlert(savedEmoticon, creator);
 
-        File destFile = new File(directory, storedFileName);
-
-        try {
-            BufferedImage originalIamge = ImageIO.read(file.getInputStream());
-            ImageIO.write(originalIamge, extension, destFile);
-
-            String imageUrl = emoticonUrlPrefix + storedFileName;
-            User creator = userService.findUserById(userId);
-
-            Emoticon emoticon = Emoticon.builder()
-                    .name(request.getName())
-                    .storedName(storedFileName)
-                    .imageUrl(imageUrl)
-                    .contentType(contentType)
-                    .fileSize(destFile.length())
-                    .price(request.getPrice())
-                    .isDefault(false)
-                    .creator(creator)
-                    .build();
-
-            Emoticon savedEmoticon = emoticonRepository.save(emoticon);
-            slackNotifier.sendEmoticonUploadAlert(savedEmoticon, creator);
-            return EmoticonResponse.from(savedEmoticon);
-        } catch (Exception e) {
-            if (destFile.exists()) {
-                destFile.delete();
-            }
-            throw e;
-        }
-
+        return EmoticonResponse.from(savedEmoticon);
     }
 
-    private String getExtension(String filename) {
-        if (filename == null) return "png";
-        int lastDotIndex = filename.lastIndexOf(".");
-        if (lastDotIndex == -1) return "png";
-        return filename.substring(lastDotIndex + 1);
+    @Override
+    public boolean isEmoticonOwnedByUser(Long userId, Long emoticonId) {
+        return userEmoticonRepository.existsByUserIdAndEmoticonId(userId, emoticonId);
     }
 }
