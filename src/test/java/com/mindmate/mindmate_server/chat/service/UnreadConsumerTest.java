@@ -10,11 +10,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -35,9 +40,13 @@ class UnreadConsumerTest {
     private ChatMessageEvent mockEvent;
     private ChatRoom mockChatRoom;
     private ConsumerRecord<String, ChatMessageEvent> mockRecord;
-    private User mockSender;
     private User mockListener;
     private User mockSpeaker;
+
+    private final Long messageId = 1L;
+    private final Long roomId = 100L;
+    private final Long listenerId = 1L;
+    private final Long speakerId = 2L;
 
     @BeforeEach
     void setup() {
@@ -45,19 +54,12 @@ class UnreadConsumerTest {
         mockEvent = mock(ChatMessageEvent.class);
         mockChatRoom = mock(ChatRoom.class);
         mockRecord = mock(ConsumerRecord.class);
-        mockSender = mock(User.class);
         mockListener = mock(User.class);
         mockSpeaker = mock(User.class);
 
-        Long messageId = 1L;
-        Long roomId = 100L;
-        Long senderId = 1L;
-        Long listenerId = 1L;
-        Long speakerId = 2L;
-
         when(mockEvent.getMessageId()).thenReturn(messageId);
         when(mockEvent.getRoomId()).thenReturn(roomId);
-        when(mockEvent.getSenderId()).thenReturn(senderId);
+        when(mockEvent.isFiltered()).thenReturn(false);
 
         when(mockListener.getId()).thenReturn(listenerId);
         when(mockSpeaker.getId()).thenReturn(speakerId);
@@ -67,95 +69,118 @@ class UnreadConsumerTest {
 
         when(mockRecord.value()).thenReturn(mockEvent);
         when(chatRoomService.findChatRoomById(roomId)).thenReturn(mockChatRoom);
-        when(userService.findUserById(senderId)).thenReturn(mockSender);
-        when(chatRoomService.findChatRoomById(mockChatRoom.getId())).thenReturn(mockChatRoom);
+        when(userService.findUserById(listenerId)).thenReturn(mockListener);
+        when(userService.findUserById(speakerId)).thenReturn(mockSpeaker);
     }
 
     @Nested
     @DisplayName("UnreadCount 업데이트")
     class UpdateUnreadCountTest {
-        @Test
-        @DisplayName("리스너가 보낸 메시지 - 수신자 온라인")
-        void updateUnreadCount_ListenerSender_RecipientOnline() {
+
+        @ParameterizedTest
+        @DisplayName("메시지 수신 시나리오")
+        @MethodSource("messageScenarios")
+        void updateUnreadCount_Scenarios(
+                boolean senderIsListener,
+                boolean recipientActive,
+                boolean expectMarkAsRead,
+                boolean expectIncrementUnread,
+                boolean expectIncreaseForListener) {
             // given
-            when(mockChatRoom.isListener(mockSender)).thenReturn(true);
-            when(chatPresenceService.isUserActiveInRoom(anyLong(), anyLong())).thenReturn(true);
+            User sender = senderIsListener ? mockListener : mockSpeaker;
+            Long senderId = senderIsListener ? listenerId : speakerId;
+            User recipient = senderIsListener ? mockSpeaker : mockListener;
+            Long recipientId = senderIsListener ? speakerId : listenerId;
 
-            // when
-            unreadCountConsumer.updateUnreadCount(mockRecord);
+            when(mockEvent.getSenderId()).thenReturn(senderId);
+            when(userService.findUserById(senderId)).thenReturn(sender);
+            when(mockChatRoom.isListener(sender)).thenReturn(senderIsListener);
+            when(mockChatRoom.isSpeaker(sender)).thenReturn(!senderIsListener);
 
-            // then
-            verify(mockChatRoom).markAsRead(mockSender, mockEvent.getMessageId());
-            verify(chatService).markAsRead(mockSpeaker.getId(), mockEvent.getRoomId());
-            verify(chatPresenceService, never()).incrementUnreadCountInRedis(anyLong(), anyLong());
-            verify(mockChatRoom, never()).increaseUnreadCountForListener();
-            verify(mockChatRoom, never()).increaseUnreadCountForSpeaker();
-        }
+            when(mockEvent.getRecipientId()).thenReturn(recipientId);
+            when(mockEvent.isRecipientActive()).thenReturn(recipientActive);
 
-        @Test
-        @DisplayName("리스너가 보낸 메시지 - 수신자 오프라인")
-        void updateUnreadCount_ListenerSender_RecipientOffline() {
-            // given
-            when(mockChatRoom.isListener(mockSender)).thenReturn(true);
-            when(chatPresenceService.isUserActiveInRoom(anyLong(), anyLong())).thenReturn(false);
+            when(mockChatRoom.isListener(recipient)).thenReturn(!senderIsListener);
+            when(mockChatRoom.isSpeaker(recipient)).thenReturn(senderIsListener);
             when(chatPresenceService.incrementUnreadCountInRedis(anyLong(), anyLong())).thenReturn(1L);
-            when(mockChatRoom.isListener(mockSpeaker)).thenReturn(false);
 
             // when
             unreadCountConsumer.updateUnreadCount(mockRecord);
 
             // then
-            verify(mockChatRoom).markAsRead(mockSender, mockEvent.getMessageId());
-            verify(chatService, never()).markAsRead(anyLong(), anyLong());
-            verify(chatPresenceService).incrementUnreadCountInRedis(mockEvent.getRoomId(), mockSpeaker.getId());
-            verify(mockChatRoom).increaseUnreadCountForSpeaker();
-            verify(chatRoomService).save(mockChatRoom);
+            verify(mockChatRoom).markAsRead(sender, messageId);
+
+            if (expectMarkAsRead) {
+                verify(chatService).markAsRead(recipientId, roomId);
+            } else {
+                verify(chatService, never()).markAsRead(anyLong(), anyLong());
+            }
+
+            if (expectIncrementUnread) {
+                verify(chatPresenceService).incrementUnreadCountInRedis(roomId, recipientId);
+                verify(chatRoomService).save(mockChatRoom);
+
+                if (expectIncreaseForListener) {
+                    verify(mockChatRoom).increaseUnreadCountForListener();
+                    verify(mockChatRoom, never()).increaseUnreadCountForSpeaker();
+                } else {
+                    verify(mockChatRoom).increaseUnreadCountForSpeaker();
+                    verify(mockChatRoom, never()).increaseUnreadCountForListener();
+                }
+            } else {
+                verify(chatPresenceService, never()).incrementUnreadCountInRedis(anyLong(), anyLong());
+                verify(mockChatRoom, never()).increaseUnreadCountForSpeaker();
+                verify(mockChatRoom, never()).increaseUnreadCountForListener();
+            }
         }
 
-        @Test
-        @DisplayName("스피커가 보낸 메시지 - 수신자 온라인")
-        void updateUnreadCount_SpeakerSender_RecipientOnline() {
-            // given
-            when(mockChatRoom.isListener(mockSender)).thenReturn(false);
-            when(mockChatRoom.isSpeaker(mockSender)).thenReturn(true);
-            when(chatPresenceService.isUserActiveInRoom(anyLong(), anyLong())).thenReturn(true);
-
-            // when
-            unreadCountConsumer.updateUnreadCount(mockRecord);
-
-            // then
-            verify(mockChatRoom).markAsRead(mockSender, mockEvent.getMessageId());
-            verify(chatService).markAsRead(mockListener.getId(), mockEvent.getRoomId());
-            verify(chatPresenceService, never()).incrementUnreadCountInRedis(anyLong(), anyLong());
-            verify(mockChatRoom, never()).increaseUnreadCountForListener();
-            verify(mockChatRoom, never()).increaseUnreadCountForSpeaker();
-        }
-
-        @Test
-        @DisplayName("스피커가 보낸 메시지 - 수신자 오프라인")
-        void updateUnreadCount_SpeakerSender_RecipientOffline() {
-            // given
-            when(mockChatRoom.isListener(mockSender)).thenReturn(false);
-            when(mockChatRoom.isSpeaker(mockSender)).thenReturn(true);
-            when(chatPresenceService.isUserActiveInRoom(anyLong(), anyLong())).thenReturn(false);
-            when(chatPresenceService.incrementUnreadCountInRedis(anyLong(), anyLong())).thenReturn(1L);
-            when(mockChatRoom.isListener(mockListener)).thenReturn(true);
-
-            // when
-            unreadCountConsumer.updateUnreadCount(mockRecord);
-
-            // then
-            verify(mockChatRoom).markAsRead(mockSender, mockEvent.getMessageId());
-            verify(chatService, never()).markAsRead(anyLong(), anyLong());
-            verify(chatPresenceService).incrementUnreadCountInRedis(mockEvent.getRoomId(), mockListener.getId());
-            verify(mockChatRoom).increaseUnreadCountForListener();
-            verify(chatRoomService).save(mockChatRoom);
+        static Stream<Arguments> messageScenarios() {
+            return Stream.of(
+                    // senderIsListener, recipientActive, expectMarkAsRead, expectIncrementUnread, expectIncreaseForListener
+                    Arguments.of(true, true, true, false, false),   // 리스너가 보냄, 스피커가 온라인
+                    Arguments.of(true, false, false, true, false),  // 리스너가 보냄, 스피커가 오프라인
+                    Arguments.of(false, true, true, false, false),  // 스피커가 보냄, 리스너가 온라인
+                    Arguments.of(false, false, false, true, true)   // 스피커가 보냄, 리스너가 오프라인
+            );
         }
     }
+
+    @Test
+    @DisplayName("필터링된 메시지 처리 x")
+    void updateUnreadCount_FilteringMessage() {
+        // given
+        when(mockEvent.isFiltered()).thenReturn(true);
+
+        // when
+        unreadCountConsumer.updateUnreadCount(mockRecord);
+
+        // then
+        verify(chatRoomService, never()).findChatRoomById(anyLong());
+        verify(userService, never()).findUserById(anyLong());
+        verify(mockChatRoom, never()).markAsRead(any(), anyLong());
+    }
+
+    @Test
+    @DisplayName("메시지 ID가 null이면 처리 x")
+    void updateUnreadCount_NullMessageId() {
+        // given
+        when(mockEvent.getMessageId()).thenReturn(null);
+
+        // when
+        unreadCountConsumer.updateUnreadCount(mockRecord);
+
+        // then
+        verify(chatRoomService, never()).findChatRoomById(anyLong());
+        verify(userService, never()).findUserById(anyLong());
+        verify(mockChatRoom, never()).markAsRead(any(), anyLong());
+    }
+
     @Test
     @DisplayName("예외 처리 테스트")
     void updateUnreadCount_ExceptionHandling() {
         // given
+        when(mockEvent.getSenderId()).thenReturn(listenerId);
+        when(userService.findUserById(listenerId)).thenReturn(mockListener);
         when(chatRoomService.findChatRoomById(anyLong())).thenThrow(new RuntimeException("Test exception"));
 
         // when & then
