@@ -23,6 +23,8 @@ import com.mindmate.mindmate_server.user.repository.UserRepository;
 import com.mindmate.mindmate_server.user.service.ProfileService;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +38,7 @@ import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
+@Slf4j
 public class ReviewServiceImpl implements ReviewService{
 
     private final ReviewRepository reviewRepository;
@@ -77,8 +80,13 @@ public class ReviewServiceImpl implements ReviewService{
 
         addReviewTags(review, request.getTags(), tagType, reviewedProfile.getId());
 
-        reviewedProfile.incrementCounselingCount();
-        reviewedProfile.updateAvgRating(request.getRating());
+        try {
+            profileService.incrementCounselingCount(reviewedUser.getId());
+            profileService.updateAvgRating(reviewedUser.getId(), request.getRating());
+        } catch (OptimisticLockingFailureException e) {
+            log.warn("프로필 업데이트 중 동시성 이슈 발생", e);
+            throw new CustomException(ReviewErrorCode.REVIEW_SUBMISSION_CONFLICT);
+        }
 
         reviewRedisRepository.deleteReviewSummaryCache(reviewedProfile.getId());
 
