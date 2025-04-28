@@ -29,6 +29,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
@@ -51,17 +52,14 @@ public class ReviewServiceImpl implements ReviewService{
     private final PointService pointService;
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRED)
     public ReviewResponse createReview(Long userId, ReviewRequest request) {
         validateRating(request.getRating());
 
         User reviewer = userService.findUserById(userId);
-
         ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getChatRoomId());
 
-        if (chatRoom.getChatRoomStatus() != ChatRoomStatus.CLOSED) {
-            throw new CustomException(ChatErrorCode.CHAT_ROOM_NOT_CLOSED);
-        }
+        validateChatRoomStatus(chatRoom);
 
         // 리뷰 대상 결정ㅎ기
         User reviewedUser = getReviewedUser(chatRoom, reviewer);
@@ -71,41 +69,16 @@ public class ReviewServiceImpl implements ReviewService{
 
         checkValidateReview(chatRoom, reviewer, reviewedUser);
 
-        Profile reviewedProfile = reviewedUser.getProfile();
-        if(reviewedProfile==null){
-            throw new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND);
-        }
+        Profile reviewedProfile = getReviewedProfile(reviewedUser);
 
         Review review = buildAndSaveReview(chatRoom, reviewer, reviewedProfile, request);
 
         addReviewTags(review, request.getTags(), tagType, reviewedProfile.getId());
 
-        try {
-            profileService.incrementCounselingCount(reviewedUser.getId());
-            profileService.updateAvgRating(reviewedUser.getId(), request.getRating());
-        } catch (OptimisticLockingFailureException e) {
-            log.warn("프로필 업데이트 중 동시성 이슈 발생", e);
-            throw new CustomException(ReviewErrorCode.REVIEW_SUBMISSION_CONFLICT);
-        }
-
+        updateProfileMetrics(userId, request.getRating());
         reviewRedisRepository.deleteReviewSummaryCache(reviewedProfile.getId());
 
-        String reviewerName = reviewer.getProfile() != null ? reviewer.getProfile().getNickname() : "사용자";
-
-        pointService.addPoints(userId, PointAddRequest.builder()
-                .amount(50)
-                .reasonType(PointReasonType.REVIEW_WRITTEN)
-                .entityId(chatRoom.getId())
-                .build());
-
-
-        ReviewCreatedNotificationEvent event = ReviewCreatedNotificationEvent.builder()
-                .recipientId(reviewedUser.getId())
-                .reviewId(review.getId())
-                .reviewerName(reviewerName)
-                .build();
-
-        notificationService.processNotification(event);
+        processReviewRewards(reviewer, reviewedUser, review.getId());
 
         return ReviewResponse.from(review);
     }
@@ -310,6 +283,31 @@ public class ReviewServiceImpl implements ReviewService{
         }
     }
 
+    private void validateChatRoomStatus(ChatRoom chatRoom) {
+        if (chatRoom.getChatRoomStatus() != ChatRoomStatus.CLOSED) {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_NOT_CLOSED);
+        }
+    }
+
+    private Profile getReviewedProfile(User reviewedUser) {
+        Profile reviewedProfile = reviewedUser.getProfile();
+        if (reviewedProfile == null) {
+            throw new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND);
+        }
+        return reviewedProfile;
+    }
+
+    private void processReviewRewards(User reviewer, User reviewedUser, Long reviewId) {
+        String reviewerName = reviewer.getProfile() != null ? reviewer.getProfile().getNickname() : "사용자";
+        ReviewCreatedNotificationEvent event = ReviewCreatedNotificationEvent.builder()
+                .recipientId(reviewedUser.getId())
+                .reviewId(reviewId)
+                .reviewerName(reviewerName)
+                .build();
+
+        notificationService.processNotification(event);
+    }
+
     private ProfileReviewSummaryResponse buildSummaryResponse(
             double avgRating, long totalReviews, Map<String, Integer> tagCounts,
             List<ReviewListResponse> recentReviews, Long profileId) {
@@ -366,6 +364,18 @@ public class ReviewServiceImpl implements ReviewService{
     public Double getAverageRatingByUserId(Long userId) {
         return reviewRepository.calculateAverageRatingByRevieweeId(userId)
                 .orElse(0.0);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void updateProfileMetrics(Long userId, double rating) {
+        try {
+            profileService.incrementCounselingCount(userId);
+            profileService.updateAvgRating(userId, rating);
+        } catch (OptimisticLockingFailureException e) {
+            log.warn("프로필 업데이트 중 동시성 이슈 발생", e);
+            throw new CustomException(ReviewErrorCode.REVIEW_SUBMISSION_CONFLICT);
+        }
+
     }
 
 }
