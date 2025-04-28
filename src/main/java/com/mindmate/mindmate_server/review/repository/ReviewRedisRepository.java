@@ -76,6 +76,16 @@ public class ReviewRedisRepository {
         redisTemplate.expire(key, CACHE_TTL_HOURS, TimeUnit.HOURS);
     }
 
+    public void deleteAllProfileCaches(Long profileId) {
+        deleteReviewSummaryCache(profileId);
+        deleteTagCountsCache(profileId);
+    }
+
+    public void deleteTagCountsCache(Long profileId) {
+        String key = TAG_COUNTS_KEY_PREFIX + profileId;
+        redisTemplate.delete(key);
+    }
+
     public void deleteReviewSummaryCache(Long profileId) {
         String key = REVIEW_SUMMARY_KEY_PREFIX + profileId;
         redisTemplate.delete(key);

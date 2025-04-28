@@ -24,20 +24,24 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.reviewedProfile.user.id = :revieweeId")
     Optional<Double> calculateAverageRatingByRevieweeId(@Param("revieweeId") Long revieweeId);
 
+    @EntityGraph(attributePaths = {"reviewTags", "reviewer", "reviewedProfile", "chatRoom"})
     List<Review> findByChatRoom(ChatRoom chatRoom);
 
     boolean existsByChatRoomAndReviewer(ChatRoom chatRoom, User reviewer);
 
     // 프로필 리뷰 (최신순)
-    @EntityGraph(attributePaths = {"reviewTags", "reply"})
-    Page<Review> findByReviewedProfileOrderByCreatedAtDesc(Profile profile, Pageable pageable);
+    @Query(value = "SELECT r FROM Review r JOIN FETCH r.reviewTags WHERE r.reviewedProfile = :profile ORDER BY r.createdAt DESC",
+            countQuery = "SELECT COUNT(r) FROM Review r WHERE r.reviewedProfile = :profile")
+    Page<Review> findByReviewedProfileOrderByCreatedAtDesc(@Param("profile") Profile profile, Pageable pageable);
 
     // (높은 별점)
-    @EntityGraph(attributePaths = {"reviewTags", "reply"})
+    @Query(value = "SELECT r FROM Review r JOIN FETCH r.reviewTags WHERE r.reviewedProfile = :profile ORDER BY r.rating DESC",
+            countQuery = "SELECT COUNT(r) FROM Review r WHERE r.reviewedProfile = :profile")
     Page<Review> findByReviewedProfileOrderByRatingDesc(Profile profile, Pageable pageable);
 
     // (낮은 별점)
-    @EntityGraph(attributePaths = {"reviewTags", "reply"})
+    @Query(value = "SELECT r FROM Review r JOIN FETCH r.reviewTags WHERE r.reviewedProfile = :profile ORDER BY r.rating ASC",
+            countQuery = "SELECT COUNT(r) FROM Review r WHERE r.reviewedProfile = :profile")
     Page<Review> findByReviewedProfileOrderByRatingAsc(Profile profile, Pageable pageable);
 
 

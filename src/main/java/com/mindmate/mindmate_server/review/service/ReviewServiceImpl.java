@@ -76,7 +76,7 @@ public class ReviewServiceImpl implements ReviewService{
         addReviewTags(review, request.getTags(), tagType, reviewedProfile.getId());
 
         updateProfileMetrics(userId, request.getRating());
-        reviewRedisRepository.deleteReviewSummaryCache(reviewedProfile.getId());
+        reviewRedisRepository.deleteAllProfileCaches(reviewedProfile.getId());
 
         processReviewRewards(reviewer, reviewedUser, review.getId());
 
