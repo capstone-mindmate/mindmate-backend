@@ -2,14 +2,10 @@ package com.mindmate.mindmate_server.review.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
-import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.*;
 import com.mindmate.mindmate_server.notification.dto.ReviewCreatedNotificationEvent;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
-import com.mindmate.mindmate_server.point.domain.PointReasonType;
-import com.mindmate.mindmate_server.point.dto.PointAddRequest;
-import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.review.domain.Review;
 import com.mindmate.mindmate_server.review.domain.Tag;
 import com.mindmate.mindmate_server.review.domain.TagType;
@@ -18,8 +14,6 @@ import com.mindmate.mindmate_server.review.repository.ReviewRedisRepository;
 import com.mindmate.mindmate_server.review.repository.ReviewRepository;
 import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.User;
-import com.mindmate.mindmate_server.user.repository.ProfileRepository;
-import com.mindmate.mindmate_server.user.repository.UserRepository;
 import com.mindmate.mindmate_server.user.service.ProfileService;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -360,6 +354,12 @@ public class ReviewServiceImpl implements ReviewService{
             throw new CustomException(ReviewErrorCode.REVIEW_SUBMISSION_CONFLICT);
         }
 
+    }
+
+    @Override
+    public void findReviewById(Long reviewId){
+        reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new CustomException(ReviewErrorCode.REVIEW_NOT_FOUND));
     }
 
 }
