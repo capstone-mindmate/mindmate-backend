@@ -74,6 +74,16 @@ public class ReviewRedisRepository {
         redisTemplate.expire(key, CACHE_TTL_HOURS, TimeUnit.HOURS);
     }
 
+    public void decrementTagCount(Long profileId, String tagContent) {
+        String key = TAG_COUNTS_KEY_PREFIX + profileId;
+        Long currentCount = (Long) redisTemplate.opsForHash().get(key, tagContent);
+
+        if (currentCount != null && currentCount > 0) {
+            redisTemplate.opsForHash().increment(key, tagContent, -1);
+            redisTemplate.expire(key, CACHE_TTL_HOURS, TimeUnit.HOURS);
+        }
+    }
+
     public void deleteAllProfileCaches(Long profileId) {
         deleteReviewSummaryCache(profileId);
         deleteTagCountsCache(profileId);

@@ -11,8 +11,8 @@ import java.util.List;
 import java.util.Map;
 
 public interface ReviewRepositoryCustom {
-    Page<Review> findReviewsWithFilters(TagType tagType, Integer minRating, Integer maxRating, Pageable pageable);
-    Page<Review> findReviewsWithFiltersAndReportCheck(TagType tagType, Integer minRating, Integer maxRating, List<Long> reportedIds, Pageable pageable);
-    Map<Integer, Long> countByRatingBetween(LocalDateTime start, LocalDateTime end);
-    Map<Tag, Long> countByTagBetween(LocalDateTime start, LocalDateTime end);
+    Page<Review> findReviewsWithFilters(Integer minRating, Integer maxRating, Pageable pageable);
+
+    Page<Review> findReviewsWithFiltersAndReportCheck(Integer minRating, Integer maxRating,
+                                                      List<Long> reportedIds, Pageable pageable);
 }
