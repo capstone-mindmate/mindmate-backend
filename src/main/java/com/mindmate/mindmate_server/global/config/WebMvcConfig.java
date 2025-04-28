@@ -16,9 +16,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/images/**")
-                .addResourceLocations("file://" + imageDir);
+                .addResourceLocations("file:" + imageDir);
 
+
+//        registry.addResourceHandler("/emoticons/**")
+//                .addResourceLocations("file://" + emoticonDir);
         registry.addResourceHandler("/emoticons/**")
-                .addResourceLocations("file://" + emoticonDir);
+                .addResourceLocations("file:" + emoticonDir);
     }
 }

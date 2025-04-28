@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.chat.service;
 
+import com.mindmate.mindmate_server.chat.domain.MessageType;
 import com.mindmate.mindmate_server.chat.domain.ToastBoxKeyword;
 import com.mindmate.mindmate_server.chat.dto.ChatEventType;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
@@ -28,7 +29,7 @@ public class ToastBoxConsumer {
     public void processToastBox(ConsumerRecord<String, ChatMessageEvent> record) {
         ChatMessageEvent event = record.value();
 
-        if (event.isFiltered() || event.getMessageId() == null) {
+        if (event.isFiltered() || event.getMessageId() == null || event.getType() == MessageType.EMOTICON) {
             return;
         }
 

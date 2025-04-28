@@ -2,6 +2,9 @@ package com.mindmate.mindmate_server.chat.controller;
 
 import com.mindmate.mindmate_server.chat.dto.*;
 import com.mindmate.mindmate_server.chat.service.*;
+import com.mindmate.mindmate_server.emoticon.dto.EmoticonMessageRequest;
+import com.mindmate.mindmate_server.emoticon.dto.EmoticonMessageResponse;
+import com.mindmate.mindmate_server.emoticon.service.EmoticonService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -22,6 +25,8 @@ public class WebSocketChatController {
     private final ChatPresenceService chatPresenceService;
     private final MessageReactionService messageReactionService;
     private final CustomFormService customFormService;
+    private final EmoticonService emoticonService;
+
 
     private final ChatEventPublisher eventPublisher;
 
@@ -124,5 +129,16 @@ public class WebSocketChatController {
         Long userId = Long.parseLong(principal.getName());
         CustomFormResponse response = customFormService.respondToCustomForm(request.getFormId(), userId, request);
         eventPublisher.publishChatRoomEvent(request.getChatRoomId(), ChatEventType.CUSTOM_FORM_RESPONSE, response);
+    }
+
+    /**
+     * 이모티콘 전송
+     */
+    @MessageMapping("/chat.emoticon")
+    public void sendEmoticon(@Payload EmoticonMessageRequest request, Principal principal) {
+        Long userId = Long.parseLong(principal.getName());
+
+        EmoticonMessageResponse response = emoticonService.sendEmoticonMessage(userId, request);
+        eventPublisher.publishChatRoomEvent(request.getRoomId(), ChatEventType.EMOTICON, response);
     }
 }
