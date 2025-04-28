@@ -49,7 +49,6 @@ public class ReviewServiceImpl implements ReviewService{
     private final UserService userService;
     private final ProfileService profileService;
     private final NotificationService notificationService;
-    private final PointService pointService;
 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
@@ -61,20 +60,15 @@ public class ReviewServiceImpl implements ReviewService{
 
         validateChatRoomStatus(chatRoom);
 
-        // 리뷰 대상 결정ㅎ기
         User reviewedUser = getReviewedUser(chatRoom, reviewer);
-
-        // 자동으로 타입결정
         TagType tagType = getTagType(chatRoom, reviewer);
 
         checkValidateReview(chatRoom, reviewer, reviewedUser);
 
         Profile reviewedProfile = getReviewedProfile(reviewedUser);
-
         Review review = buildAndSaveReview(chatRoom, reviewer, reviewedProfile, request);
 
         addReviewTags(review, request.getTags(), tagType, reviewedProfile.getId());
-
         updateProfileMetrics(userId, request.getRating());
         reviewRedisRepository.deleteAllProfileCaches(reviewedProfile.getId());
 
@@ -89,7 +83,6 @@ public class ReviewServiceImpl implements ReviewService{
                 try {
                     Tag tag = Tag.fromContent(tagContent);
 
-                    // 리스너는 스피커, 스피커는 리스너 평가
                     if (tag.getType() != tagType) {
                         throw new CustomException(ReviewErrorCode.INVALID_REVIEW_TAGS);
                     }
@@ -162,14 +155,7 @@ public class ReviewServiceImpl implements ReviewService{
         Page<Review> reviews = fetchSortedReviews(profile, page, size, sortType);
 
         return reviews.map(ReviewResponse::from);
-        // sortType -> 인기/최신?? (별점 높은거랑 낮은거?)
-    } // 전부(리뷰+답글 다 포함) .. 흠 전체 세세하게 주기 vs 간략하게 주기
-
-    // -> 전부 줄 필요가 있나?
-
-    // 프로필에 보여줄 요약?? 평균별점+개수 + 태그
-
-    // todo : 목록 보여주는 방식 결정하기.
+    }
 
     private Page<Review> fetchSortedReviews(Profile profile, int page, int size, String sortType) {
         Pageable pageable;
@@ -236,12 +222,11 @@ public class ReviewServiceImpl implements ReviewService{
 
         Profile profile = profileService.findProfileById(profileId);
 
-        double avgRating = profile.getAvgRating(); //reviewRepository.getAverageRatingByProfile(profile);
+        double avgRating = profile.getAvgRating();
         long totalReviews = reviewRepository.countByReviewedProfile(profile);
 
         Map<String, Integer> tagCounts = getTagCounts(profileId, profile);
 
-        // 최근 리뷰 5개만 -> 이건 나중에 설정
         List<ReviewListResponse> recentReviewResponses = getRecentReviews(profile);
 
         return buildSummaryResponse(
@@ -265,7 +250,6 @@ public class ReviewServiceImpl implements ReviewService{
 
         Map<String, Integer> cachedTagCounts = reviewRedisRepository.getTagCounts(profileId);
 
-        // redis 조회하고 없으면 db
         if (cachedTagCounts != null && !cachedTagCounts.isEmpty()) {
             return cachedTagCounts;
         } else {

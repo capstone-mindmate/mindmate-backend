@@ -22,7 +22,7 @@ public class ReviewResponse {
     private String reviewerProfileImage;
     private int rating;
     private String comment;
-    private List<String> tags;  // 프론트에는 문자열로
+    private List<String> tags;
     private LocalDateTime createdAt;
 
     public static ReviewResponse from(Review review) {

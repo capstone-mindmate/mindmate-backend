@@ -16,5 +16,5 @@ public class ReviewRequest {
     private Long chatRoomId;
     private int rating;
     private String comment;
-    private List<String> tags; // 프론트엔드에서 문자열로 받기
+    private List<String> tags;
 }

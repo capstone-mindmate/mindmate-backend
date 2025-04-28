@@ -29,17 +29,14 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     boolean existsByChatRoomAndReviewer(ChatRoom chatRoom, User reviewer);
 
-    // 프로필 리뷰 (최신순)
     @Query(value = "SELECT r FROM Review r JOIN FETCH r.reviewTags WHERE r.reviewedProfile = :profile ORDER BY r.createdAt DESC",
             countQuery = "SELECT COUNT(r) FROM Review r WHERE r.reviewedProfile = :profile")
     Page<Review> findByReviewedProfileOrderByCreatedAtDesc(@Param("profile") Profile profile, Pageable pageable);
 
-    // (높은 별점)
     @Query(value = "SELECT r FROM Review r JOIN FETCH r.reviewTags WHERE r.reviewedProfile = :profile ORDER BY r.rating DESC",
             countQuery = "SELECT COUNT(r) FROM Review r WHERE r.reviewedProfile = :profile")
     Page<Review> findByReviewedProfileOrderByRatingDesc(Profile profile, Pageable pageable);
 
-    // (낮은 별점)
     @Query(value = "SELECT r FROM Review r JOIN FETCH r.reviewTags WHERE r.reviewedProfile = :profile ORDER BY r.rating ASC",
             countQuery = "SELECT COUNT(r) FROM Review r WHERE r.reviewedProfile = :profile")
     Page<Review> findByReviewedProfileOrderByRatingAsc(Profile profile, Pageable pageable);
@@ -47,9 +44,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     @Query("SELECT COUNT(r) FROM Review r WHERE r.reviewedProfile = :profile")
     long countByReviewedProfile(@Param("profile") Profile profile);
-
-//    @Query("SELECT AVG(r.rating) FROM Review r WHERE r.reviewedProfile = :profile")
-//    Double getAverageRatingByProfile(@Param("profile") Profile profile);
 
     @Query("SELECT rt.tagContent, COUNT(rt) FROM EvaluationTag rt " +
             "JOIN rt.review r WHERE r.reviewedProfile = :profile " +

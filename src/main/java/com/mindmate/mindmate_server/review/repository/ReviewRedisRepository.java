@@ -17,11 +17,9 @@ public class ReviewRedisRepository {
 
     private static final String REVIEW_SUMMARY_KEY_PREFIX = "review:summary:profile:";
     private static final String TAG_COUNTS_KEY_PREFIX = "review:tagCounts:profile:";
-
     private static final long CACHE_TTL_HOURS = 24;
 
 
-    // 고민 : 자주 조회되는 프로필만 캐싱?
     public void saveReviewSummary(Long profileId, ProfileReviewSummaryResponse summary) {
         String key = REVIEW_SUMMARY_KEY_PREFIX + profileId;
         redisTemplate.opsForValue().set(key, summary, CACHE_TTL_HOURS, TimeUnit.HOURS);
@@ -60,7 +58,7 @@ public class ReviewRedisRepository {
                 count = Integer.parseInt(value.toString());
             } else if (value instanceof Number) {
                 count = ((Number) value).intValue();
-            } else { // 다르면 스킵
+            } else {
                 continue;
             }
 
