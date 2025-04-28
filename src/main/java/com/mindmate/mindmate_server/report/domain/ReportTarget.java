@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 public enum ReportTarget {
     MATCHING,
     CHATROOM,
-    PROFILE
+    PROFILE,
     // MEGAZINE
+    REVIEW
 }
