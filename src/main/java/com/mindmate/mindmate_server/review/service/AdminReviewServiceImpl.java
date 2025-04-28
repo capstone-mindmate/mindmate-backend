@@ -26,7 +26,6 @@ public class AdminReviewServiceImpl implements AdminReviewService {
     private final ReviewRepository reviewRepository;
     private final ReviewRedisRepository reviewRedisRepository;
     private final ReportService reportService;
-    private final ProfileService profileService;
 
     @Override
     @Transactional(readOnly = true)
