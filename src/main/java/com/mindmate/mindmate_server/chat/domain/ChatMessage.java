@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.chat.domain;
 
+import com.mindmate.mindmate_server.emoticon.domain.Emoticon;
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import com.mindmate.mindmate_server.user.domain.User;
 import jakarta.persistence.*;
@@ -36,6 +37,10 @@ public class ChatMessage extends BaseTimeEntity {
     @JoinColumn(name = "custom_form_id")
     private CustomForm customForm;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "emoticon_id")
+    private Emoticon emoticon;
+
     @Column(columnDefinition = "TEXT")
     private String content;
     
@@ -65,6 +70,14 @@ public class ChatMessage extends BaseTimeEntity {
 
     public void setCustomForm(CustomForm customForm) {
         this.customForm = customForm;
+    }
+
+    public boolean isEmoticon() {
+        return this.type == MessageType.EMOTICON;
+    }
+
+    public void setEmoticon(Emoticon emoticon) {
+        this.emoticon = emoticon;
     }
 
     public void updateEncryptedContent(String encryptedContent) {
