@@ -3,20 +3,24 @@ package com.mindmate.mindmate_server.chat.service;
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
-import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
-import com.mindmate.mindmate_server.chat.dto.ChatRoomDetailResponse;
-import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
+import com.mindmate.mindmate_server.chat.dto.*;
 import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.matching.domain.Matching;
+import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.User;
+import com.mindmate.mindmate_server.user.service.ProfileService;
 import com.mindmate.mindmate_server.user.service.UserService;
+import org.assertj.core.util.Streams;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,12 +30,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.kafka.core.KafkaTemplate;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -42,40 +48,53 @@ class ChatRoomServiceTest {
     @Mock private ChatRoomRepository chatRoomRepository;
     @Mock private ChatMessageService chatMessageService;
     @Mock private UserService userService;
+    @Mock private NotificationService notificationService;
+    @Mock private ProfileService profileService;
+    @Mock private KafkaTemplate<String, ChatRoomCloseEvent> kafkaTemplate;
 
     @InjectMocks
     private ChatRoomServiceImpl chatRoomService;
 
-    private Long userId;
-    private Long roomId;
+    private final Long userId = 1L;
+    private final Long roomId = 100L;
     private ChatRoom mockChatRoom;
     private User mockUser;
+    private User mockListener;
+    private User mockSpeaker;
+    private Matching mockMatching;
+    private Profile mockProfile;
 
     @BeforeEach
     void setup() {
-        userId = 1L;
-        roomId = 100L;
-
         // Mock 객체 생성
         mockUser = mock(User.class);
+        mockListener = mock(User.class);
+        mockSpeaker = mock(User.class);
         mockChatRoom = mock(ChatRoom.class);
+        mockMatching = mock(Matching.class);
+        mockProfile = mock(Profile.class);
 
         when(mockUser.getId()).thenReturn(userId);
         when(mockChatRoom.getId()).thenReturn(roomId);
+        when(mockSpeaker.getId()).thenReturn(2L);
+        when(mockChatRoom.getId()).thenReturn(roomId);
+        when(mockMatching.getId()).thenReturn(1L);
 
         when(chatRoomRepository.findById(roomId)).thenReturn(Optional.of(mockChatRoom));
         when(userService.findUserById(userId)).thenReturn(mockUser);
-
-        Matching mockMatching = mock(Matching.class);
-        when(mockMatching.getId()).thenReturn(1L);
         when(mockChatRoom.getMatching()).thenReturn(mockMatching);
+        when(mockChatRoom.getListener()).thenReturn(mockListener);
+        when(mockChatRoom.getSpeaker()).thenReturn(mockSpeaker);
 
-        Profile mockProfile = mock(Profile.class);
-        when(mockProfile.getNickname()).thenReturn("Test User");
-        when(mockUser.getProfile()).thenReturn(mockProfile);
+        Profile mockListenerProfile = mock(Profile.class);
+        Profile mockSpeakerProfile = mock(Profile.class);
+        when(mockListenerProfile.getNickname()).thenReturn("Listener");
+        when(mockSpeakerProfile.getNickname()).thenReturn("Speaker");
+        when(mockListener.getProfile()).thenReturn(mockListenerProfile);
+        when(mockSpeaker.getProfile()).thenReturn(mockSpeakerProfile);
 
-        when(chatRoomRepository.findAllByParticipant(anyLong(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(Collections.singletonList(mockChatRoom)));
+        when(chatRoomRepository.findAllByUserId(anyLong(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.singletonList(new ChatRoomResponse())));
     }
 
     @Nested
@@ -165,12 +184,14 @@ class ChatRoomServiceTest {
         // given
         when(mockChatRoom.getChatRoomStatus()).thenReturn(ChatRoomStatus.ACTIVE);
         when(mockChatRoom.isListener(mockUser)).thenReturn(true);
+        when(mockChatRoom.isSpeaker(mockUser)).thenReturn(false);
 
         // when
         chatRoomService.closeChatRoom(userId, roomId);
 
         // then
         verify(mockChatRoom).requestClosure(mockUser);
+        verify(chatRoomRepository).save(mockChatRoom);
     }
 
     @Nested
@@ -188,6 +209,9 @@ class ChatRoomServiceTest {
 
             // then
             verify(mockChatRoom).acceptClosure();
+            verify(profileService).incrementCounselingCount(mockListener.getId());
+            verify(chatRoomRepository).save(mockChatRoom);
+            verify(kafkaTemplate).send(eq("chat-room-close-topic"), anyString(), any(ChatRoomCloseEvent.class));
         }
 
         @Test
@@ -202,6 +226,8 @@ class ChatRoomServiceTest {
 
             // then
             verify(mockChatRoom).rejectClosure();
+            verify(chatRoomRepository).save(mockChatRoom);
+            verify(notificationService).processNotification(any(ChatRoomNotificationEvent.class));
         }
 
         @Test
@@ -231,101 +257,87 @@ class ChatRoomServiceTest {
     @Nested
     @DisplayName("초기 메시지 로드")
     class GetInitialMessagesTest {
-        @Test
-        @DisplayName("첫 입장 - 메시지가 없는 경우")
-        void getInitialMessages_NoMessages() {
+        @ParameterizedTest
+        @DisplayName("메시지 로드 시나리오")
+        @MethodSource("messageLoadScenarios")
+        void getInitialMessages_Scenarios(
+                boolean isListener,
+                long lastReadMessageId,
+                long totalMessages,
+                boolean hasLatestMessage,
+                int expectedMessageCount) {
             // given
-            when(mockChatRoom.isListener(mockUser)).thenReturn(true);
-            when(mockChatRoom.getListenerLastReadMessageId()).thenReturn(0L);
-            when(chatMessageService.countMessagesByChatRoomId(roomId)).thenReturn(0L);
+            when(mockChatRoom.isListener(mockUser)).thenReturn(isListener);
+
+            if (isListener) {
+                when(mockChatRoom.getListenerLastReadMessageId()).thenReturn(lastReadMessageId);
+            } else {
+                when(mockChatRoom.getSpeakerLastReadMessageId()).thenReturn(lastReadMessageId);
+            }
+            when(chatMessageService.countMessagesByChatRoomId(roomId)).thenReturn(totalMessages);
+
+            if (hasLatestMessage) {
+                ChatMessage latestMessage = createMockChatMessage(totalMessages);
+                when(chatMessageService.findLatestMessageByChatRoomId(roomId)).thenReturn(Optional.of(latestMessage));
+            }
+
+            setupMessageMocking(lastReadMessageId, totalMessages);
 
             // when
             ChatRoomDetailResponse result = chatRoomService.getInitialMessages(userId, roomId, 10);
 
             // then
             assertNotNull(result);
-            assertTrue(result.getMessages().isEmpty());
+            assertEquals(expectedMessageCount, result.getMessages().size());
+
+            if (totalMessages > 0) {
+                verify(mockChatRoom).markAsRead(mockUser, totalMessages);
+                verify(chatRoomRepository).save(mockChatRoom);
+            }
         }
 
-        @Test
-        @DisplayName("첫 입장 - 모든 메시지 로드")
-        void getInitialMessages_FirstAccess() {
-            // given
-            when(mockChatRoom.isListener(mockUser)).thenReturn(true);
-            when(mockChatRoom.getListenerLastReadMessageId()).thenReturn(0L);
-            when(chatMessageService.countMessagesByChatRoomId(roomId)).thenReturn(5L);
-
-            List<ChatMessage> messages = IntStream.range(1, 6)
-                    .mapToObj(i -> createMockChatMessage((long) i))
-                    .collect(Collectors.toList());
-            when(chatMessageService.findAllByChatRoomIdOrderByIdAsc(roomId)).thenReturn(messages);
-
-            // when
-            ChatRoomDetailResponse result = chatRoomService.getInitialMessages(userId, roomId, 10);
-
-            // then
-            assertNotNull(result);
-            assertEquals(5, result.getMessages().size());
-            verify(mockChatRoom).markAsRead(mockUser, 5L);
-            verify(chatRoomRepository).save(mockChatRoom);
+        static Stream<Arguments> messageLoadScenarios() {
+            return Stream.of(
+                    // isListener, lastReadMessageId, totalMessages, hasLatestMessage, expectedMessageCount
+                    Arguments.of(true, 0L, 0L, false, 0),      // 메시지가 없는 경우
+                    Arguments.of(true, 0L, 5L, false, 5),      // 첫 입장 - 모든 메시지 로드
+                    Arguments.of(true, 5L, 10L, true, 10),     // 재접속 - 읽지 않은 메시지 존재
+                    Arguments.of(false, 10L, 10L, true, 10)    // 재접속 - 모든 메시지 읽음
+            );
         }
 
-        @Test
-        @DisplayName("재접속 - 읽지 않은 메시지가 존재")
-        void getInitialMessages_WithUnreadMessages() {
-            // given
-            when(mockChatRoom.isListener(mockUser)).thenReturn(true);
-            when(mockChatRoom.getListenerLastReadMessageId()).thenReturn(5L);
-            when(chatMessageService.countMessagesByChatRoomId(roomId)).thenReturn(10L);
+        private void setupMessageMocking(long lastReadMessageId, long totalMessages) {
+            if (totalMessages == 0) {
+                return;
+            }
 
-            ChatMessage latestMessage = createMockChatMessage(10L);
-            when(chatMessageService.findLatestMessageByChatRoomId(roomId)).thenReturn(Optional.of(latestMessage));
+            if (lastReadMessageId == 0) {
+                // 첫 접속
+                List<ChatMessage> allMessages = IntStream.range(1, (int) totalMessages + 1)
+                        .mapToObj(i -> createMockChatMessage((long) i))
+                        .collect(Collectors.toList());
 
-            List<ChatMessage> previousMessages = IntStream.range(1, 6)
-                    .mapToObj(i -> createMockChatMessage((long) i))
-                    .collect(Collectors.toList());
-            when(chatMessageService.findMessagesBeforeId(eq(roomId), eq(5L), eq(10))).thenReturn(previousMessages);
+                when(chatMessageService.findAllByChatRoomIdOrderByIdAsc(roomId)).thenReturn(allMessages);
+            } else if (lastReadMessageId < totalMessages) {
+                // 읽지 않은 메시지가 있는 케이스
+                List<ChatMessage> previousMessages = IntStream.range(1, (int)lastReadMessageId + 1)
+                        .mapToObj(i -> createMockChatMessage((long)i))
+                        .collect(Collectors.toList());
+                when(chatMessageService.findMessagesBeforeId(eq(roomId), eq(lastReadMessageId), eq(10)))
+                        .thenReturn(previousMessages);
 
-            List<ChatMessage> newMessages = IntStream.range(6, 11)
-                    .mapToObj(i -> createMockChatMessage((long) i))
-                    .collect(Collectors.toList());
-            when(chatMessageService.findMessagesAfterOrEqualId(roomId, 5L)).thenReturn(newMessages);
-
-            // when
-            ChatRoomDetailResponse result = chatRoomService.getInitialMessages(userId, roomId, 10);
-
-            // then
-            assertNotNull(result);
-            assertEquals(10, result.getMessages().size());
-            verify(mockChatRoom).markAsRead(mockUser, 10L);
-            verify(chatRoomRepository).save(mockChatRoom);
-        }
-
-
-        @Test
-        @DisplayName("재접속 - 읽지 않은 메시지가 존재하지 않음")
-        void getInitialMessages_AllRead() {
-            // given
-            when(mockChatRoom.isListener(mockUser)).thenReturn(true);
-            when(mockChatRoom.getListenerLastReadMessageId()).thenReturn(10L);
-            when(chatMessageService.countMessagesByChatRoomId(roomId)).thenReturn(10L);
-
-            ChatMessage latestMessage = createMockChatMessage(10L);
-            when(chatMessageService.findLatestMessageByChatRoomId(roomId)).thenReturn(Optional.of(latestMessage));
-
-            List<ChatMessage> recentMessages = IntStream.range(1, 11)
-                    .mapToObj(i -> createMockChatMessage((long) i))
-                    .collect(Collectors.toList());
-            when(chatMessageService.findRecentMessages(roomId, 10)).thenReturn(recentMessages);
-
-            // when
-            ChatRoomDetailResponse result = chatRoomService.getInitialMessages(userId, roomId, 10);
-
-            // then
-            assertNotNull(result);
-            assertEquals(10, result.getMessages().size());
-            verify(mockChatRoom).markAsRead(mockUser, 10L);
-            verify(chatRoomRepository).save(mockChatRoom);
+                List<ChatMessage> newMessages = IntStream.rangeClosed((int)lastReadMessageId + 1, (int)totalMessages)
+                        .mapToObj(i -> createMockChatMessage((long)i))
+                        .collect(Collectors.toList());
+                when(chatMessageService.findMessagesAfterOrEqualId(roomId, lastReadMessageId))
+                        .thenReturn(newMessages);
+            } else {
+                // 모든 메시지를 읽은 케이스
+                List<ChatMessage> recentMessages = IntStream.range(1, (int)totalMessages + 1)
+                        .mapToObj(i -> createMockChatMessage((long)i))
+                        .collect(Collectors.toList());
+                when(chatMessageService.findRecentMessages(roomId, 10)).thenReturn(recentMessages);
+            }
         }
     }
 
@@ -352,40 +364,57 @@ class ChatRoomServiceTest {
     @Nested
     @DisplayName("채팅방 활동 검증")
     class ValidateChatActivityTest {
-        @Test
-        @DisplayName("유효한 채팅방 접근")
-        void validateChatActivity_Success() {
+        @ParameterizedTest
+        @DisplayName("채팅방 활동 검증 시나리오")
+        @MethodSource("chatActivityScenarios")
+        void validateChatActivity_Scenarios(
+                ChatRoomStatus status,
+                boolean isParticipant,
+                boolean shouldThrowException) {
             // given
-            when(mockChatRoom.getChatRoomStatus()).thenReturn(ChatRoomStatus.ACTIVE);
-            when(mockChatRoom.isListener(mockUser)).thenReturn(true);
+            when(mockChatRoom.getChatRoomStatus()).thenReturn(status);
+            when(mockChatRoom.isListener(mockUser)).thenReturn(isParticipant);
+            when(mockChatRoom.isSpeaker(mockUser)).thenReturn(isParticipant);
 
             // when & then
-            assertDoesNotThrow(() -> chatRoomService.validateChatActivity(userId, roomId));
+            if (shouldThrowException) {
+                assertThrows(CustomException.class, () -> chatRoomService.validateChatActivity(userId, roomId));
+            } else {
+                assertDoesNotThrow(() -> chatRoomService.validateChatActivity(userId, roomId));
+            }
         }
 
-        @Test
-        @DisplayName("비활성화된 채팅방 접근")
-        void validateChatActivity_InactiveRoom() {
-            // given
-            when(mockChatRoom.getChatRoomStatus()).thenReturn(ChatRoomStatus.CLOSED);
-            when(mockChatRoom.isListener(mockUser)).thenReturn(true);
-
-            // when & then
-            assertThrows(CustomException.class, () -> chatRoomService.validateChatActivity(userId, roomId));
-        }
-
-        @Test
-        @DisplayName("권한 없는 사용자 접근")
-        void validateChatActivity_Unauthorized() {
-            // given
-            when(mockChatRoom.getChatRoomStatus()).thenReturn(ChatRoomStatus.ACTIVE);
-            when(mockChatRoom.isListener(mockUser)).thenReturn(false);
-            when(mockChatRoom.isSpeaker(mockUser)).thenReturn(false);
-
-            // when & then
-            assertThrows(CustomException.class, () -> chatRoomService.validateChatActivity(userId, roomId));
+        static Stream<Arguments> chatActivityScenarios() {
+            return Stream.of(
+                    // status, isParticipant, shouldThrowException
+                    Arguments.of(ChatRoomStatus.ACTIVE, true, false), // 정상 케이스
+                    Arguments.of(ChatRoomStatus.CLOSED, true, true),  // 비활성화된 채팅방
+                    Arguments.of(ChatRoomStatus.ACTIVE, false, true)  // 권한 없는 사용자
+            );
         }
     }
+
+    @Test
+    @DisplayName("채팅방 읽기 검증")
+    void validateChatRead_Success() {
+        // given
+        when(mockChatRoom.isListener(mockUser)).thenReturn(true);
+
+        // when & then
+        assertDoesNotThrow(() -> chatRoomService.validateChatRead(userId, roomId));
+    }
+
+    @Test
+    @DisplayName("채팅방 읽기 검증 실패 - 권한 없음")
+    void validateChatRead_Unauthorized() {
+        // given
+        when(mockChatRoom.isListener(mockUser)).thenReturn(false);
+        when(mockChatRoom.isSpeaker(mockUser)).thenReturn(false);
+
+        // when & then
+        assertThrows(CustomException.class, () -> chatRoomService.validateChatRead(userId, roomId));
+    }
+
 
     @Test
     @DisplayName("채팅방 저장")
@@ -399,6 +428,20 @@ class ChatRoomServiceTest {
         // then
         assertNotNull(result);
         verify(chatRoomRepository).save(mockChatRoom);
+    }
+
+    @Test
+    @DisplayName("채팅방 생성")
+    void createChatRoom_Success() {
+        // given
+        when(chatRoomRepository.save(any(ChatRoom.class))).thenReturn(mockChatRoom);
+
+        // when
+        ChatRoom result = chatRoomService.createChatRoom(mockMatching);
+
+        // then
+        assertNotNull(result);
+        verify(chatRoomRepository).save(any(ChatRoom.class));
     }
 
     private ChatMessage createMockChatMessage(Long id) {
