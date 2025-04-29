@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.magazine.dto;
 
+import com.mindmate.mindmate_server.magazine.domain.MagazineStatus;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import com.mindmate.mindmate_server.magazine.domain.Magazine;
 import lombok.Builder;
@@ -14,38 +15,36 @@ import java.util.stream.Collectors;
 public class MagazineDetailResponse {
     private Long id;
     private String title;
-    private String content;
-    private MatchingCategory category;
+    private List<MagazineContentResponse> contents;
     private String authorName;
     private Long authorId;
     private int likeCount;
-    private boolean isAuthor;
-    private boolean isLiked;
-    private List<ImageResponse> images;
+    private MagazineStatus status;
+    private MatchingCategory category;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    private boolean isAuthor;
+    private boolean isLiked;
+
     public static MagazineDetailResponse from(Magazine magazine, boolean isAuthor, boolean isLiked) {
-        List<ImageResponse> imageResponses = magazine.getImages().stream()
-                .map(image -> ImageResponse.builder()
-                        .id(image.getId())
-                        .imageUrl(image.getImageUrl())
-                        .build())
+        List<MagazineContentResponse> contentResponses = magazine.getContents().stream()
+                .map(MagazineContentResponse::from)
                 .collect(Collectors.toList());
 
         return MagazineDetailResponse.builder()
                 .id(magazine.getId())
                 .title(magazine.getTitle())
-                .content(magazine.getContent())
-                .category(magazine.getCategory())
+                .contents(contentResponses)
                 .authorName(magazine.getAuthor().getProfile().getNickname())
                 .authorId(magazine.getAuthor().getId())
                 .likeCount(magazine.getLikeCount())
-                .isAuthor(isAuthor)
-                .isLiked(isLiked)
-                .images(imageResponses)
+                .status(magazine.getMagazineStatus())
+                .category(magazine.getCategory())
                 .createdAt(magazine.getCreatedAt())
                 .updatedAt(magazine.getModifiedAt())
+                .isAuthor(isAuthor)
+                .isLiked(isLiked)
                 .build();
     }
 }

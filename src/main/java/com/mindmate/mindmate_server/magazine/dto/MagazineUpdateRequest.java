@@ -14,11 +14,9 @@ public class MagazineUpdateRequest {
     @NotBlank
     private String title;
 
-    @NotBlank
-    private String content;
-
     @NotNull
     private MatchingCategory category;
 
-    private List<Long> imageIds;
+    @NotNull
+    private List<MagazineContentDTO> contents;
 }
