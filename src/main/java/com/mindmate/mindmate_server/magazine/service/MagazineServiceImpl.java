@@ -1,14 +1,13 @@
 package com.mindmate.mindmate_server.magazine.service;
 
+import com.mindmate.mindmate_server.emoticon.domain.Emoticon;
+import com.mindmate.mindmate_server.emoticon.service.EmoticonService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MagazineErrorCode;
 import com.mindmate.mindmate_server.global.util.SlackNotifier;
-import com.mindmate.mindmate_server.magazine.domain.Magazine;
-import com.mindmate.mindmate_server.magazine.domain.MagazineImage;
-import com.mindmate.mindmate_server.magazine.domain.MagazineLike;
-import com.mindmate.mindmate_server.magazine.domain.MagazineStatus;
+import com.mindmate.mindmate_server.magazine.domain.*;
 import com.mindmate.mindmate_server.magazine.dto.*;
-import com.mindmate.mindmate_server.magazine.repository.MagazineImageRepository;
+import com.mindmate.mindmate_server.magazine.repository.MagazineContentRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineLikeRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineRepository;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
@@ -18,6 +17,7 @@ import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
+import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -27,10 +27,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -41,10 +39,11 @@ public class MagazineServiceImpl implements MagazineService {
     private final MagazineImageService magazineImageService;
     private final NotificationService notificationService;
     private final MagazinePopularityService magazinePopularityService;
+    private final EmoticonService emoticonService;
 
     private final MagazineRepository magazineRepository;
     private final MagazineLikeRepository magazineLikeRepository;
-    private final MagazineImageRepository magazineImageRepository;
+    private final MagazineContentRepository magazineContentRepository;
 
     private final KafkaTemplate<String, MagazineEngagementEvent> kafkaTemplate;
     private final SlackNotifier slackNotifier;
@@ -58,30 +57,15 @@ public class MagazineServiceImpl implements MagazineService {
 
         Magazine magazine = Magazine.builder()
                 .title(request.getTitle())
-                .content(request.getContent())
                 .author(user)
                 .build();
 
         magazine.setCategory(request.getCategory());
         magazine.setStatus(MagazineStatus.PENDING);
 
-        if (request.getImageIds() != null && !request.getImageIds().isEmpty()) {
-            if (request.getImageIds().size() > MAX_IMAGE_SIZE) {
-                throw new CustomException(MagazineErrorCode.TOO_MANY_IMAGES);
-            }
-
-            List<MagazineImage> images = magazineImageRepository.findAllById(request.getImageIds());
-
-            // 이미지가 다른 매거진에 연결되어 있는지 확인
-            for (MagazineImage image : images) {
-                if (image.getMagazine() != null) {
-                    throw new CustomException(MagazineErrorCode.MAGAZINE_IMAGE_ALREADY_IN_USE);
-                }
-                magazine.addImage(image);
-            }
-        }
-
         Magazine savedMagazine = magazineRepository.save(magazine);
+        processContents(savedMagazine, request.getContents());
+
         slackNotifier.sendMagazineCreateAlert(savedMagazine, user);
         return MagazineResponse.from(savedMagazine);
     }
@@ -96,37 +80,14 @@ public class MagazineServiceImpl implements MagazineService {
             throw new CustomException(MagazineErrorCode.MAGAZINE_ACCESS_DENIED);
         }
 
-        magazine.update(request.getTitle(), request.getContent(), request.getCategory());
-
-        // 해당 이미지가 다른 곳에 연결되어 있는 경우
-        if (request.getImageIds() != null) {
-            List<MagazineImage> existingImages = new ArrayList<>(magazine.getImages());
-            Set<Long> newImageIds = new HashSet<>(request.getImageIds());
-
-            // 기존 존재 이미지가 포함되지 않은 경우 -> 삭제
-            for (MagazineImage image : existingImages) {
-                if (!newImageIds.contains(image.getId())) {
-                    magazine.removeImage(image);
-                    magazineImageService.deleteImage(image.getStoredName());
-                    magazineImageRepository.delete(image);
-                }
-            }
-
-            // 새 이미지 연결
-            List<MagazineImage> newImages = magazineImageRepository.findAllById(request.getImageIds());
-            for (MagazineImage image : newImages) {
-                if (image.getMagazine() != null && !image.getMagazine().equals(magazine)) {
-                    throw new CustomException(MagazineErrorCode.MAGAZINE_IMAGE_ALREADY_IN_USE);
-                }
-
-                if (image.getMagazine() == null) {
-                    magazine.addImage(image);
-                }
-            }
-        }
-
+        magazine.update(request.getTitle(), request.getCategory());
+        
+        // todo: 다 지우고 처리하는게 맞나??
+        magazineContentRepository.deleteByMagazine(magazine);
+        magazine.clearContents();
+        processContents(magazine, request.getContents());
+        
         slackNotifier.sendMagazineUpdateAlert(magazine, user);
-
         return MagazineResponse.from(magazine);
     }
 
@@ -144,8 +105,10 @@ public class MagazineServiceImpl implements MagazineService {
             throw new CustomException(MagazineErrorCode.MAGAZINE_ACCESS_DENIED);
         }
 
-        for (MagazineImage image : magazine.getImages()) {
-            magazineImageService.deleteImage(image.getStoredName());
+        for (MagazineContent content : magazine.getContents()) {
+            if (content.getType() == MagazineContentType.IMAGE && content.getImage() != null) {
+                magazineImageService.deleteImage(content.getImage().getStoredName());
+            }
         }
 
         magazinePopularityService.removePopularityScores(magazineId, magazine.getCategory());
@@ -275,6 +238,66 @@ public class MagazineServiceImpl implements MagazineService {
     @Override
     public List<MagazineResponse> getPopularMagazinesByCategory(MatchingCategory category, int limit) {
         return magazinePopularityService.getPopularMagazinesByCategory(category, limit);
+    }
+    
+    private void processContents(Magazine magazine, List<MagazineContentDTO> contents) {
+        int order = 0;
+        for (MagazineContentDTO dto : contents) {
+            MagazineContent content;
+            
+            switch (dto.getType()) {
+                case TEXT:
+                    if (StringUtils.isBlank(dto.getText())) {
+                        continue;
+                    }
+                    content = MagazineContent.builder()
+                            .magazine(magazine)
+                            .type(MagazineContentType.TEXT)
+                            .text(dto.getText())
+                            .contentOrder(order++)
+                            .build();
+                    break;
+
+                case IMAGE:
+                    if (dto.getImageId() == null) {
+                        continue;
+                    }
+                    MagazineImage image = magazineImageService.findMagazineImageById(dto.getImageId());
+                    Optional<MagazineContent> usedContent = magazineContentRepository
+                            .findByImageAndType(image, MagazineContentType.IMAGE);
+
+                    if (usedContent.isPresent() && !usedContent.get().getMagazine().equals(magazine)) {
+                        throw new CustomException(MagazineErrorCode.MAGAZINE_IMAGE_ALREADY_IN_USE);
+                    }
+
+                    content = MagazineContent.builder()
+                            .magazine(magazine)
+                            .type(MagazineContentType.IMAGE)
+                            .image(image)
+                            .contentOrder(order++)
+                            .build();
+                    break;
+
+                case EMOTICON:
+                    if (dto.getEmoticonId() == null) {
+                        continue;
+                    }
+                    Emoticon emoticon = emoticonService.findEmoticonById(dto.getEmoticonId());
+
+                    content = MagazineContent.builder()
+                            .magazine(magazine)
+                            .type(MagazineContentType.EMOTICON)
+                            .emoticon(emoticon)
+                            .contentOrder(order++)
+                            .build();
+                    break;
+
+                default:
+                    continue;
+            }
+            magazine.addContent(content);
+            magazineContentRepository.save(content);
+        }
     }
 
 }

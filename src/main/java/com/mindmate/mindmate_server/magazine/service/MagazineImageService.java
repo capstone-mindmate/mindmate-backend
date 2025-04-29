@@ -4,8 +4,10 @@ import com.mindmate.mindmate_server.global.dto.FileInfo;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MagazineErrorCode;
 import com.mindmate.mindmate_server.global.service.FileStorageService;
+import com.mindmate.mindmate_server.magazine.domain.MagazineContent;
 import com.mindmate.mindmate_server.magazine.domain.MagazineImage;
 import com.mindmate.mindmate_server.magazine.dto.ImageResponse;
+import com.mindmate.mindmate_server.magazine.repository.MagazineContentRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineImageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +27,7 @@ import static com.mindmate.mindmate_server.magazine.service.MagazineServiceImpl.
 @RequiredArgsConstructor
 public class MagazineImageService {
     private final MagazineImageRepository magazineImageRepository;
+    private final MagazineContentRepository magazineContentRepository;
     private final FileStorageService fileStorageService;
     public static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 최대 파일 크기 10mb
 
@@ -96,11 +99,13 @@ public class MagazineImageService {
 
     @Transactional
     public void deleteUnusedImages() {
-        List<MagazineImage> unusedImages = magazineImageRepository.findByMagazineIsNullAndCreatedAtBefore(LocalDateTime.now().minusDays(1));
-
-        for (MagazineImage image : unusedImages) {
-            deleteImage(image.getStoredName());
-            magazineImageRepository.delete(image);
+        List<MagazineImage> candidates = magazineImageRepository.findByCreatedAtBefore(LocalDateTime.now().minusDays(1));
+        for (MagazineImage image : candidates) {
+            boolean used = magazineContentRepository.existsByImage(image);
+            if (!used) {
+                deleteImage(image.getStoredName());
+                magazineImageRepository.delete(image);
+            }
         }
     }
 
@@ -108,11 +113,16 @@ public class MagazineImageService {
     public void deleteImageById(Long userId, Long imageId) {
         MagazineImage magazineImage = findMagazineImageById(imageId);
 
-        if (magazineImage.getMagazine() != null) {
-            if (!magazineImage.getMagazine().getAuthor().getId().equals(userId)) {
+        List<MagazineContent> contents = magazineContentRepository.findByImage(magazineImage);
+        if (!contents.isEmpty()) {
+            boolean isOwner = contents.stream()
+                    .map(c -> c.getMagazine().getAuthor().getId())
+                    .anyMatch(id -> id.equals(userId));
+            if (!isOwner) {
                 throw new CustomException(MagazineErrorCode.MAGAZINE_IMAGE_ACCESS_DENIED);
             }
         }
+
         deleteImage(magazineImage.getStoredName());
         magazineImageRepository.delete(magazineImage);
     }
@@ -121,4 +131,5 @@ public class MagazineImageService {
         return magazineImageRepository.findById(imageId)
                 .orElseThrow(() -> new CustomException(MagazineErrorCode.MAGAZINE_IMAGE_NOT_FOUND));
     }
+
 }
