@@ -84,6 +84,8 @@ public class ResponseTimeCalculationConsumer {
 
             updateUserResponseTimes(event.getSpeakerId(), userResponseTimes.get(event.getSpeakerId()));
             updateUserResponseTimes(event.getListenerId(), userResponseTimes.get(event.getListenerId()));
+            profileService.incrementCounselingCount(event.getSpeakerId());
+            profileService.incrementCounselingCount(event.getListenerId());
         } catch (Exception e) {
             log.error("Error calculating response times: {}", e.getMessage(), e);
         }
