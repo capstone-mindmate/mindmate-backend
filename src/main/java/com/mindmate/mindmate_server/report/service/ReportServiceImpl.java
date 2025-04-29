@@ -10,6 +10,7 @@ import com.mindmate.mindmate_server.report.domain.ReportTarget;
 import com.mindmate.mindmate_server.report.dto.ReportRequest;
 import com.mindmate.mindmate_server.report.dto.ReportResponse;
 import com.mindmate.mindmate_server.report.repository.ReportRepository;
+import com.mindmate.mindmate_server.review.service.ReviewService;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.AdminUserSuspensionService;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +28,7 @@ public class ReportServiceImpl implements ReportService {
     private final UserService userService;
     private final MatchingService matchingService;
     private final ChatRoomService chatRoomService;
+    private final ReviewService reviewService;
     private final AdminUserSuspensionService suspensionService;
 
     private final ReportRepository reportRepository;
@@ -99,6 +102,9 @@ public class ReportServiceImpl implements ReportService {
                 break;
             case PROFILE:
                 break;
+            case REVIEW:
+                reviewService.findReviewById(targetId);
+                break;
         }
     }
 
@@ -113,6 +119,12 @@ public class ReportServiceImpl implements ReportService {
         return reportRepository.findById(reportId)
                 .orElseThrow(() -> new CustomException(ReportErrorCode.REPORT_NOT_FOUND));
 
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> findReportedReviewIds() {
+        return reportRepository.findReportedReviewIds();
     }
 
     private void checkDuplicateReport(User reporter, User reportedUser, ReportTarget target, Long targetId) {

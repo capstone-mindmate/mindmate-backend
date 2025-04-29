@@ -91,6 +91,19 @@ public class Profile extends BaseTimeEntity {
         this.ratingSum += rating;
     }
 
+    public void decrementCounselingCount() {
+        if (this.counselingCount > 0) {
+            this.counselingCount--;
+        }
+    }
+
+    public void subtractRating(double rating) {
+        this.ratingSum -= rating;
+        if (this.ratingSum < 0) {
+            this.ratingSum = 0;
+        }
+    }
+
     public void addMultipleResponseTimes(List<Integer> responseTimes) {
         if (responseTimes.isEmpty()) {
             return;

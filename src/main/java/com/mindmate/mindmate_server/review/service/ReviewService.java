@@ -27,4 +27,6 @@ public interface ReviewService {
     List<ReviewResponse> getRecentReviewsByUserId(Long userId, int limit);
 
     Double getAverageRatingByUserId(Long userId);
+
+    void findReviewById(Long reviewId);
 }

@@ -25,6 +25,7 @@ public interface ProfileService {
 
     void incrementCounselingCount(Long userId);
 
+    void updateAvgRating(Long userId, double rating);
 
     void updateResponseTimes(Long userId, List<Integer> responseTimes);
 

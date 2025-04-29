@@ -20,9 +20,10 @@ public class ReviewResponse {
     private Long reviewerId;
     private String reviewerNickname;
     private String reviewerProfileImage;
+    private Long reviewedProfileId; // 관리자용
     private int rating;
     private String comment;
-    private List<String> tags;  // 프론트에는 문자열로
+    private List<String> tags;
     private LocalDateTime createdAt;
 
     public static ReviewResponse from(Review review) {
@@ -34,6 +35,7 @@ public class ReviewResponse {
                         review.getReviewer().getProfile().getNickname() : "Unknown")
                 .reviewerProfileImage(review.getReviewer() != null && review.getReviewer().getProfile() != null ?
                         review.getReviewer().getProfile().getProfileImage() : null)
+                .reviewedProfileId(review.getReviewedProfile() != null ? review.getReviewedProfile().getId() : null)
                 .rating(review.getRating())
                 .comment(review.getComment())
                 .createdAt(review.getCreatedAt());

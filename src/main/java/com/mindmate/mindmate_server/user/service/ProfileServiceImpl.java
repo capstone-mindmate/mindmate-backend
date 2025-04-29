@@ -4,9 +4,7 @@ import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
 import com.mindmate.mindmate_server.matching.service.MatchingService;
 import com.mindmate.mindmate_server.point.service.PointService;
-import com.mindmate.mindmate_server.review.domain.Review;
 import com.mindmate.mindmate_server.review.dto.ReviewResponse;
-import com.mindmate.mindmate_server.review.repository.ReviewRepository;
 import com.mindmate.mindmate_server.review.service.ReviewService;
 import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.RoleType;
@@ -15,15 +13,12 @@ import com.mindmate.mindmate_server.user.dto.*;
 import com.mindmate.mindmate_server.user.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -94,6 +89,12 @@ public class ProfileServiceImpl implements ProfileService {
     public void incrementCounselingCount(Long userId) {
         Profile profile = getOrCreateProfile(userService.findUserById(userId));
         profile.incrementCounselingCount();
+    }
+
+    @Override
+    public void updateAvgRating(Long userId, double rating) {
+        Profile profile = getOrCreateProfile(userService.findUserById(userId));
+        profile.updateRating(rating);
     }
 
     @Override
