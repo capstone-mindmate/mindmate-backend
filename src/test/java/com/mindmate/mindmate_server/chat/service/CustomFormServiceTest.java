@@ -39,13 +39,16 @@ class CustomFormServiceTest {
     @Mock private ChatRoomService chatRoomService;
     @Mock private ChatService chatService;
     @Mock private ChatMessageService chatMessageService;
+    @Mock private ChatPresenceService chatPresenceService;
 
     @InjectMocks
-    private CustomFormService customFormService;
+    private CustomFormServiceImpl customFormService;
 
-    private Long userId;
-    private Long chatRoomId;
-    private Long formId;
+    private static final Long CREATOR_ID = 1L;
+    private static final Long RESPONDER_ID = 2L;
+    private static final Long CHAT_ROOM_ID = 100L;
+    private static final Long FORM_ID = 1L;
+
     private User mockCreator;
     private User mockResponder;
     private ChatRoom mockChatRoom;
@@ -53,30 +56,42 @@ class CustomFormServiceTest {
 
     @BeforeEach
     void setup() {
-        userId = 1L;
-        chatRoomId = 100L;
-        formId = 1L;
-
         mockCreator = mock(User.class);
         mockResponder = mock(User.class);
         mockChatRoom = mock(ChatRoom.class);
         mockCustomForm = mock(CustomForm.class);
 
-        when(mockCreator.getId()).thenReturn(userId);
-        when(mockResponder.getId()).thenReturn(2L);
-        when(mockChatRoom.getId()).thenReturn(chatRoomId);
+        when(mockCreator.getId()).thenReturn(CREATOR_ID);
+        when(mockResponder.getId()).thenReturn(RESPONDER_ID);
+        when(mockChatRoom.getId()).thenReturn(CHAT_ROOM_ID);
         when(mockChatRoom.getListener()).thenReturn(mockCreator);
         when(mockChatRoom.getSpeaker()).thenReturn(mockResponder);
 
-        when(userService.findUserById(userId)).thenReturn(mockCreator);
-        when(userService.findUserById(2L)).thenReturn(mockResponder);
-        when(chatRoomService.findChatRoomById(chatRoomId)).thenReturn(mockChatRoom);
+        when(mockChatRoom.isListener(mockCreator)).thenReturn(true);
+        when(mockChatRoom.isSpeaker(mockCreator)).thenReturn(false);
+        when(mockChatRoom.isListener(mockResponder)).thenReturn(false);
+        when(mockChatRoom.isSpeaker(mockResponder)).thenReturn(true);
 
-        when(mockCustomForm.getId()).thenReturn(formId);
+        when(userService.findUserById(CREATOR_ID)).thenReturn(mockCreator);
+        when(userService.findUserById(RESPONDER_ID)).thenReturn(mockResponder);
+        when(chatRoomService.findChatRoomById(CHAT_ROOM_ID)).thenReturn(mockChatRoom);
+
+        when(mockCustomForm.getId()).thenReturn(FORM_ID);
         when(mockCustomForm.getChatRoom()).thenReturn(mockChatRoom);
         when(mockCustomForm.getCreator()).thenReturn(mockCreator);
         when(mockCustomForm.getResponder()).thenReturn(mockResponder);
         when(mockCustomForm.getItems()).thenReturn(new ArrayList<>());
+    }
+
+    private ChatMessage createCustomFormMessage(User sender, String content) {
+        ChatMessage message = ChatMessage.builder()
+                .chatRoom(mockChatRoom)
+                .sender(sender)
+                .content(content)
+                .type(MessageType.CUSTOM_FORM)
+                .build();
+        message.setCustomForm(mockCustomForm);
+        return message;
     }
 
     @Nested
@@ -87,28 +102,27 @@ class CustomFormServiceTest {
         void createCustomForm_Success() {
             // given
             List<String> questions = Arrays.asList("질문1", "질문2", "질문3");
-            CustomFormRequest request = new CustomFormRequest(chatRoomId, questions);
-            CustomForm form = new CustomForm(mockChatRoom, mockCreator, mockResponder);
-            when(customFormRepository.save(any(CustomForm.class))).thenReturn(form);
+            CustomFormRequest request = new CustomFormRequest(CHAT_ROOM_ID, questions);
+            when(customFormRepository.save(any(CustomForm.class))).thenReturn(mockCustomForm);
 
-            ChatMessage message = ChatMessage.builder()
-                    .chatRoom(mockChatRoom)
-                    .sender(mockCreator)
-                    .content("커스텀 폼이 생성되었습니다.")
-                    .type(MessageType.CUSTOM_FORM)
-                    .build();
-
+            ChatMessage message = createCustomFormMessage(mockCreator, "커스텀 폼이 생성되었습니다.");
             when(chatMessageService.save(any(ChatMessage.class))).thenReturn(message);
+            when(chatPresenceService.isUserActiveInRoom(RESPONDER_ID, CHAT_ROOM_ID)).thenReturn(true);
 
             // when
-            CustomFormResponse responses = customFormService.createCustomForm(userId, request);
+            CustomFormResponse responses = customFormService.createCustomForm(CREATOR_ID, request);
 
             // then
             assertNotNull(responses);
-            verify(chatRoomService).validateChatActivity(userId, chatRoomId);
+            verify(chatRoomService).validateChatActivity(CREATOR_ID, CHAT_ROOM_ID);
             verify(customFormRepository).save(any(CustomForm.class));
             verify(chatMessageService).save(any(ChatMessage.class));
-            verify(chatService).publishMessageEvent(any(ChatMessage.class));
+            verify(chatService).publishMessageEvent(
+                    eq(message),
+                    eq(RESPONDER_ID),
+                    eq(true),
+                    eq("커스텀 폼이 생성되었습니다.")
+            );
         }
 
         @Test
@@ -116,12 +130,12 @@ class CustomFormServiceTest {
         void createCustomForm_InvalidActivity() {
             // given
             List<String> questions = Arrays.asList("질문1", "질문2", "질문3");
-            CustomFormRequest request = new CustomFormRequest(chatRoomId, questions);
+            CustomFormRequest request = new CustomFormRequest(CHAT_ROOM_ID, questions);
             doThrow(new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED))
-                    .when(chatRoomService).validateChatActivity(userId, chatRoomId);
+                    .when(chatRoomService).validateChatActivity(CREATOR_ID, CHAT_ROOM_ID);
 
             // when & then
-            assertThrows(CustomException.class, () -> customFormService.createCustomForm(userId, request));
+            assertThrows(CustomException.class, () -> customFormService.createCustomForm(CREATOR_ID, request));
             verify(customFormRepository, never()).save(any(CustomForm.class));
         }
     }
@@ -134,39 +148,36 @@ class CustomFormServiceTest {
         void respondToCustomForm_Success() {
             // given
             List<String> answers = Arrays.asList("답변1", "답변2", "답변3");
-            RespondToCustomFormRequest request = new RespondToCustomFormRequest(formId, chatRoomId, answers);
+            RespondToCustomFormRequest request = new RespondToCustomFormRequest(FORM_ID, CHAT_ROOM_ID, answers);
 
             List<CustomFormItem> items = IntStream.range(0, 3)
-                    .mapToObj(i -> {
-                        CustomFormItem item = mock(CustomFormItem.class);
-                        return item;
-                    })
+                    .mapToObj(i -> mock(CustomFormItem.class))
                     .collect(Collectors.toList());
 
-            when(customFormRepository.findById(formId)).thenReturn(Optional.of(mockCustomForm));
+            when(customFormRepository.findById(FORM_ID)).thenReturn(Optional.of(mockCustomForm));
             when(mockCustomForm.isAnswered()).thenReturn(false);
             when(mockCustomForm.getItems()).thenReturn(items);
             when(customFormRepository.save(mockCustomForm)).thenReturn(mockCustomForm);
 
-            ChatMessage message = ChatMessage.builder()
-                    .chatRoom(mockChatRoom)
-                    .sender(mockResponder)
-                    .content("커스텀 폼에 응답했습니다.")
-                    .type(MessageType.CUSTOM_FORM)
-                    .build();
-
+            ChatMessage message = createCustomFormMessage(mockResponder, "커스텀 폼에 응답했습니다.");
             when(chatMessageService.save(any(ChatMessage.class))).thenReturn(message);
+            when(chatPresenceService.isUserActiveInRoom(CREATOR_ID, CHAT_ROOM_ID)).thenReturn(false);
 
             // when
-            CustomFormResponse response = customFormService.respondToCustomForm(formId, 2L, request);
+            CustomFormResponse response = customFormService.respondToCustomForm(FORM_ID, RESPONDER_ID, request);
 
             // then
             assertNotNull(response);
-            verify(chatRoomService).validateChatActivity(2L, chatRoomId);
+            verify(chatRoomService).validateChatActivity(RESPONDER_ID, CHAT_ROOM_ID);
             verify(mockCustomForm).markAsAnswered();
             verify(customFormRepository).save(mockCustomForm);
             verify(chatMessageService).save(any(ChatMessage.class));
-            verify(chatService).publishMessageEvent(any(ChatMessage.class));
+            verify(chatService).publishMessageEvent(
+                    eq(message),
+                    eq(CREATOR_ID),
+                    eq(false),
+                    eq("커스텀 폼에 응답했습니다.")
+            );
         }
 
         @Test
@@ -174,13 +185,13 @@ class CustomFormServiceTest {
         void respondToCustomForm_AlreadyAnswered() {
             // given
             List<String> answers = Arrays.asList("답변1", "답변2", "답변3");
-            RespondToCustomFormRequest request = new RespondToCustomFormRequest(formId, chatRoomId, answers);
+            RespondToCustomFormRequest request = new RespondToCustomFormRequest(FORM_ID, CHAT_ROOM_ID, answers);
 
-            when(customFormRepository.findById(formId)).thenReturn(Optional.of(mockCustomForm));
+            when(customFormRepository.findById(FORM_ID)).thenReturn(Optional.of(mockCustomForm));
             when(mockCustomForm.isAnswered()).thenReturn(true);
 
             // when & then
-            assertThrows(CustomException.class, () -> customFormService.respondToCustomForm(formId, 2L, request));
+            assertThrows(CustomException.class, () -> customFormService.respondToCustomForm(FORM_ID, RESPONDER_ID, request));
             verify(mockCustomForm, never()).markAsAnswered();
             verify(customFormRepository, never()).save(any(CustomForm.class));
         }
@@ -190,40 +201,41 @@ class CustomFormServiceTest {
         void respondToCustomForm_InvalidResponder() {
             // given
             List<String> answers = Arrays.asList("답변1", "답변2", "답변3");
-            RespondToCustomFormRequest request = new RespondToCustomFormRequest(formId, chatRoomId, answers);
+            RespondToCustomFormRequest request = new RespondToCustomFormRequest(FORM_ID, CHAT_ROOM_ID, answers);
 
-            when(customFormRepository.findById(formId)).thenReturn(Optional.of(mockCustomForm));
+            when(customFormRepository.findById(FORM_ID)).thenReturn(Optional.of(mockCustomForm));
             when(mockCustomForm.isAnswered()).thenReturn(false);
             when(mockCustomForm.getResponder()).thenReturn(mockResponder);
 
             // when & then
-            assertThrows(CustomException.class, () -> customFormService.respondToCustomForm(formId, userId, request));
+            assertThrows(CustomException.class, () -> customFormService.respondToCustomForm(FORM_ID, CREATOR_ID, request));
             verify(mockCustomForm, never()).markAsAnswered();
             verify(customFormRepository, never()).save(any(CustomForm.class));
         }
     }
+
     @Test
     @DisplayName("ID로 커스텀 폼 조회")
     void findCustomFormById_Success() {
         // given
-        when(customFormRepository.findById(formId)).thenReturn(Optional.of(mockCustomForm));
+        when(customFormRepository.findById(FORM_ID)).thenReturn(Optional.of(mockCustomForm));
 
         // when
-        CustomForm result = customFormService.findCustomFormById(formId);
+        CustomForm result = customFormService.findCustomFormById(FORM_ID);
 
         // then
         assertNotNull(result);
-        assertEquals(formId, result.getId());
+        assertEquals(FORM_ID, result.getId());
     }
 
     @Test
     @DisplayName("존재하지 않는 커스텀 폼 조회")
     void findCustomFormById_NotFound() {
         // given
-        when(customFormRepository.findById(formId)).thenReturn(Optional.empty());
+        when(customFormRepository.findById(FORM_ID)).thenReturn(Optional.empty());
 
         // when & then
-        assertThrows(CustomException.class, () -> customFormService.findCustomFormById(formId));
+        assertThrows(CustomException.class, () -> customFormService.findCustomFormById(FORM_ID));
     }
 
     @Test
@@ -231,10 +243,10 @@ class CustomFormServiceTest {
     void getCustomFormByChatRoom_Success() {
         // given
         List<CustomForm> forms = Arrays.asList(mockCustomForm);
-        when(customFormRepository.findByChatRoomId(chatRoomId)).thenReturn(forms);
+        when(customFormRepository.findByChatRoomId(CHAT_ROOM_ID)).thenReturn(forms);
 
         // when
-        List<CustomFormResponse> result = customFormService.getCustomFormsByChatRoom(chatRoomId);
+        List<CustomFormResponse> result = customFormService.getCustomFormsByChatRoom(CHAT_ROOM_ID);
 
         // then
         assertNotNull(result);

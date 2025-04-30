@@ -1,15 +1,16 @@
 package com.mindmate.mindmate_server.user.domain;
 
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
-import com.mindmate.mindmate_server.review.domain.EvaluationTag;
+import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 @Entity
 @Table(name = "profiles")
@@ -21,7 +22,7 @@ public class Profile extends BaseTimeEntity {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", unique = true) // nullable = false,
+    @JoinColumn(name = "user_id", unique = true)
     private User user;
 
     private String profileImage;
@@ -38,13 +39,14 @@ public class Profile extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean graduation;
 
-    // 활동 정보
     private int counselingCount = 0;
     private int avgResponseTime = 0;
     private int totalResponseTime = 0;
     private int responseTimeCount = 0;
+    private double ratingSum = 0;
 
-    private double avgRating = 0;
+    @Version
+    private Long version;
 
     @Builder
     public Profile(User user, String nickname, String department, Integer entranceTime, boolean graduation, String profileImage) {
@@ -64,14 +66,6 @@ public class Profile extends BaseTimeEntity {
         this.counselingCount++;
     }
 
-    public void updateResponseTime(int newResponseTime) {
-        this.totalResponseTime += newResponseTime;
-        this.responseTimeCount++;
-        this.avgResponseTime = this.responseTimeCount > 0
-                ? this.totalResponseTime / this.responseTimeCount
-                : 0;
-    }
-
     public void updateDepartment(String department) {
         this.department = department;
     }
@@ -88,7 +82,38 @@ public class Profile extends BaseTimeEntity {
         this.nickname = nickname;
     }
 
-    public void updateAvgRating(double rating){
-        this.avgRating = (this.avgRating*counselingCount + rating)/(counselingCount+1);
-    } // 리뷰달 때 동시성 이슈 생길수도 있나?
+    public double getAvgRating() {
+        return this.counselingCount > 0
+                ? this.ratingSum / this.counselingCount
+                : 0;
+    }
+    public void updateRating(double rating){
+        this.ratingSum += rating;
+    }
+
+    public void decrementCounselingCount() {
+        if (this.counselingCount > 0) {
+            this.counselingCount--;
+        }
+    }
+
+    public void subtractRating(double rating) {
+        this.ratingSum -= rating;
+        if (this.ratingSum < 0) {
+            this.ratingSum = 0;
+        }
+    }
+
+    public void addMultipleResponseTimes(List<Integer> responseTimes) {
+        if (responseTimes.isEmpty()) {
+            return;
+        }
+
+        int sum = responseTimes.stream().mapToInt(Integer::intValue).sum();
+        this.totalResponseTime += sum;
+        this.responseTimeCount += responseTimes.size();
+        this.avgResponseTime = this.responseTimeCount > 0
+                ? this.totalResponseTime / this.responseTimeCount
+                : 0;
+    }
 }

@@ -2,8 +2,11 @@ package com.mindmate.mindmate_server.magazine.service;
 
 import com.mindmate.mindmate_server.magazine.domain.Magazine;
 import com.mindmate.mindmate_server.magazine.dto.*;
+import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 
 public interface MagazineService {
 
@@ -25,4 +28,9 @@ public interface MagazineService {
 
     LikeResponse toggleLike(Long magazineId, Long userId);
 
+    void handleEngagement(Long userId, Long magazineId, MagazineEngagementRequest request);
+
+    List<MagazineResponse> getPopularMagazines(int limit);
+
+    List<MagazineResponse> getPopularMagazinesByCategory(MatchingCategory category, int limit);
 }

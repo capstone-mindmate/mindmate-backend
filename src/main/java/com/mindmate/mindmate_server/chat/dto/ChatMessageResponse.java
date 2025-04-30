@@ -34,6 +34,10 @@ public class ChatMessageResponse {
 
     private CustomFormResponse customForm;
 
+    private Long emoticonId;
+    private String emoticonUrl;
+    private String emoticonName;
+
     public static ChatMessageResponse from(ChatMessage message, Long currentUserId) {
         Map<ReactionType, Integer> reactionCounts = new HashMap<>();
         for (MessageReaction reaction : message.getMessageReactions()) {
@@ -57,6 +61,15 @@ public class ChatMessageResponse {
             customFormResponse = CustomFormResponse.from(message.getCustomForm());
         }
 
+        Long emoticonId = null;
+        String emoticonUrl = null;
+        String emoticonName = null;
+        if (message.getType() == MessageType.EMOTICON && message.getEmoticon() != null) {
+            emoticonId = message.getEmoticon().getId();
+            emoticonUrl = message.getEmoticon().getImageUrl();
+            emoticonName = message.getEmoticon().getName();
+        }
+
         return ChatMessageResponse.builder()
                 .id(message.getId())
 //                .roomId(message.getChatRoom().getId())
@@ -69,6 +82,9 @@ public class ChatMessageResponse {
                 .userReaction(userReaction)
                 .error(false)
                 .customForm(customFormResponse)
+                .emoticonId(emoticonId)
+                .emoticonUrl(emoticonUrl)
+                .emoticonName(emoticonName)
                 .build();
     }
 

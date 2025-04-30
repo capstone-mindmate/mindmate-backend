@@ -1,153 +1,71 @@
-//package com.mindmate.mindmate_server.chat.service;
-//
-//
-//import com.mindmate.mindmate_server.chat.domain.FilteringWordCategory;
-//import org.junit.jupiter.api.BeforeEach;
-//import org.junit.jupiter.api.DisplayName;
-//import org.junit.jupiter.api.Nested;
-//import org.junit.jupiter.api.Test;
-//
-//import java.util.Optional;
-//
-//import static org.junit.jupiter.api.Assertions.*;
-//
-//class ContentFilterServiceTest {
-//    private ContentFilterService contentFilterService;
-//
-//    @BeforeEach
-//    void setup() {
-//        contentFilterService = new ContentFilterService();
-//    }
-//
-//    @Nested
-//    @DisplayName("금지어 포함 여부 확인")
-//    class ContainFilteringWordTest {
-//        @Test
-//        @DisplayName("금지어 포함 여부 확인 - 포함")
-//        void containsFilteringWord_True() {
-//            // given
-//            String content = "욕설1 금지어가 포함되어 있습니다";
-//
-//            // when
-//            boolean result = contentFilterService.containsFilteringWord(content);
-//
-//            // then
-//            assertTrue(result);
-//        }
-//
-//        @Test
-//        @DisplayName("금지어 포함 여부 확인 - 미포함")
-//        void containsFilteringWord_False() {
-//            // given
-//            String content = " 금지어가 포함되어 있지 않습니다";
-//
-//            // when
-//            boolean result = contentFilterService.containsFilteringWord(content);
-//
-//            // then
-//            assertFalse(result);
-//        }
-//    }
-//
-//    @Nested
-//    @DisplayName("금지어 카테고리 찾기")
-//    class FindFilteringWordCategoryTest {
-//        @Test
-//        @DisplayName("금지어 카테고리 찾기 - 욕설 카테고리")
-//        void findFilteringWordCategory_Profanity() {
-//            // given
-//            String content = "이 내용에는 욕설1이 포함되어 있습니다.";
-//
-//            // when
-//            Optional<FilteringWordCategory> result = contentFilterService.findFilteringWordCategory(content);
-//
-//            // then
-//            assertTrue(result.isPresent());
-//            assertEquals(FilteringWordCategory.PROFANITY, result.get());
-//            assertEquals("욕설", result.get().getDescription());
-//        }
-//
-//        @Test
-//        @DisplayName("금지어 카테고리 찾기 - 차별 카테고리")
-//        void findFilteringWordCategory_Discrimination() {
-//            // given
-//            String content = "이 내용에는 차별단어1이 포함되어 있습니다.";
-//
-//            // when
-//            Optional<FilteringWordCategory> result = contentFilterService.findFilteringWordCategory(content);
-//
-//            // then
-//            assertTrue(result.isPresent());
-//            assertEquals(FilteringWordCategory.DISCRIMINATION, result.get());
-//            assertEquals("차별", result.get().getDescription());
-//        }
-//
-//        @Test
-//        @DisplayName("금지어 카테고리 찾기 - 카테고리 없음")
-//        void findFilteringWordCategory_NotFound() {
-//            // given
-//            String content = "이 내용에는 금지어가 포함되어 있지 않습니다.";
-//
-//            // when
-//            Optional<FilteringWordCategory> result = contentFilterService.findFilteringWordCategory(content);
-//
-//            // then
-//            assertFalse(result.isPresent());
-//        }
-//    }
-//
-//    @Nested
-//    @DisplayName("금지어 마스킹")
-//    class MaskFilteringWordTest {
-//        @Test
-//        @DisplayName("금지어 마스킹 - 단일 금지어")
-//        void maskFilteringWords_SingleWord() {
-//            // given
-//            String content = "이 내용에는 욕설1이 포함되어 있습니다.";
-//
-//            // when
-//            String result = contentFilterService.maskFilteringWords(content);
-//
-//            // then
-//            assertNotNull(result);
-//            assertFalse(result.contains("욕설1"));
-//            assertTrue(result.contains("***")); // 욕설1이 ***로 마스킹됨
-//            assertEquals("이 내용에는 ***이 포함되어 있습니다.", result);
-//        }
-//
-//        @Test
-//        @DisplayName("금지어 마스킹 - 여러 금지어")
-//        void maskFilteringWords_MultipleWords() {
-//            // given
-//            String content = "이 내용에는 욕설1과 차별단어1이 포함되어 있습니다.";
-//
-//            // when
-//            String result = contentFilterService.maskFilteringWords(content);
-//
-//            // then
-//            assertNotNull(result);
-//            assertFalse(result.contains("욕설1"));
-//            assertFalse(result.contains("차별단어1"));
-//            assertTrue(result.contains("***")); // 욕설1이 ***로 마스킹됨
-//            assertTrue(result.contains("*****")); // 차별단어1이 *****로 마스킹됨
-//            assertEquals("이 내용에는 ***과 *****이 포함되어 있습니다.", result);
-//        }
-//
-//        @Test
-//        @DisplayName("금지어 마스킹 - 금지어 없음")
-//        void maskFilteringWords_NoFilteringWords() {
-//            // given
-//            String content = "이 내용에는 금지어가 포함되어 있지 않습니다.";
-//
-//            // when
-//            String result = contentFilterService.maskFilteringWords(content);
-//
-//            // then
-//            assertNotNull(result);
-//            assertEquals(content, result); // 원본 내용과 동일
-//        }
-//    }
-//
-//
-//
-//}
+package com.mindmate.mindmate_server.chat.service;
+
+import com.mindmate.mindmate_server.chat.domain.FilteringWord;
+import com.mindmate.mindmate_server.chat.repository.FilteringWordRepository;
+import com.mindmate.mindmate_server.chat.util.FilteringWordAdapter;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+class ContentFilterServiceTest {
+    @Mock private FilteringWordRepository filteringWordRepository;
+    @Mock private FilteringWordAdapter filteringWordAdapter;
+
+    @InjectMocks
+    private ContentFilterService contentFilterService;
+
+    @ParameterizedTest(name = "isFiltered: \"{0}\" → {1}")
+    @CsvSource({
+            "null, false",
+            "'', false",
+            "'  ', false"
+    })
+    @DisplayName("null 또는 빈 문자열은 필터링되지 않음")
+    void isFiltered_NullOrEmpty_ReturnsFalse(String input, boolean expected) {
+        assertEquals(expected, contentFilterService.isFiltered(input == null ? null : input));
+    }
+
+    @ParameterizedTest(name = "isFiltered: \"{0}\" → {1}")
+    @CsvSource({
+            "'욕설이 포함된 문장', true",
+            "'정상적인 문장입니다.', false"
+    })
+    @DisplayName("필터링 단어 포함 여부에 따라 true/false 반환")
+    void isFiltered_FilteredOrNot(String input, boolean expected) {
+        when(filteringWordAdapter.isFiltered(input)).thenReturn(expected);
+        assertEquals(expected, contentFilterService.isFiltered(input));
+    }
+
+    @Test
+    @DisplayName("필터링 단어 갱신")
+    void refreshFilteringWords_InitializeAdapter() {
+        // given
+        List<FilteringWord> words = List.of(
+                new FilteringWord("욕설1"),
+                new FilteringWord("욕설2")
+        );
+        when(filteringWordRepository.findByActiveTrue()).thenReturn(words);
+
+        // when
+        contentFilterService.refreshFilteringWords();
+
+        // then
+        verify(filteringWordAdapter).initialize(words);
+    }
+
+}

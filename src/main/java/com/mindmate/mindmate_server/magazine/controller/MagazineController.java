@@ -4,15 +4,17 @@ import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import com.mindmate.mindmate_server.magazine.dto.*;
 import com.mindmate.mindmate_server.magazine.service.MagazineService;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -100,8 +102,38 @@ public class MagazineController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * 사용자 활동 정보 얻기 -> 사용자가 해당 매거진 조회 이탈 시 호출
+     */
+    @PostMapping("/{magazineId}/engagement")
+    public ResponseEntity<Void> trackEngagement(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long magazineId,
+            @RequestBody MagazineEngagementRequest request) {
+
+        magazineService.handleEngagement(principal.getUserId(), magazineId, request);
+        return ResponseEntity.accepted().build();
+    }
 
     /**
      * 인기 메거진
      */
+    @GetMapping("/popular")
+    public ResponseEntity<List<MagazineResponse>> getPopularMagazines(
+            @RequestParam(defaultValue = "10") int limit) {
+        List<MagazineResponse> popularMagazines = magazineService.getPopularMagazines(limit);
+        return ResponseEntity.ok(popularMagazines);
+    }
+
+    /**
+     * 카테고리별 인기 매거진 조회
+     */
+    @GetMapping("/popular/category/{category}")
+    public ResponseEntity<List<MagazineResponse>> getPopularMagazinesByCategory (
+            @PathVariable MatchingCategory category,
+            @RequestParam(defaultValue = "10") int limit) {
+        List<MagazineResponse> popularMagazines = magazineService.getPopularMagazinesByCategory(category, limit);
+        return ResponseEntity.ok(popularMagazines);
+    }
+
 }
