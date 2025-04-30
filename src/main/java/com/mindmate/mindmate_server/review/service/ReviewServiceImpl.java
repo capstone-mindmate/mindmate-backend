@@ -357,8 +357,8 @@ public class ReviewServiceImpl implements ReviewService{
     }
 
     @Override
-    public void findReviewById(Long reviewId){
-        reviewRepository.findById(reviewId)
+    public Review findReviewById(Long reviewId){
+        return reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new CustomException(ReviewErrorCode.REVIEW_NOT_FOUND));
     }
 

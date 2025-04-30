@@ -26,10 +26,16 @@ public class AdminReviewServiceImpl implements AdminReviewService {
     private final ReviewRepository reviewRepository;
     private final ReviewRedisRepository reviewRedisRepository;
     private final ReportService reportService;
+    private final ReviewService reviewService;
 
     @Override
     @Transactional(readOnly = true)
     public Page<ReviewResponse> getReviews(int page, int size, Integer minRating, Integer maxRating, Boolean reported) {
+
+        if (minRating != null && maxRating != null && minRating > maxRating) {
+            throw new CustomException(ReviewErrorCode.INVALID_RATING_VALUE);
+        }
+
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
         if (reported != null && reported) {
@@ -45,8 +51,7 @@ public class AdminReviewServiceImpl implements AdminReviewService {
     @Override
     @Transactional
     public void deleteReview(Long reviewId) {
-        Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new CustomException(ReviewErrorCode.REVIEW_NOT_FOUND));
+        Review review = reviewService.findReviewById(reviewId);
 
         Profile reviewedProfile = review.getReviewedProfile();
 

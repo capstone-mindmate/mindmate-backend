@@ -26,6 +26,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -384,6 +385,11 @@ public class MatchingServiceImpl implements MatchingService {
     public Matching findMatchingById(Long matchingId) {
         return matchingRepository.findById(matchingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.MATCHING_NOT_FOUND));
+    }
+
+    @Override
+    public Map<String, Integer> getCategoryCountsByUserId(Long userId) {
+        return null;
     }
 
     private Matching validateMatchingOwnership(Long userId, Long matchingId) {

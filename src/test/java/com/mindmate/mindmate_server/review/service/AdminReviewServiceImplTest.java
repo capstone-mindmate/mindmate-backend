@@ -46,6 +46,9 @@ class AdminReviewServiceImplTest {
     @Mock
     private ReportService reportService;
 
+    @Mock
+    private ReviewService reviewService;
+
     @InjectMocks
     private AdminReviewServiceImpl adminReviewService;
 
@@ -222,13 +225,13 @@ class AdminReviewServiceImplTest {
         void deleteReview_success() {
             // Given
             Long reviewId = 1L;
-            when(reviewRepository.findById(reviewId)).thenReturn(Optional.of(review));
+            when(reviewService.findReviewById(reviewId)).thenReturn(review);
 
             // When
             assertDoesNotThrow(() -> adminReviewService.deleteReview(reviewId));
 
             // Then
-            verify(reviewRepository).findById(reviewId);
+            verify(reviewService).findReviewById(reviewId);
             verify(profile).decrementCounselingCount();
             verify(profile).subtractRating(anyDouble());
             verify(reviewRedisRepository).decrementTagCount(eq(profile.getId()), eq(Tag.RESPONSIVE.getContent()));
@@ -242,7 +245,7 @@ class AdminReviewServiceImplTest {
         void deleteReview_reviewNotFound() {
             // Given
             Long reviewId = 99L;
-            when(reviewRepository.findById(reviewId)).thenReturn(Optional.empty());
+            when(reviewService.findReviewById(reviewId)).thenThrow(new CustomException(ReviewErrorCode.REVIEW_NOT_FOUND));
 
             // When & Then
             CustomException exception = assertThrows(CustomException.class, () -> {
@@ -250,7 +253,7 @@ class AdminReviewServiceImplTest {
             });
 
             assertEquals(ReviewErrorCode.REVIEW_NOT_FOUND, exception.getErrorCode());
-            verify(reviewRepository).findById(reviewId);
+            verify(reviewService).findReviewById(reviewId);
             verify(reviewRepository, never()).delete(any(Review.class));
         }
 
@@ -260,7 +263,7 @@ class AdminReviewServiceImplTest {
             // Given
             Long reviewId = 1L;
             int rating = 4;
-            when(reviewRepository.findById(reviewId)).thenReturn(Optional.of(review));
+            when(reviewService.findReviewById(reviewId)).thenReturn(review);
             when(review.getRating()).thenReturn(rating);
 
             // When
@@ -277,7 +280,7 @@ class AdminReviewServiceImplTest {
             // Given
             Long reviewId = 1L;
             Long profileId = 1L;
-            when(reviewRepository.findById(reviewId)).thenReturn(Optional.of(review));
+            when(reviewService.findReviewById(reviewId)).thenReturn(review);
             when(profile.getId()).thenReturn(profileId);
 
             // When
@@ -294,7 +297,7 @@ class AdminReviewServiceImplTest {
             // Given
             Long reviewId = 1L;
             Long profileId = 1L;
-            when(reviewRepository.findById(reviewId)).thenReturn(Optional.of(review));
+            when(reviewService.findReviewById(reviewId)).thenReturn(review);
             when(profile.getId()).thenReturn(profileId);
 
             // When
