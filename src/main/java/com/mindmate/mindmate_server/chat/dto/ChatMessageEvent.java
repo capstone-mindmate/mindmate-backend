@@ -28,6 +28,8 @@ public class ChatMessageEvent {
     private boolean encrypted;
     private String plainContent;
 
+    // todo: 이모티콘 관려 데이터? -> 활용을 안하더라도 이벤트 발행하는거니까..음
+
     public void setId(Long id) {
         this.messageId = id;
     }

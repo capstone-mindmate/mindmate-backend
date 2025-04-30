@@ -1,13 +1,18 @@
 package com.mindmate.mindmate_server.emoticon.service;
 
+import com.mindmate.mindmate_server.chat.domain.ChatMessage;
+import com.mindmate.mindmate_server.chat.domain.ChatRoom;
+import com.mindmate.mindmate_server.chat.domain.MessageType;
+import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
+import com.mindmate.mindmate_server.chat.service.ChatMessageService;
+import com.mindmate.mindmate_server.chat.service.ChatPresenceService;
+import com.mindmate.mindmate_server.chat.service.ChatRoomService;
+import com.mindmate.mindmate_server.chat.service.ChatService;
 import com.mindmate.mindmate_server.emoticon.domain.Emoticon;
 import com.mindmate.mindmate_server.emoticon.domain.EmoticonStatus;
 import com.mindmate.mindmate_server.emoticon.domain.EmoticonType;
 import com.mindmate.mindmate_server.emoticon.domain.UserEmoticon;
-import com.mindmate.mindmate_server.emoticon.dto.EmoticonDetailResponse;
-import com.mindmate.mindmate_server.emoticon.dto.EmoticonResponse;
-import com.mindmate.mindmate_server.emoticon.dto.EmoticonUploadRequest;
-import com.mindmate.mindmate_server.emoticon.dto.UserEmoticonResponse;
+import com.mindmate.mindmate_server.emoticon.dto.*;
 import com.mindmate.mindmate_server.emoticon.repository.EmoticonRepository;
 import com.mindmate.mindmate_server.emoticon.repository.UserEmoticonRepository;
 import com.mindmate.mindmate_server.global.dto.FileInfo;
@@ -44,6 +49,11 @@ public class EmoticonServiceImpl implements EmoticonService {
     private final PointService pointService;
     private final SlackNotifier slackNotifier;
     private final FileStorageService fileStorageService;
+
+    private final ChatRoomService chatRoomService;
+    private final ChatMessageService chatMessageService;
+    private final ChatPresenceService chatPresenceService;
+    private final ChatService chatService;
 
 
     @Value("${emoticon.dir}")
@@ -211,5 +221,52 @@ public class EmoticonServiceImpl implements EmoticonService {
     @Override
     public boolean isEmoticonOwnedByUser(Long userId, Long emoticonId) {
         return userEmoticonRepository.existsByUserIdAndEmoticonId(userId, emoticonId);
+    }
+
+    // todo: chatservice에서 처리?
+    @Override
+    @Transactional
+    public EmoticonMessageResponse sendEmoticonMessage(Long userId, EmoticonMessageRequest request) {
+        try {
+            ChatRoom chatRoom = chatRoomService.findChatRoomById(request.getRoomId());
+            User sender = userService.findUserById(userId);
+            Emoticon emoticon = findEmoticonById(request.getEmoticonId());
+
+            if (!isEmoticonOwnedByUser(userId, request.getEmoticonId())) {
+                throw new CustomException(EmoticonErrorCode.EMOTICON_PERMISSION_DENIED);
+            }
+            chatRoomService.validateChatActivity(userId, request.getRoomId());
+
+            ChatMessage chatMessage = ChatMessage.builder()
+                    .chatRoom(chatRoom)
+                    .sender(sender)
+                    .content(emoticon.getId().toString())
+                    .type(MessageType.EMOTICON)
+                    .build();
+
+            chatMessage.setEmoticon(emoticon);
+
+            ChatMessage savedMessage = chatMessageService.save(chatMessage);
+            chatRoom.updateLastMessageTime();
+
+            User recipient = chatRoom.isListener(sender) ? chatRoom.getSpeaker() : chatRoom.getListener();
+            boolean isRecipientActive = chatPresenceService.isUserActiveInRoom(recipient.getId(), chatRoom.getId());
+
+            chatService.publishMessageEvent(savedMessage, recipient.getId(), isRecipientActive, "이모티콘을 전송했습니다");
+
+            return EmoticonMessageResponse.builder()
+                    .messageId(savedMessage.getId())
+                    .roomId(chatRoom.getId())
+                    .senderId(sender.getId())
+                    .senderName(sender.getProfile().getNickname())
+                    .emoticonId(emoticon.getId())
+                    .emoticonUrl(emoticon.getImageUrl())
+                    .emoticonName(emoticon.getName())
+                    .timestamp(savedMessage.getCreatedAt())
+                    .build();
+        } catch (Exception e) {
+            log.error("이모티콘 메시지 전송 중 오류 발생", e);
+            throw new CustomException(EmoticonErrorCode.EMOTICON_SEND_FAILED);
+        }
     }
 }

@@ -12,5 +12,6 @@ public enum ChatEventType {
     CUSTOM_FORM_RESPONSE,
     CONTENT_FILTERED,
     USER_STATUS,
-    TOAST_BOX
+    TOAST_BOX,
+    EMOTICON
 }

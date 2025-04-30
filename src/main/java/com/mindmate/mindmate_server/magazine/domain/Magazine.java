@@ -24,15 +24,13 @@ public class Magazine extends BaseTimeEntity {
     @Column(nullable = false)
     private String title;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String content;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id", nullable = false)
     private User author;
 
     @OneToMany(mappedBy = "magazine", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<MagazineImage> images = new ArrayList<>();
+    @OrderBy("contentOrder ASC")
+    private List<MagazineContent> contents = new ArrayList<>();
 
     @OneToMany(mappedBy = "magazine", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MagazineLike> likes = new ArrayList<>();
@@ -47,15 +45,13 @@ public class Magazine extends BaseTimeEntity {
     private MatchingCategory category;
 
     @Builder
-    public Magazine(String title, String content, User author) {
+    public Magazine(String title, User author) {
         this.title = title;
-        this.content = content;
         this.author = author;
     }
 
-    public void update(String title, String content, MatchingCategory category) {
+    public void update(String title, MatchingCategory category) {
         this.title = title;
-        this.content = content;
         this.category = category;
         this.magazineStatus = MagazineStatus.PENDING;
     }
@@ -76,12 +72,16 @@ public class Magazine extends BaseTimeEntity {
         this.likeCount = Math.max(0, this.likeCount - 1);
     }
 
-    public void addImage(MagazineImage image) {
-        this.images.add(image);
-        image.setMagazine(this);
+    public void addContent(MagazineContent content) {
+        this.contents.add(content);
+        content.setMagazine(this);
     }
 
-    public void removeImage(MagazineImage image) {
-        this.images.remove(image);
+    public void removeContent(MagazineContent content) {
+        this.contents.remove(content);
+    }
+
+    public void clearContents() {
+        this.contents.clear();
     }
 }

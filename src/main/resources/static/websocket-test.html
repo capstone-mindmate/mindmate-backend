@@ -125,8 +125,49 @@
             height: 100%;
             background-color: #f5c6cb;
         }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
         
-    
+        .emoticon-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        
+        .emoticon-item {
+            width: 60px;
+            height: 60px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        
+        .emoticon-item:hover {
+            transform: scale(1.1);
+            border-color: #0066cc;
+        }
+        
+        .emoticon-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        #emoticonBtn {
+            background-color: #f8f9fa;
+        }
+        
+        #emoticonBtn:hover {
+            background-color: #e9ecef;
+        }
     </style>
 </head>
 <body>
@@ -155,7 +196,21 @@
             <div class="form-group">
                 <label for="message">메시지:</label>
                 <textarea id="message" placeholder="보낼 메시지를 입력하세요" rows="3"></textarea>
-                <button onclick="sendMessage()">전송</button>
+                <div class="button-group">
+                    <button id="emoticonBtn" onclick="toggleEmoticonPanel()">😊 이모티콘</button>
+                    <button onclick="sendMessage()">전송</button>
+                </div>
+            </div>
+            
+            <!-- 이모티콘 선택 패널 -->
+            <div id="emoticonPanel" style="display:none; border: 1px solid #ccc; padding: 10px; margin-top: 10px; background-color: white; border-radius: 5px;">
+                <div class="emoticon-header">
+                    <h4>내 이모티콘</h4>
+                    <span onclick="toggleEmoticonPanel()" style="cursor:pointer; float:right;">×</span>
+                </div>
+                <div id="emoticonContainer" class="emoticon-container">
+                    <p>이모티콘을 불러오는 중...</p>
+                </div>
             </div>
             
             <div class="form-group">
@@ -320,6 +375,11 @@
             '/topic/chat.room.' + currentRoomId + '.toastbox',
             handleToastBoxEvent
         );
+        
+        subscriptions[`emoticon_${currentRoomId}`] = stompClient.subscribe(
+            '/topic/chat.room.' + currentRoomId + '.emoticon',
+            handleEmoticonMessage
+        );
     
         updatePresence('ONLINE', currentRoomId);
         markAsRead();
@@ -329,7 +389,7 @@
     }
     
     function unsubscribeRoom(roomId) {
-        ['room', 'read', 'reaction', 'customform', 'toastbox'].forEach(type => {
+        ['room', 'read', 'reaction', 'customform', 'toastbox', 'emoticon'].forEach(type => {
             const subKey = `${type}_${roomId}`;
             if (subscriptions[subKey]) {
                 try {
@@ -354,6 +414,114 @@
         updateRoomDisplay();
         document.getElementById('messages').innerHTML = '';
         logMessage("채팅방에서 퇴장했습니다", "info");
+    }
+    
+    // 이모티콘 메시지 처리
+    function handleEmoticonMessage(message) {
+        try {
+            const data = JSON.parse(message.body);
+            console.log("Emoticon message:", data);
+    
+            const emoticonMessage = {
+                id: data.messageId,
+                senderId: data.senderId,
+                senderName: data.senderName,
+                emoticonUrl: data.emoticonUrl,     // 이 필드!
+                emoticonName: data.emoticonName,   // 이 필드!
+                createdAt: data.timestamp,
+                type: 'EMOTICON'
+            };
+    
+            addMessageToDisplay(emoticonMessage);
+            logMessage(`이모티콘 메시지가 수신되었습니다: ${data.emoticonName}`, "info");
+        } catch (e) {
+            console.error("Error processing emoticon message:", e);
+        }
+    }
+
+    
+    // 이모티콘 패널 토글
+    function toggleEmoticonPanel() {
+        const panel = document.getElementById('emoticonPanel');
+        if (panel.style.display === 'none') {
+            panel.style.display = 'block';
+            fetchEmoticons();
+        } else {
+            panel.style.display = 'none';
+        }
+    }
+    
+    // 사용 가능한 이모티콘 조회
+    function fetchEmoticons() {
+        const token = document.getElementById('token').value;
+        if (!token) {
+            logMessage("토큰을 입력해주세요", "error");
+            return;
+        }
+        
+        logMessage("사용 가능한 이모티콘을 조회합니다...", "info");
+        
+        fetch(`${baseUrl}/api/emoticons/available`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('이모티콘 조회 실패: ' + response.status);
+            return response.json();
+        })
+        .then(emoticons => {
+            displayEmoticons(emoticons);
+            logMessage(`${emoticons.length}개의 이모티콘을 불러왔습니다`, "success");
+        })
+        .catch(error => logMessage('이모티콘 조회 오류: ' + error.message, "error"));
+    }
+    
+    // 이모티콘 표시
+    function displayEmoticons(emoticons) {
+        const container = document.getElementById('emoticonContainer');
+        
+        if (!emoticons || emoticons.length === 0) {
+            container.innerHTML = '<p>사용 가능한 이모티콘이 없습니다.</p>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        emoticons.forEach(emoticon => {
+            const emoticonElement = document.createElement('div');
+            emoticonElement.className = 'emoticon-item';
+            emoticonElement.onclick = () => sendEmoticon(emoticon.id);
+            
+            const img = document.createElement('img');
+            img.src = `http://localhost:8080${emoticon.imageUrl}`;
+            img.alt = emoticon.name;
+            img.title = emoticon.name;
+            
+            emoticonElement.appendChild(img);
+            container.appendChild(emoticonElement);
+        });
+    }
+    
+    // 이모티콘 전송
+    function sendEmoticon(emoticonId) {
+        if (!stompClient || !currentRoomId) {
+            logMessage("먼저 채팅방에 입장해주세요", "error");
+            return;
+        }
+        
+        const emoticonRequest = {
+            roomId: currentRoomId,
+            emoticonId: emoticonId
+        };
+        
+        logMessage(`이모티콘 전송 중: ${JSON.stringify(emoticonRequest)}`, "info");
+        stompClient.send('/app/chat.emoticon', {}, JSON.stringify(emoticonRequest));
+        
+        // 이모티콘 패널 닫기
+        document.getElementById('emoticonPanel').style.display = 'none';
     }
 
     function sendMessage() {
@@ -478,6 +646,10 @@ function handleIncomingMessage(message) {
                 case 'CONTENT_FILTERED':
                     // 필터링된 메시지 처리
                     addMessageToDisplay(data.data);
+                    return;
+                 case 'EMOTICON':
+                    // 이모티콘 메시지 처리
+                    handleEmoticonMessage({ body: JSON.stringify(data.data) });
                     return;
             }
         }
@@ -864,8 +1036,19 @@ function addMessageToDisplay(message, isNew = true) {
             <span class="message-sender">${message.senderName || '알 수 없음'} ${isMyMessage ? '(나)' : ''}</span>
             <span class="message-time">${formatTime(message.createdAt)}</span>
         </div>
-        <div class="message-content">${message.content || ''}</div>
     `;
+    
+    // 메시지 타입에 따라 다른 내용 표시
+    if (message.type === 'EMOTICON') {
+        let emoticonImgUrl = message.emoticonUrl;
+        if (emoticonImgUrl && !emoticonImgUrl.startsWith('http')) {
+            emoticonImgUrl = `http://localhost:8080${emoticonImgUrl}`;
+        }
+        messageContent = `<img src="${emoticonImgUrl}" alt="${message.emoticonName || ''}" class="message-emoticon" style="max-height: 80px; max-width: 80px;">`;
+    } else {
+        messageContent += `<div class="message-content">${message.content || ''}</div>`;
+    }
+
 
     // 에러 메시지 표시
     if (message.error && message.errorMessage) {

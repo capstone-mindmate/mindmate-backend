@@ -1,10 +1,7 @@
 package com.mindmate.mindmate_server.emoticon.service;
 
 import com.mindmate.mindmate_server.emoticon.domain.Emoticon;
-import com.mindmate.mindmate_server.emoticon.dto.EmoticonDetailResponse;
-import com.mindmate.mindmate_server.emoticon.dto.EmoticonResponse;
-import com.mindmate.mindmate_server.emoticon.dto.EmoticonUploadRequest;
-import com.mindmate.mindmate_server.emoticon.dto.UserEmoticonResponse;
+import com.mindmate.mindmate_server.emoticon.dto.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -30,4 +27,6 @@ public interface EmoticonService {
     EmoticonResponse purchaseEmoticon(Long userId, Long emoticonId);
 
     boolean isEmoticonOwnedByUser(Long userId, Long emoticonId);
+
+    EmoticonMessageResponse sendEmoticonMessage(Long userId, EmoticonMessageRequest request);
 }

@@ -1,8 +1,6 @@
 package com.mindmate.mindmate_server.magazine.repository;
 
-import com.mindmate.mindmate_server.magazine.domain.Magazine;
-import com.mindmate.mindmate_server.magazine.domain.MagazineStatus;
-import com.mindmate.mindmate_server.magazine.domain.QMagazine;
+import com.mindmate.mindmate_server.magazine.domain.*;
 import com.mindmate.mindmate_server.magazine.dto.MagazineCategoryStatistics;
 import com.mindmate.mindmate_server.magazine.dto.MagazineResponse;
 import com.mindmate.mindmate_server.magazine.dto.MagazineSearchFilter;
@@ -11,6 +9,7 @@ import com.mindmate.mindmate_server.user.domain.QUser;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,6 +28,8 @@ public class MagazineRepositoryImpl implements MagazineRepositoryCustom {
         QMagazine magazine = QMagazine.magazine;
         QUser author = QUser.user;
         QProfile profile = QProfile.profile;
+        QMagazineContent content = QMagazineContent.magazineContent;
+
 
         BooleanBuilder builder = new BooleanBuilder();
         // 1. 게시된 매거진 확인
@@ -43,7 +44,14 @@ public class MagazineRepositoryImpl implements MagazineRepositoryCustom {
         if (StringUtils.hasText(filter.getKeyword())) {
             builder.and(
                     magazine.title.containsIgnoreCase(filter.getKeyword())
-                            .or(magazine.content.containsIgnoreCase(filter.getKeyword()))
+                            .or(JPAExpressions
+                                    .selectOne()
+                                    .from(content)
+                                    .where(content.magazine.eq(magazine)
+                                            .and(content.type.eq(MagazineContentType.TEXT))
+                                            .and(content.text.containsIgnoreCase(filter.getKeyword())))
+                                    .exists()
+                            )
             );
         }
 
@@ -54,28 +62,27 @@ public class MagazineRepositoryImpl implements MagazineRepositoryCustom {
                 .selectFrom(magazine)
                 .join(magazine.author, author).fetchJoin()
                 .join(author.profile, profile).fetchJoin()
-                .leftJoin(magazine.images).fetchJoin()
+//                 .leftJoin(magazine.contents, content).fetchJoin()
                 .where(builder)
                 .orderBy(orderSpecifier)
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
 
-        List<MagazineResponse> content = magazines.stream()
+        List<MagazineResponse> contentList = magazines.stream()
                 .map(MagazineResponse::from)
                 .collect(Collectors.toList());
 
         Long countResult = queryFactory
                 .select(magazine.count())
                 .from(magazine)
-                .join(magazine.author, author)
                 .where(builder)
                 .fetchOne();
 
         long total = countResult != null ? countResult : 0L;
 
 
-        return new PageImpl<>(content, pageable, total);
+        return new PageImpl<>(contentList, pageable, total);
 
 
     }

@@ -31,21 +31,13 @@ public class MagazineImage extends BaseTimeEntity {
     @Column(nullable = false)
     private long fileSize;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "magazine_id")
-    private Magazine magazine;
-
     @Builder
-    public MagazineImage(String originalName, String storedName, String imageUrl, String contentType, long fileSize, Magazine magazine) {
+    public MagazineImage(String originalName, String storedName, String imageUrl, String contentType, long fileSize) {
         this.originalName = originalName;
         this.storedName = storedName;
         this.imageUrl = imageUrl;
         this.contentType = contentType;
         this.fileSize = fileSize;
-        this.magazine = magazine;
     }
 
-    public void setMagazine(Magazine magazine) {
-        this.magazine = magazine;
-    }
 }

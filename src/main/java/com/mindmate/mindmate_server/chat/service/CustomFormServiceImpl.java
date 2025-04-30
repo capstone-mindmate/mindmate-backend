@@ -31,6 +31,7 @@ public class CustomFormServiceImpl implements CustomFormService {
     private final ChatPresenceService chatPresenceService;
 
 
+    // todo: chatservice에서 처리?
     @Override
     @Transactional
     public CustomFormResponse createCustomForm(Long userId, CustomFormRequest request) {
