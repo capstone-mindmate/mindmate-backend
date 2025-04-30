@@ -30,6 +30,7 @@ public class MagazineContentResponse {
                 if (content.getImage() != null) {
                     builder.imageUrl(content.getImage().getImageUrl());
                 }
+                break;
             case EMOTICON:
                 if (content.getEmoticon() != null) {
                     builder.emoticonUrl(content.getEmoticon().getImageUrl());
