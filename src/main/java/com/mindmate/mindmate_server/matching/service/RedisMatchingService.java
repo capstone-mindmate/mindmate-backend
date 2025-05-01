@@ -21,104 +21,163 @@ public class RedisMatchingService {
     private final StringRedisTemplate redisTemplate;
     private final MatchingRepository matchingRepository;
 
-    private static final String MATCHING_SET_KEY = "matching:available:%s";
-    private final static String USER_ACTIVE_MATCHING_COUNT = "user:%d:activeMatchings";
+    private static final String MATCHING_AVAILABLE_KEY = "matching:available:%s";
+    private static final String USER_ACTIVE_MATCHING_COUNT_KEY = "user:%d:activeMatchings";
     private static final int DEFAULT_EXPIRY_HOURS = 24;
+
+    private static final Map<String, String> DEPARTMENT_TO_COLLEGE_MAP = new HashMap<>();
+    static {
+        DEPARTMENT_TO_COLLEGE_MAP.put("공학", "공과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("응용화학", "공과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("경영", "경영대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("경제", "경영대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("소프트", "소프트웨어융합");
+        DEPARTMENT_TO_COLLEGE_MAP.put("미디어", "소프트웨어융합");
+        DEPARTMENT_TO_COLLEGE_MAP.put("사회", "사회과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("정치", "사회과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("국어", "인문대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("불어", "인문대학");
+    } // todo : 이후 단과대 더 추가
 
 
     public void addMatchingToAvailableSet(Matching matching) {
-        String setKey = buildKey(MATCHING_SET_KEY, matching.getCreatorRole());
+        String setKey = getAvailableMatchingSetKey(matching.getCreatorRole());
         redisTemplate.opsForSet().add(setKey, matching.getId().toString());
-
         setExpiry(setKey, DEFAULT_EXPIRY_HOURS);
     }
 
-//    public Long getRandomMatching(InitiatorType userRole) {
-//        InitiatorType targetRole = (userRole == InitiatorType.SPEAKER)
-//                ? InitiatorType.LISTENER
-//                : InitiatorType.SPEAKER;
-//
-//        String setKey = String.format(MATCHING_SET_KEY, targetRole);
-//
-//        String matchingId = redisTemplate.opsForSet().randomMember(setKey);
-//
-//        if (matchingId.isEmpty()) {
-//            return null; // 가능한 매칭 없음
-//        }
-//
-//        return Long.valueOf(matchingId);
-//    }
-
     public void removeMatchingFromAvailableSet(Long matchingId, InitiatorType creatorRole) {
-        String setKey = buildKey(MATCHING_SET_KEY, creatorRole);
+        String setKey = getAvailableMatchingSetKey(creatorRole);
         redisTemplate.opsForSet().remove(setKey, matchingId.toString());
     }
 
-    // 매칭 가능한 방 수??
-
     public void incrementUserActiveMatchingCount(Long userId) {
-        String key = buildKey(USER_ACTIVE_MATCHING_COUNT, userId);
+        String key = getUserActiveMatchingCountKey(userId);
         redisTemplate.opsForValue().increment(key);
         setExpiry(key, DEFAULT_EXPIRY_HOURS);
     }
 
     public void decrementUserActiveMatchingCount(Long userId) {
-        String key = buildKey(USER_ACTIVE_MATCHING_COUNT, userId);
-        redisTemplate.opsForValue().decrement(key);
+        String key = getUserActiveMatchingCountKey(userId);
+        Long currentCount = redisTemplate.opsForValue().decrement(key);
+
+        if (currentCount != null && currentCount <= 0) {
+            redisTemplate.delete(key);
+        }
     }
 
     public int getUserActiveMatchingCount(Long userId) {
-        String key = buildKey(USER_ACTIVE_MATCHING_COUNT, userId);
-        Object count = redisTemplate.opsForValue().get(key);
-        return count != null ? Integer.parseInt(count.toString()) : 0;
+        String key = getUserActiveMatchingCountKey(userId);
+        String countStr = redisTemplate.opsForValue().get(key);
+        return countStr != null ? Integer.parseInt(countStr) : 0;
     }
 
     private String buildKey(String pattern, Object... args) {
         return String.format(pattern, args);
     }
 
-    private void setExpiry(String key, int hours) {
-        redisTemplate.expire(key, hours, TimeUnit.HOURS);
-    }
-
-
     public void cleanupMatchingKeys(Matching matching) {
 
         if (!matching.isOpen()) {
-            String setKey = buildKey(MATCHING_SET_KEY, matching.getCreatorRole());
-            redisTemplate.opsForSet().remove(setKey, matching.getId());
+            String setKey = getAvailableMatchingSetKey(matching.getCreatorRole());
+            redisTemplate.opsForSet().remove(setKey, matching.getId().toString());
         }
     }
 
-    // 사용자 로그아웃 or 세션 종료될 때 count 캐시 지우는 것도?
-
-    // 프로필 기반한 가중치 계산
-    // 가중치 계산 기반한 매칭방 선택
     public Long getRandomMatching(User user, InitiatorType userRole) {
-        InitiatorType targetRole = (userRole == InitiatorType.SPEAKER)
-                ? InitiatorType.LISTENER
-                : InitiatorType.SPEAKER;
+        InitiatorType targetRole = getOppositeRole(userRole);
+        String setKey = getAvailableMatchingSetKey(targetRole);
 
-        String setKey = buildKey(MATCHING_SET_KEY, targetRole);
         Set<String> matchingIds = redisTemplate.opsForSet().members(setKey);
-
         if (matchingIds == null || matchingIds.isEmpty()) {
+            log.debug("사용 가능한 매칭 없음: userRole={}", userRole);
             return null;
         }
 
-        // 매칭 수 많으면 랜덤하게 선택 백개만
-        List<String> candidateIds = new ArrayList<>(matchingIds);
-        if (candidateIds.size() > 100) {
-            Collections.shuffle(candidateIds);
-            candidateIds = candidateIds.subList(0, 100);
+        List<String> candidateIds = limitCandidates(matchingIds, 100);
+
+        Map<Long, Double> scoredMatches = calculateMatchingScores(user, candidateIds, setKey);
+        if (scoredMatches.isEmpty()) {
+            log.debug("유효한 매칭 없음: userId={}", user.getId());
+            return null;
         }
 
+        return selectRandomTopMatch(scoredMatches, 5);
+    }
+
+    private double calculateMatchingScore(User user, Matching matching) {
+        double score = 0.0;
+        Profile userProfile = user.getProfile();
+
+        if (userProfile == null || matching.getCreator() == null || matching.getCreator().getProfile() == null) {
+            return 5.0 + (Math.random() * 10);
+        }
+
+        Profile creatorProfile = matching.getCreator().getProfile();
+
+        score += calculateDepartmentScore(userProfile, creatorProfile);
+
+        score += calculateEntranceYearScore(userProfile, creatorProfile);
+
+        score += Math.random() * 10;
+
+        return score;
+    }
+
+    private double calculateDepartmentScore(Profile userProfile, Profile creatorProfile) {
+        String userDept = userProfile.getDepartment();
+        String creatorDept = creatorProfile.getDepartment();
+
+        if (userDept.isEmpty() || creatorDept.isEmpty()) {
+            return 0.0;
+        }
+
+        if (userDept.equals(creatorDept)) {
+            return 20.0;
+        }
+
+        if (isSameCollege(userDept, creatorDept)) {
+            return 15.0;
+        }
+
+        return 0.0;
+    }
+
+    private double calculateEntranceYearScore(Profile userProfile, Profile creatorProfile) {
+        int yearDiff = Math.abs(userProfile.getEntranceTime() - creatorProfile.getEntranceTime());
+        return Math.max(0, 20 - yearDiff * 5);
+    }
+
+    private boolean isSameCollege(String dept1, String dept2) {
+        String college1 = extractCollege(dept1);
+        String college2 = extractCollege(dept2);
+        return !college1.isEmpty() && college1.equals(college2);
+    }
+
+    private String extractCollege(String department) {
+        return DEPARTMENT_TO_COLLEGE_MAP.entrySet().stream()
+                .filter(entry -> department.contains(entry.getKey()))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElse("");
+    }
+
+    private List<String> limitCandidates(Set<String> matchingIds, int limit) {
+        List<String> candidateIds = new ArrayList<>(matchingIds);
+        if (candidateIds.size() > limit) {
+            Collections.shuffle(candidateIds);
+            return candidateIds.subList(0, limit);
+        }
+        return candidateIds;
+    }
+
+    private Map<Long, Double> calculateMatchingScores(User user, List<String> candidateIds, String setKey) {
         Map<Long, Double> scoredMatches = new HashMap<>();
 
         for (String candidateId : candidateIds) {
             try {
                 Long matchingId = Long.valueOf(candidateId);
-                Matching matching =  matchingRepository.findById(matchingId).orElse(null);
+                Matching matching = matchingRepository.findById(matchingId).orElse(null);
 
                 if (matching == null || !matching.isOpen() || !matching.isAllowRandom()) {
                     redisTemplate.opsForSet().remove(setKey, candidateId);
@@ -128,67 +187,37 @@ public class RedisMatchingService {
                 double score = calculateMatchingScore(user, matching);
                 scoredMatches.put(matchingId, score);
             } catch (Exception e) {
-                log.error("계산 오류: {}", candidateId, e);
+                log.error("매칭 점수 계산 오류: matchingId={}", candidateId, e);
             }
         }
 
-        if (scoredMatches.isEmpty()) {
-            return null;
-        }
+        return scoredMatches;
+    }
 
+    private Long selectRandomTopMatch(Map<Long, Double> scoredMatches, int topCount) {
         List<Map.Entry<Long, Double>> topMatches = scoredMatches.entrySet().stream()
                 .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
-                .limit(5)
+                .limit(topCount)
                 .collect(Collectors.toList());
 
         int randomIndex = (int)(Math.random() * topMatches.size());
         return topMatches.get(randomIndex).getKey();
     }
 
-    private double calculateMatchingScore(User user, Matching matching) {
-
-        double score = 0.0;
-        Profile userProfile = user.getProfile();
-
-        if (userProfile != null) {
-            User creator = matching.getCreator();
-            Profile creatorProfile = creator.getProfile();
-
-            if (creatorProfile != null) {
-                if (!userProfile.getDepartment().isEmpty() &&
-                        userProfile.getDepartment().equals(creatorProfile.getDepartment())) {
-                    score += 20.0;
-                }
-                else if (!userProfile.getDepartment().isEmpty() &&
-                        !creatorProfile.getDepartment().isEmpty() &&
-                        isSameCollege(userProfile.getDepartment(), creatorProfile.getDepartment())) {
-                    score += 15.0;
-                }
-
-                int yearDiff = Math.abs(userProfile.getEntranceTime() - creatorProfile.getEntranceTime());
-                score += Math.max(0, 20 - yearDiff * 5);
-            }
-        }
-
-        score += Math.random() * 10;
-
-        return score;
+    private InitiatorType getOppositeRole(InitiatorType role) {
+        return (role == InitiatorType.SPEAKER) ? InitiatorType.LISTENER : InitiatorType.SPEAKER;
     }
 
-    private boolean isSameCollege(String dept1, String dept2) {
-        String college1 = extractCollege(dept1);
-        String college2 = extractCollege(dept2);
-        return !college1.isEmpty() && college1.equals(college2);
+    private String getAvailableMatchingSetKey(InitiatorType role) {
+        return String.format(MATCHING_AVAILABLE_KEY, role);
     }
 
-    // 학과 -> 단과대 - 이건 나중에 수정해야됨
-    private String extractCollege(String department) {
-        if (department.contains("공학") || department.contains("응용화학")) return "공과대학";
-        if (department.contains("경영") || department.contains("경제")) return "경영대학";
-        if (department.contains("소프트") || department.contains("미디어")) return "소프트웨어융합";
-        if (department.contains("사회") || department.contains("정치")) return "사회과학대학";
-        if (department.contains("국어") || department.contains("불어")) return "인문대학";
-        return "";
+    private String getUserActiveMatchingCountKey(Long userId) {
+        return String.format(USER_ACTIVE_MATCHING_COUNT_KEY, userId);
+    }
+
+    private void setExpiry(String key, int hours) {
+        redisTemplate.expire(key, hours, TimeUnit.HOURS);
     }
 
 }

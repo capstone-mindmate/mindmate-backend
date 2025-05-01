@@ -35,7 +35,7 @@ public class WaitingUser extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private WaitingStatus status = WaitingStatus.PENDING;
 
-    private boolean anonymous; // 프로필 보여줄지 말지
+    private boolean anonymous;
 
     @Builder
     public WaitingUser(User waitingUser, String message, MatchingType matchingType, boolean anonymous) {
@@ -61,8 +61,9 @@ public class WaitingUser extends BaseTimeEntity {
         return this.waitingUser.getId().equals(user.getId());
     }
 
-    public boolean isAutoMatching() {
-        return this.matchingType == MatchingType.AUTO_RANDOM;
+    public boolean isPending() {
+        return this.status == WaitingStatus.PENDING;
     }
+
 
 }
