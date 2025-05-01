@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class FilteringWordServiceImpl implements FilteringWordService {
     private final FilteringWordRepository filteringWordRepository;
-    private final ContentFilterService contentFilterService;
 
     @Override
     public List<FilteringWordDTO> getAllFilteringWords() {

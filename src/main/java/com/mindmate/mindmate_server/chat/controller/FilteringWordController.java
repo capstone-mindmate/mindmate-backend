@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.chat.controller;
 
 import com.mindmate.mindmate_server.chat.dto.FilteringWordDTO;
 import com.mindmate.mindmate_server.chat.dto.FilteringWordRequest;
+import com.mindmate.mindmate_server.chat.service.ContentFilterService;
 import com.mindmate.mindmate_server.chat.service.FilteringWordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FilteringWordController {
     private final FilteringWordService filteringWordService;
+    private final ContentFilterService contentFilterService;
 
     /**
      * 필터링 단어들 확인
@@ -57,5 +59,10 @@ public class FilteringWordController {
         return ResponseEntity.ok(updated);
     }
 
+    @PostMapping("/words/refresh")
+    public ResponseEntity<Void> refreshToastBoxKeywords() {
+        contentFilterService.refreshFilteringWords();
+        return ResponseEntity.noContent().build();
+    }
 }
 

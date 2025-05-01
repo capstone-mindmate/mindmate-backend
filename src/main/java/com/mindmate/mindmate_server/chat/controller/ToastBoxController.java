@@ -53,4 +53,10 @@ public class ToastBoxController {
         ToastBoxKeywordDTO deactivated = toastBoxService.setToastBoxKeywordActive(id, false);
         return ResponseEntity.ok(deactivated);
     }
+
+    @PostMapping("/keywords/refresh")
+    public ResponseEntity<Void> refreshToastBoxKeywords() {
+        toastBoxService.refreshToastBoxKeywords();
+        return ResponseEntity.noContent().build();
+    }
 }

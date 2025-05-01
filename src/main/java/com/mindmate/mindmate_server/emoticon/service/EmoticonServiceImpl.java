@@ -3,7 +3,6 @@ package com.mindmate.mindmate_server.emoticon.service;
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.domain.MessageType;
-import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
 import com.mindmate.mindmate_server.chat.service.ChatMessageService;
 import com.mindmate.mindmate_server.chat.service.ChatPresenceService;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
@@ -34,7 +33,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service

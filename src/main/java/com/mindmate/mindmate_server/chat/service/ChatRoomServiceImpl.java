@@ -79,12 +79,10 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
     @Override
     public List<ChatMessageResponse> getPreviousMessages(Long roomId, Long messageId, Long userId, int size) {
-        // 4. 이전 메시지 페이지네이션 (스크롤 업)
         List<ChatMessage> messages = chatMessageService.findPreviousMessages(roomId, messageId, size);
 
         return messages.stream()
                 .map(message -> ChatMessageResponse.from(message, userId))
-//                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
