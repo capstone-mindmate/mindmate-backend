@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class MatchingServiceImpl implements MatchingService {
 
     private final MatchingRepository matchingRepository;
@@ -74,11 +75,15 @@ public class MatchingServiceImpl implements MatchingService {
 
         Long matchingId = saved.getId();
 
-        if(request.isAllowRandom()){
-            redisMatchingService.addMatchingToAvailableSet(matching);
-        } // 레디스 set에 추가
-
-        redisMatchingService.incrementUserActiveMatchingCount(userId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                if(request.isAllowRandom()){
+                    redisMatchingService.addMatchingToAvailableSet(saved);
+                }
+                redisMatchingService.incrementUserActiveMatchingCount(userId);
+            }
+        });
 
         return MatchingCreateResponse.builder()
                 .matchingId(matchingId)
@@ -102,10 +107,15 @@ public class MatchingServiceImpl implements MatchingService {
         // 수동 매칭 신청 생성
         WaitingUser waitingUser = createWaitingUser(user, matching, request);
 
-        redisMatchingService.incrementUserActiveMatchingCount(userId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                redisMatchingService.incrementUserActiveMatchingCount(userId);
 
-        // 알림 전송 (생성자한테)
-        sendMatchingAppliedNotification(user, matching, request.isAnonymous());
+                // 알림 전송 (생성자한테)
+                sendMatchingAppliedNotification(user, matching, request.isAnonymous());
+            }
+        });
 
         return waitingUserRepository.save(waitingUser).getId();
     }
@@ -116,19 +126,32 @@ public class MatchingServiceImpl implements MatchingService {
         WaitingUser waitingUser = validateWaitingUser(waitingId, matchingId);
 
         waitingUser.accept();
-
         matching.acceptMatching(waitingUser.getWaitingUser());
         matchingRepository.save(matching);
 
-        // 알림 전송 (신청자한테)
-        sendMatchingAcceptedNotification(matching, waitingUser);
-
         List<Long> pendingWaitingUserIds = findPendingWaitingUserIds(matching, waitingId);
-        redisMatchingService.cleanupMatchingKeys(matching);
 
-        if (!pendingWaitingUserIds.isEmpty()) {
-            publishAcceptEventAfterCommit(matching, waitingUser, pendingWaitingUserIds);
-        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                redisMatchingService.cleanupMatchingKeys(matching);
+
+                // 알림 전송 (신청자한테)
+                sendMatchingAcceptedNotification(matching, waitingUser);
+
+                if (!pendingWaitingUserIds.isEmpty()) {
+                    matchingEventProducer.publishMatchingAccepted(
+                            MatchingAcceptedEvent.builder()
+                                    .matchingId(matching.getId())
+                                    .creatorId(matching.getCreator().getId())
+                                    .acceptedUserId(waitingUser.getWaitingUser().getId())
+                                    .pendingWaitingUserIds(pendingWaitingUserIds)
+                                    .build()
+                    );
+                }
+            }
+        });
+
         return matching.getId();
     }
 
@@ -164,7 +187,12 @@ public class MatchingServiceImpl implements MatchingService {
             throw new CustomException(MatchingErrorCode.AUTO_MATCHING_FAILED);
         }
 
-        redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
+            }
+        });
 
         return matching.getChatRoom().getId();
     }
@@ -199,7 +227,12 @@ public class MatchingServiceImpl implements MatchingService {
         }
 
         waitingUserRepository.delete(waitingUser);
-        redisMatchingService.decrementUserActiveMatchingCount(userId);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                redisMatchingService.decrementUserActiveMatchingCount(userId);
+            }
+        });
     }
 
     @Override
@@ -277,15 +310,31 @@ public class MatchingServiceImpl implements MatchingService {
     public void cancelMatching(Long userId, Long matchingId) {
         Matching matching = validateMatchingOwnership(userId, matchingId, true);
 
-        rejectAllPendingWaitingUsers(matching);
+        List<Long> waitingUserIds = waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching)
+                .stream()
+                .filter(app -> app.getStatus() == WaitingStatus.PENDING)
+                .map(app -> {
+                    app.reject();
+                    return app.getWaitingUser().getId();
+                })
+                .collect(Collectors.toList());
 
         matching.cancelMatching();
 
-        redisMatchingService.decrementUserActiveMatchingCount(userId);
-        redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
-        // 채팅이 끝나면 상담횟수 +1 (리스너 역할에만?)
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                redisMatchingService.decrementUserActiveMatchingCount(userId);
+                redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
+                // 채팅이 끝나면 상담횟수 +1 (리스너 역할에만?)
 
-        redisMatchingService.cleanupMatchingKeys(matching);
+                redisMatchingService.cleanupMatchingKeys(matching);
+
+                for (Long waitingUserId : waitingUserIds) {
+                    redisMatchingService.decrementUserActiveMatchingCount(waitingUserId);
+                }
+            }
+        });
     }
 
     @Override
