@@ -148,7 +148,7 @@ class EmoticonServiceTest {
 
             List<Emoticon> similarEmoticons = new ArrayList<>();
             similarEmoticons.add(mockEmoticon);
-            when(emoticonRepository.findByStatusAndIsDefaultOrderByCreatedAtDesc(EmoticonStatus.ACCEPT, false)).thenReturn(similarEmoticons);
+            when(emoticonRepository.findByStatusOrderByCreatedAtDesc(EmoticonStatus.ACCEPT)).thenReturn(similarEmoticons);
 
             // when
             EmoticonDetailResponse response = emoticonService.getEmoticonDetail(emoticonId, testUserId);
@@ -284,7 +284,7 @@ class EmoticonServiceTest {
             String testEmoticonDir = "./uploads/emoticons/";
             EmoticonUploadRequest request = EmoticonUploadRequest.builder()
                     .name("New Emoticon")
-                    .price(1500L)
+                    .price(1500)
                     .build();
 
             FileInfo fileInfo = FileInfo.builder()
@@ -316,7 +316,7 @@ class EmoticonServiceTest {
             // given
             EmoticonUploadRequest request = EmoticonUploadRequest.builder()
                     .name("New Emoticon")
-                    .price(1500L)
+                    .price(1500)
                     .build();
             when(fileStorageService.storeFile(any(MultipartFile.class), anyString()))
                     .thenThrow(new IOException("File storage error"));

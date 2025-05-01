@@ -1,7 +1,5 @@
 package com.mindmate.mindmate_server.magazine.service;
 
-import com.mindmate.mindmate_server.emoticon.domain.Emoticon;
-import com.mindmate.mindmate_server.emoticon.service.EmoticonService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MagazineErrorCode;
 import com.mindmate.mindmate_server.global.util.SlackNotifier;
@@ -17,7 +15,6 @@ import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
-import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -39,7 +35,7 @@ public class MagazineServiceImpl implements MagazineService {
     private final MagazineImageService magazineImageService;
     private final NotificationService notificationService;
     private final MagazinePopularityService magazinePopularityService;
-    private final EmoticonService emoticonService;
+    private final MagazineContentService magazineContentService;
 
     private final MagazineRepository magazineRepository;
     private final MagazineLikeRepository magazineLikeRepository;
@@ -64,7 +60,7 @@ public class MagazineServiceImpl implements MagazineService {
         magazine.setStatus(MagazineStatus.PENDING);
 
         Magazine savedMagazine = magazineRepository.save(magazine);
-        processContents(savedMagazine, request.getContents());
+        magazineContentService.processContents(savedMagazine, request.getContents());
 
         slackNotifier.sendMagazineCreateAlert(savedMagazine, user);
         return MagazineResponse.from(savedMagazine);
@@ -85,7 +81,7 @@ public class MagazineServiceImpl implements MagazineService {
         // todo: 다 지우고 처리하는게 맞나??
         magazineContentRepository.deleteByMagazine(magazine);
         magazine.clearContents();
-        processContents(magazine, request.getContents());
+        magazineContentService.processContents(magazine, request.getContents());
         
         slackNotifier.sendMagazineUpdateAlert(magazine, user);
         return MagazineResponse.from(magazine);
@@ -131,7 +127,6 @@ public class MagazineServiceImpl implements MagazineService {
             throw new CustomException(MagazineErrorCode.MAGAZINE_NOT_FOUND);
         }
 
-        // todo: 동일 ipAddress view 차단
         magazinePopularityService.incrementViewCount(magazine, userId);
 
         boolean isAuthor = magazine.getAuthor().equals(user);
@@ -239,65 +234,4 @@ public class MagazineServiceImpl implements MagazineService {
     public List<MagazineResponse> getPopularMagazinesByCategory(MatchingCategory category, int limit) {
         return magazinePopularityService.getPopularMagazinesByCategory(category, limit);
     }
-    
-    private void processContents(Magazine magazine, List<MagazineContentDTO> contents) {
-        int order = 0;
-        for (MagazineContentDTO dto : contents) {
-            MagazineContent content;
-            
-            switch (dto.getType()) {
-                case TEXT:
-                    if (StringUtils.isBlank(dto.getText())) {
-                        continue;
-                    }
-                    content = MagazineContent.builder()
-                            .magazine(magazine)
-                            .type(MagazineContentType.TEXT)
-                            .text(dto.getText())
-                            .contentOrder(order++)
-                            .build();
-                    break;
-
-                case IMAGE:
-                    if (dto.getImageId() == null) {
-                        continue;
-                    }
-                    MagazineImage image = magazineImageService.findMagazineImageById(dto.getImageId());
-                    Optional<MagazineContent> usedContent = magazineContentRepository
-                            .findByImageAndType(image, MagazineContentType.IMAGE);
-
-                    if (usedContent.isPresent() && !usedContent.get().getMagazine().equals(magazine)) {
-                        throw new CustomException(MagazineErrorCode.MAGAZINE_IMAGE_ALREADY_IN_USE);
-                    }
-
-                    content = MagazineContent.builder()
-                            .magazine(magazine)
-                            .type(MagazineContentType.IMAGE)
-                            .image(image)
-                            .contentOrder(order++)
-                            .build();
-                    break;
-
-                case EMOTICON:
-                    if (dto.getEmoticonId() == null) {
-                        continue;
-                    }
-                    Emoticon emoticon = emoticonService.findEmoticonById(dto.getEmoticonId());
-
-                    content = MagazineContent.builder()
-                            .magazine(magazine)
-                            .type(MagazineContentType.EMOTICON)
-                            .emoticon(emoticon)
-                            .contentOrder(order++)
-                            .build();
-                    break;
-
-                default:
-                    continue;
-            }
-            magazine.addContent(content);
-            magazineContentRepository.save(content);
-        }
-    }
-
 }

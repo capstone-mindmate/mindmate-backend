@@ -10,7 +10,6 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class MagazineStatisticsService {
-    private final MagazineService magazineService;
     private final MagazineRepository magazineRepository;
 
     public List<MagazineCategoryStatistics> getCategoryStatistics() {

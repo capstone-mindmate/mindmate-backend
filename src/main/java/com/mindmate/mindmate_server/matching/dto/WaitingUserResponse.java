@@ -28,7 +28,6 @@ public class WaitingUserResponse {
     private String waitingUserProfileImage;
     private String message;
     private WaitingStatus status;
-//    private List<Tag> evaluationTags; // 이걸 보여줘야되나
     private LocalDateTime createdAt;
 
     public static WaitingUserResponse of(WaitingUser waitingUser) {
@@ -46,23 +45,17 @@ public class WaitingUserResponse {
             department = waitingUser.getWaitingUser().getProfile().getDepartment();
         }
 
-//        List<Tag> tagNames = waitingUser.getWaitingUser().getProfile().getEvaluationTags().stream()
-//                .map(EvaluationTag::getTagContent)
-//                .toList();
-
         return WaitingUserResponse.builder()
                 .id(waitingUser.getId())
                 .waitingUserId(waitingUser.getWaitingUser().getId())
-                .waitingUserNickname(waitingUser.getWaitingUser().getProfile().getNickname())
-                .waitingUserDepartment(waitingUser.getWaitingUser().getProfile().getDepartment())
+                .waitingUserNickname(nickname)
+                .waitingUserDepartment(department)
                 .waitingUserEntranceTime(waitingUser.getWaitingUser().getProfile().getEntranceTime())
                 .waitingUserGraduation(waitingUser.getWaitingUser().getProfile().isGraduation())
                 .waitingUserCounselingCount(waitingUser.getWaitingUser().getProfile().getCounselingCount())
-                .waitingUserProfileImage(waitingUser.getWaitingUser().getProfile().getProfileImage())
+                .waitingUserProfileImage(profileImage)
                 .message(waitingUser.getMessage())
-//                .status(waitingUser.getStatus())
                 .createdAt(waitingUser.getCreatedAt())
-//                .evaluationTags(tagNames)
                 .build();
     }
 }

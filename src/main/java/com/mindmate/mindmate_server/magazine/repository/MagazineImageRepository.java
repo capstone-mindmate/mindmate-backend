@@ -10,7 +10,5 @@ import java.util.List;
 @Repository
 public interface MagazineImageRepository extends JpaRepository<MagazineImage, Long> {
 
-//    List<MagazineImage> findByMagazineIsNullAndCreatedAtBefore(LocalDateTime localDateTime);
-
     List<MagazineImage> findByCreatedAtBefore(LocalDateTime localDateTime);
 }

@@ -1,7 +1,11 @@
 package com.mindmate.mindmate_server.chat.service;
 
+import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.dto.ChatEventType;
+import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
+import com.mindmate.mindmate_server.user.domain.User;
+import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -10,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -22,26 +27,8 @@ public class ChatPresenceService {
     private final RedisKeyManager redisKeyManager;
     private final ChatEventPublisher eventPublisher;
 
-    /**
-     * Redis 값 관리 정리
-     * [사용자 상태]
-     * - 키: user:status:{userId}
-     * - 값: Hash 형태로 저장 (온라인 상태, 활성 채팅방 ID, 마지막 활동 시간, status - 향후 away 고려?)
-     * - 변경 시점: websocket 연결/해제 시 + 사용자가 채팅방에 입장/퇴장할 때
-     * - 만료 시간: 온라인이면 5분, 오프라인이면 30분
-     *
-     * [읽음 상태]
-     * - 키: chat:room:{roomId}:user:{userId}:read
-     * - 값: 마지막으로 읽은 시간
-     * - 변경 시점: 사용자가 메시지를 읽을 때
-     * - 만료 시간: 1일
-     *
-     * [미읽음 상태]
-     * - 키: chat:room:{roomId}:user:{userId}:unread
-     * - 값: 미읽음 메시지 수
-     * - 변경 시점: 새 메시지 도착 시 증가 + 사용자가 메시지 읽을 때 리셋
-     * - 만료 시간: 설정 x
-     */
+    private final ChatRoomRepository chatRoomRepository;
+    private final UserService userService;
 
     public void updateUserStatus(Long userId, boolean isOnline, Long activeRoomId) {
         String statusKey = redisKeyManager.getUserStatusKey(userId);
@@ -95,9 +82,6 @@ public class ChatPresenceService {
         }
     }
 
-    /**
-     * Redis에서만 미읽음 카운트 증가
-     */
     public Long incrementUnreadCountInRedis(Long roomId, Long userId) {
         // Redis 업데이트
         String unreadKey = redisKeyManager.getUnreadCountKey(roomId, userId);
@@ -105,6 +89,7 @@ public class ChatPresenceService {
 
         // WebSocket 알림
         notifyUnreadCount(roomId, userId, count);
+        notifyTotalUnreadCount(userId);
 
         log.info("Incremented unread count in Redis for user {} in room {} to {}", userId, roomId, count);
         return count;
@@ -115,6 +100,49 @@ public class ChatPresenceService {
         redisTemplate.delete(unreadKey);
 
         notifyUnreadCount(roomId, userId, 0L);
+        notifyTotalUnreadCount(userId);
+    }
+
+    public Long getTotalUnreadCount(Long userId) {
+        List<ChatRoom> userChatRooms = chatRoomRepository.findActiveChatRoomByUserId(userId);
+        if (userChatRooms.isEmpty()) {
+            return 0L;
+        }
+
+        long totalCount = 0;
+
+        for (ChatRoom chatRoom : userChatRooms) {
+            String unreadKey = redisKeyManager.getUnreadCountKey(chatRoom.getId(), userId);
+            Object redisUnreadCount = redisTemplate.opsForValue().get(unreadKey);
+
+            if (redisUnreadCount != null) {
+                // reids에 해당 채팅방의 읽지 않은 값 존재
+                if (redisUnreadCount instanceof Long) {
+                    totalCount += (Long) redisUnreadCount;
+                } else if (redisUnreadCount instanceof Integer) {
+                    totalCount += ((Integer) redisUnreadCount).longValue();
+                } else if (redisUnreadCount instanceof String) {
+                    try {
+                        totalCount += Long.parseLong((String) redisUnreadCount);
+                    } catch (NumberFormatException e) {
+                        log.error("Error parsing unread count from Redis: {}", e.getMessage());
+                    }
+                }
+            } else {
+                // redis에 값이 없는 경우 db에서 읽어 오기
+                Long dbUnreadCount = getUnreadCountFromDB(chatRoom, userId);
+                totalCount += dbUnreadCount;
+
+                redisTemplate.opsForValue().set(unreadKey, dbUnreadCount);
+            }
+        }
+        return totalCount;
+    }
+
+    private Long getUnreadCountFromDB(ChatRoom chatRoom, Long userId) {
+        User user = userService.findUserById(userId);
+        boolean isSpeaker = chatRoom.isSpeaker(user);
+        return isSpeaker ? chatRoom.getSpeakerUnreadCount() : chatRoom.getListenerUnreadCount();
     }
 
     private void notifyUnreadCount(Long roomId, Long userId, Long count) {
@@ -126,6 +154,23 @@ public class ChatPresenceService {
                 userId.toString(),
                 "/queue/unread",
                 unreadData
+        );
+    }
+
+    public void notifyTotalUnreadCount(Long userId) {
+        Long totalCount = getTotalUnreadCount(userId);
+
+        String totalUnreadKey = redisKeyManager.getUserTotalUnreadCountKey(userId);
+        redisTemplate.opsForValue().set(totalUnreadKey, totalCount);
+        redisTemplate.expire(totalUnreadKey, 1, TimeUnit.DAYS);
+
+        Map<String, Object> totalUnreadData = new HashMap<>();
+        totalUnreadData.put("totalUnreadCount", totalCount);
+
+        messagingTemplate.convertAndSendToUser(
+                userId.toString(),
+                "/queue/total-unread",
+                totalUnreadData
         );
     }
 }

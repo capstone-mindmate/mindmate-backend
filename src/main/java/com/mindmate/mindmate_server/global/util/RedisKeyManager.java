@@ -75,5 +75,7 @@ public class RedisKeyManager {
         return "magazine:processed:" + eventId;
     }
 
-
+    public String getUserTotalUnreadCountKey(Long userId) {
+        return String.format("user:%d:total-unread", userId);
+    }
 }

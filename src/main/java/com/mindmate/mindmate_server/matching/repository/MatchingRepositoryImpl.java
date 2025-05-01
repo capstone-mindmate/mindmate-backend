@@ -46,7 +46,6 @@ public class MatchingRepositoryImpl implements MatchingRepositoryCustom {
             );
         }
 
-        // 필터 조건들
         if (category != null) {
             builder.and(matching.category.eq(category));
         }
@@ -82,7 +81,6 @@ public class MatchingRepositoryImpl implements MatchingRepositoryCustom {
         return new PageImpl<>(content, pageable, total);
     }
 
-    // 정렬 조건 처리
     private OrderSpecifier<?>[] getOrderSpecifier(Pageable pageable, QMatching matching) {
         if (!pageable.getSort().isEmpty()) {
             List<OrderSpecifier<?>> orders = new ArrayList<>();
@@ -90,7 +88,7 @@ public class MatchingRepositoryImpl implements MatchingRepositoryCustom {
             for (Sort.Order order : pageable.getSort()) {
                 Order direction = order.getDirection().isAscending() ? Order.ASC : Order.DESC;
 
-                switch (order.getProperty()) { // 음.. 시간이랑 제목 말고 정렬 기준 있나?
+                switch (order.getProperty()) {
                     case "title":
                         orders.add(new OrderSpecifier<>(direction, matching.title));
                         break;

@@ -155,7 +155,7 @@ public class MagazinePopularityServiceImpl implements MagazinePopularityService 
         if (topMagazineIds == null || topMagazineIds.isEmpty()) {
             try {
                 return magazineRepository.findByMagazineStatusAndCategoryOrderByLikeCountDesc(
-                                MagazineStatus.PUBLISHED, MatchingCategory.valueOf(category.getTitle()))
+                                MagazineStatus.PUBLISHED, category)
                         .stream()
                         .map(MagazineResponse::from)
                         .collect(Collectors.toList());

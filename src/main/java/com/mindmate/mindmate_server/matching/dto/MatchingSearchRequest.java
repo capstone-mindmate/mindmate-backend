@@ -12,7 +12,6 @@ import lombok.NoArgsConstructor;
 public class MatchingSearchRequest {
     private String keyword;
 
-    // 여기는 필터링이라 선택
     private MatchingCategory category;
     private String department;
     private InitiatorType requiredRole;

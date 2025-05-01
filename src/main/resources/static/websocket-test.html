@@ -174,6 +174,16 @@
 <div class="container">
     <h1>WebSocket 채팅 테스트</h1>
     
+    <!-- 하단바 추가 -->
+    <div style="position: fixed; bottom: 0; left: 0; width: 100%; background-color: #f8f9fa; padding: 10px; border-top: 1px solid #ddd; display: flex; justify-content: space-between; z-index: 100;">
+        <div>
+            <strong>총 읽지 않은 메시지:</strong> <span id="totalUnreadCount" style="color: #dc3545; font-weight: bold;">0</span>
+        </div>
+        <div>
+            <button onclick="fetchTotalUnreadCount()" style="padding: 5px 10px;">새로고침</button>
+        </div>
+    </div>
+    
     <div class="flex-container">
         <div class="col">
             <div class="form-group">
@@ -306,9 +316,11 @@
                 // 알림 및 미읽음 메시지 카운트 구독
                 subscriptions['notification'] = stompClient.subscribe('/user/queue/notification', handleNotification);
                 subscriptions['unread'] = stompClient.subscribe('/user/queue/unread', updateUnreadCount);
+                subscriptions['totalUnread'] = stompClient.subscribe('/user/queue/total-unread', updateTotalUnreadCount);
                 
                 updatePresence('ONLINE');
                 startHeartbeat();
+                fetchTotalUnreadCount();
             },
             function(error) {
                 logMessage('연결 오류: ' + error, "error");
@@ -415,6 +427,49 @@
         document.getElementById('messages').innerHTML = '';
         logMessage("채팅방에서 퇴장했습니다", "info");
     }
+    
+    // 총 읽지 않은 메시지 수 업데이트 핸들러
+    function updateTotalUnreadCount(message) {
+        try {
+            const data = JSON.parse(message.body);
+            const totalCount = data.totalUnreadCount;
+            
+            document.getElementById('totalUnreadCount').textContent = totalCount;
+            
+            logMessage(`총 읽지 않은 메시지: ${totalCount}개`, "info");
+        } catch (e) {
+            console.error("Error processing total unread count:", e);
+        }
+    }
+    
+    // 초기 총 읽지 않은 메시지 수 조회
+    function fetchTotalUnreadCount() {
+        const token = document.getElementById('token').value;
+        if (!token) {
+            logMessage("토큰을 입력해주세요", "error");
+            return;
+        }
+        
+        logMessage("총 읽지 않은 메시지 수를 조회합니다...", "info");
+        
+        fetch(`${baseUrl}/api/chat/unread/total`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('총 읽지 않은 메시지 수 조회 실패: ' + response.status);
+            return response.json();
+        })
+        .then(count => {
+            document.getElementById('totalUnreadCount').textContent = count;
+            logMessage(`총 읽지 않은 메시지 수: ${count}개`, "success");
+        })
+        .catch(error => logMessage('총 읽지 않은 메시지 수 조회 오류: ' + error.message, "error"));
+    }
+
     
     // 이모티콘 메시지 처리
     function handleEmoticonMessage(message) {

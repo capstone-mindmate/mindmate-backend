@@ -189,4 +189,14 @@ public class ChatController {
         chatRoomService.rejectCloseChatRoom(principal.getUserId(), roomId);
         return ResponseEntity.ok().build();
     }
+
+    /**
+     * 사용자의 총 읽지 않은 메시지 수 조회 api
+     */
+    @GetMapping("/unread/total")
+    public ResponseEntity<Long> getTotalUnreadCount(@AuthenticationPrincipal UserPrincipal principal) {
+        Long userId = principal.getUserId();
+        Long totalCount = chatPresenceService.getTotalUnreadCount(userId);
+        return ResponseEntity.ok(totalCount);
+    }
 }
