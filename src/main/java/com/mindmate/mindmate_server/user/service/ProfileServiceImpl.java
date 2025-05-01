@@ -5,6 +5,7 @@ import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
 import com.mindmate.mindmate_server.matching.service.MatchingService;
 import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.review.dto.ReviewResponse;
+import com.mindmate.mindmate_server.review.service.ReviewDataService;
 import com.mindmate.mindmate_server.review.service.ReviewService;
 import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.RoleType;
@@ -28,7 +29,7 @@ public class ProfileServiceImpl implements ProfileService {
     private final UserService userService;
     private final ProfileRepository profileRepository;
     private final MatchingService matchingService;
-    private final ReviewService reviewService;
+    private final ReviewDataService reviewService;
     private final PointService pointService;
 
     @Override
