@@ -51,4 +51,8 @@ public class MagazineContent {
     public void setMagazine(Magazine magazine) {
         this.magazine = magazine;
     }
+
+    public void setContentOrder(int order) {
+        this.contentOrder = order;
+    }
 }

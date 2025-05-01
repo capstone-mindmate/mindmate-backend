@@ -11,7 +11,6 @@ import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.matching.domain.Matching;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.user.domain.User;
-import com.mindmate.mindmate_server.user.service.ProfileService;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +36,6 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     private final ChatMessageService chatMessageService;
     private final UserService userService;
     private final NotificationService notificationService;
-    private final ProfileService profileService;
 
     private final KafkaTemplate<String ,ChatRoomCloseEvent> kafkaTemplate;
 
@@ -183,8 +181,6 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         chatRoom.acceptClosure();
         User speaker = chatRoom.getSpeaker();
         User listener = chatRoom.getListener();
-        profileService.incrementCounselingCount(speaker.getId());
-        profileService.incrementCounselingCount(listener.getId());
         save(chatRoom);
 
         ChatRoomCloseEvent event = ChatRoomCloseEvent.builder()

@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>매거진 CRUD 테스트</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .left-panel {
+            flex: 1;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .right-panel {
+            flex: 1;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            max-height: 800px;
+            overflow-y: auto;
+        }
+        .section {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .magazine-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .magazine-content {
+            margin: 10px 0;
+        }
+        .emoticon-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .emoticon-item {
+            border: 1px solid #ddd;
+            padding: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .emoticon-item img {
+            max-width: 50px;
+            max-height: 50px;
+        }
+        .image-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .image-preview img {
+            max-width: 100px;
+            max-height: 100px;
+            object-fit: cover;
+            border: 1px solid #ddd;
+            padding: 3px;
+        }
+        .content-editor {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .content-preview {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px dashed #ccc;
+            border-radius: 4px;
+        }
+        .content-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .content-item img {
+            max-width: 100px;
+            max-height: 100px;
+            margin-right: 10px;
+        }
+        .auth-section {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .error {
+            color: red;
+            margin: 5px 0;
+        }
+        .success {
+            color: green;
+            margin: 5px 0;
+        }
+        .selected {
+            border: 2px solid #4CAF50;
+        }
+        .magazine-detail {
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .like-button {
+            background-color: #f44336;
+        }
+        .like-button.liked {
+            background-color: #e91e63;
+        }
+        .content-controls {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .content-controls button {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        .delete-btn {
+            background-color: #f44336;
+        }
+        .move-btn {
+            background-color: #2196F3;
+        }
+    </style>
+</head>
+<body>
+<h1>매거진 CRUD 테스트</h1>
+
+<div class="auth-section">
+    <h2>인증</h2>
+    <div>
+        <input type="text" id="email" placeholder="사용자 이름">
+        <input type="password" id="password" placeholder="비밀번호">
+        <button id="login-btn">로그인</button>
+        <button id="use-token-btn">토큰 직접 입력</button>
+        <input type="text" id="token-input" placeholder="JWT 토큰 직접 입력" style="display: none;">
+        <button id="apply-token-btn" style="display: none;">적용</button>
+    </div>
+    <div id="auth-status" class="error">로그인이 필요합니다.</div>
+</div>
+
+<div class="container">
+    <div class="left-panel">
+        <div class="section">
+            <h2>매거진 생성</h2>
+            <input type="text" id="magazine-title" placeholder="제목">
+            <select id="magazine-category">
+                <option value="DATING">데이팅</option>
+                <option value="RELATIONSHIP">관계</option>
+                <option value="BREAKUP">이별</option>
+                <option value="MARRIAGE">결혼</option>
+                <option value="SOCIAL">사회생활</option>
+                <option value="CAREER">커리어</option>
+                <option value="DAILY">일상</option>
+                <option value="OTHER">기타</option>
+            </select>
+            
+            <div class="content-editor">
+                <h3>컨텐츠 추가</h3>
+                <textarea id="content-text" placeholder="텍스트 내용"></textarea>
+                
+                <div>
+                    <button id="add-text-btn">텍스트 추가</button>
+                    <button id="add-image-btn">이미지 추가</button>
+                    <button id="show-emoticons-btn">이모티콘 선택</button>
+                    <input type="file" id="image-upload" accept="image/*" multiple style="display: none;">
+                </div>
+                
+                <div class="emoticon-container" id="emoticon-container" style="display: none;"></div>
+                
+                <div class="image-preview" id="image-preview"></div>
+                
+                <h3>컨텐츠 미리보기</h3>
+                <div class="content-preview" id="content-preview"></div>
+            </div>
+            
+            <button id="create-magazine-btn">매거진 생성</button>
+            <button id="update-magazine-btn" style="display: none;">매거진 수정</button>
+            <button id="cancel-edit-btn" style="display: none;">수정 취소</button>
+            <div id="create-status"></div>
+        </div>
+        
+        <div class="section">
+            <h2>매거진 목록 조회</h2>
+            <select id="filter-category">
+                <option value="">모든 카테고리</option>
+                <option value="CAREER">커리어</option>
+            </select>
+            <input type="text" id="search-keyword" placeholder="검색어">
+            <select id="sort-by">
+                <option value="LATEST">최신순</option>
+                <option value="POPULAR">인기순</option>
+            </select>
+            <button id="search-btn">검색</button>
+            <button id="popular-btn">인기 매거진</button>
+            <div id="magazine-list"></div>
+            <div id="pagination">
+                <button id="prev-page">이전</button>
+                <span id="page-info">1 / 1</span>
+                <button id="next-page">다음</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="right-panel">
+        <h2>매거진 상세</h2>
+        <div id="magazine-detail"></div>
+    </div>
+</div>
+
+<script>
+    // 기본 설정
+    const baseUrl = 'http://localhost:8080'; // API 서버 URL
+    let token = localStorage.getItem('jwt_token');
+    let currentPage = 0;
+    let totalPages = 0;
+    let currentMagazineId = null;
+    let editMode = false;
+    let contents = [];
+    let uploadedImages = [];
+    
+    // DOM 요소
+    const authStatus = document.getElementById('auth-status');
+    const loginBtn = document.getElementById('login-btn');
+    const useTokenBtn = document.getElementById('use-token-btn');
+    const tokenInput = document.getElementById('token-input');
+    const applyTokenBtn = document.getElementById('apply-token-btn');
+    const createMagazineBtn = document.getElementById('create-magazine-btn');
+    const updateMagazineBtn = document.getElementById('update-magazine-btn');
+    const cancelEditBtn = document.getElementById('cancel-edit-btn');
+    const searchBtn = document.getElementById('search-btn');
+    const popularBtn = document.getElementById('popular-btn');
+    const prevPageBtn = document.getElementById('prev-page');
+    const nextPageBtn = document.getElementById('next-page');
+    const pageInfo = document.getElementById('page-info');
+    const addTextBtn = document.getElementById('add-text-btn');
+    const addImageBtn = document.getElementById('add-image-btn');
+    const showEmoticonsBtn = document.getElementById('show-emoticons-btn');
+    const imageUpload = document.getElementById('image-upload');
+    const emoticonContainer = document.getElementById('emoticon-container');
+    const contentPreview = document.getElementById('content-preview');
+    const imagePreview = document.getElementById('image-preview');
+    
+    // 인증 상태 확인
+    function checkAuthStatus() {
+        if (token) {
+            authStatus.textContent = '인증됨';
+            authStatus.className = 'success';
+            return true;
+        } else {
+            authStatus.textContent = '로그인이 필요합니다.';
+            authStatus.className = 'error';
+            return false;
+        }
+    }
+    
+    // 초기 인증 상태 확인
+    checkAuthStatus();
+    
+    // 로그인 처리
+    loginBtn.addEventListener('click', async () => {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        
+        if (!email || !password) {
+            authStatus.textContent = '사용자 이름과 비밀번호를 입력하세요.';
+            authStatus.className = 'error';
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${baseUrl}/api/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                token = data.token;
+                localStorage.setItem('jwt_token', token);
+                checkAuthStatus();
+                loadEmoticons();
+                searchMagazines();
+            } else {
+                const error = await response.json();
+                authStatus.textContent = `로그인 실패: ${error.message || '인증 오류'}`;
+                authStatus.className = 'error';
+            }
+        } catch (error) {
+            authStatus.textContent = `로그인 실패: ${error.message}`;
+            authStatus.className = 'error';
+        }
+    });
+    
+    // 토큰 직접 입력 버튼
+    useTokenBtn.addEventListener('click', () => {
+        tokenInput.style.display = 'block';
+        applyTokenBtn.style.display = 'inline-block';
+    });
+    
+    // 토큰 적용 버튼
+    applyTokenBtn.addEventListener('click', () => {
+        const inputToken = tokenInput.value.trim();
+        if (inputToken) {
+            token = inputToken;
+            localStorage.setItem('jwt_token', token);
+            tokenInput.style.display = 'none';
+            applyTokenBtn.style.display = 'none';
+            checkAuthStatus();
+            loadEmoticons();
+            searchMagazines();
+        } else {
+            authStatus.textContent = '유효한 토큰을 입력하세요.';
+            authStatus.className = 'error';
+        }
+    });
+    
+    // 이모티콘 로드
+    async function loadEmoticons() {
+        if (!checkAuthStatus()) return;
+        
+        try {
+            const response = await fetch(`${baseUrl}/api/emoticons/available`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            });
+            console.log('emoticon', response);
+            
+            if (response.ok) {
+                const emoticons = await response.json();
+                renderEmoticons(emoticons);
+            } else {
+                console.error('이모티콘 로드 실패');
+            }
+        } catch (error) {
+            console.error('이모티콘 로드 오류:', error);
+        }
+    }
+    
+    // 이모티콘 렌더링
+    function renderEmoticons(emoticons) {
+        emoticonContainer.innerHTML = '';
+        
+        emoticons.forEach(emoticon => {
+            const emoticonItem = document.createElement('div');
+            emoticonItem.className = 'emoticon-item';
+            emoticonItem.dataset.id = emoticon.id;
+            
+            const img = document.createElement('img');
+            img.src = `http://localhost:8080${emoticon.imageUrl}`;
+            img.alt = emoticon.name;
+            
+            emoticonItem.appendChild(img);
+            emoticonContainer.appendChild(emoticonItem);
+            
+            emoticonItem.addEventListener('click', () => {
+                addEmoticonContent(emoticon);
+                emoticonContainer.style.display = 'none';
+            });
+        });
+    }
+    
+    // 이모티콘 선택 버튼
+    showEmoticonsBtn.addEventListener('click', () => {
+        if (emoticonContainer.style.display === 'none' || emoticonContainer.style.display === '') {
+            emoticonContainer.style.display = 'flex';
+            if (emoticonContainer.children.length === 0) {
+                loadEmoticons();
+            }
+        } else {
+            emoticonContainer.style.display = 'none';
+        }
+    });
+    
+    // 이모티콘 컨텐츠 추가
+    function addEmoticonContent(emoticon) {
+        const contentItem = {
+            type: 'EMOTICON',
+            emoticonId: emoticon.id,
+            emoticonUrl: emoticon.imageUrl,
+            order: contents.length
+        };
+        
+        contents.push(contentItem);
+        updateContentPreview();
+    }
+    
+    // 텍스트 컨텐츠 추가
+    addTextBtn.addEventListener('click', () => {
+        const text = document.getElementById('content-text').value.trim();
+        if (!text) return;
+        
+        const contentItem = {
+            type: 'TEXT',
+            text: text,
+            order: contents.length
+        };
+        
+        contents.push(contentItem);
+        document.getElementById('content-text').value = '';
+        updateContentPreview();
+    });
+    
+    // 이미지 추가 버튼
+    addImageBtn.addEventListener('click', () => {
+        imageUpload.click();
+    });
+    
+    // 이미지 업로드
+    imageUpload.addEventListener('change', async (e) => {
+        if (!checkAuthStatus()) return;
+        
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        
+        const formData = new FormData();
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files', files[i]);
+        }
+        
+        try {
+            const response = await fetch(`${baseUrl}/api/magazine/image`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                body: formData
+            });
+            
+            if (response.ok) {
+                const images = await response.json();
+                for (const image of images) {
+                    uploadedImages.push(image);
+                    addImageContent(image);
+                }
+            } else {
+                console.error('이미지 업로드 실패');
+            }
+        } catch (error) {
+            console.error('이미지 업로드 오류:', error);
+        }
+        
+        // 파일 입력 초기화
+        imageUpload.value = '';
+    });
+    
+    // 이미지 컨텐츠 추가
+    function addImageContent(image) {
+        const contentItem = {
+            type: 'IMAGE',
+            imageId: image.id,
+            imageUrl: image.imageUrl,
+            order: contents.length
+        };
+        
+        contents.push(contentItem);
+        updateContentPreview();
+        updateImagePreview();
+    }
+    
+    // 이미지 미리보기 업데이트
+    function updateImagePreview() {
+        imagePreview.innerHTML = '';
+        
+        uploadedImages.forEach(image => {
+            const img = document.createElement('img');
+            img.src = image.imageUrl;
+            img.alt = 'Uploaded image';
+            imagePreview.appendChild(img);
+        });
+    }
+    
+    // 컨텐츠 미리보기 업데이트
+    function updateContentPreview() {
+        contentPreview.innerHTML = '';
+        
+        contents.forEach((content, index) => {
+            const contentItem = document.createElement('div');
+            contentItem.className = 'content-item';
+            
+            if (content.type === 'TEXT') {
+                contentItem.textContent = content.text;
+            } else if (content.type === 'IMAGE') {
+                const img = document.createElement('img');
+                img.src = content.imageUrl;
+                contentItem.appendChild(img);
+            } else if (content.type === 'EMOTICON') {
+                const img = document.createElement('img');
+                img.src = content.emoticonUrl;
+                contentItem.appendChild(img);
+            }
+            
+            // 컨트롤 버튼 추가
+            const controls = document.createElement('div');
+            controls.className = 'content-controls';
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = '삭제';
+            deleteBtn.addEventListener('click', () => {
+                contents.splice(index, 1);
+                // 순서 재정렬
+                contents.forEach((c, i) => c.order = i);
+                updateContentPreview();
+            });
+            
+            const moveUpBtn = document.createElement('button');
+            moveUpBtn.className = 'move-btn';
+            moveUpBtn.textContent = '↑';
+            moveUpBtn.disabled = index === 0;
+            moveUpBtn.addEventListener('click', () => {
+                if (index > 0) {
+                    const temp = contents[index];
+                    contents[index] = contents[index - 1];
+                    contents[index - 1] = temp;
+                    
+                    // 순서 재정렬
+                    contents.forEach((c, i) => c.order = i);
+                    updateContentPreview();
+                }
+            });
+            
+            const moveDownBtn = document.createElement('button');
+            moveDownBtn.className = 'move-btn';
+            moveDownBtn.textContent = '↓';
+            moveDownBtn.disabled = index === contents.length - 1;
+            moveDownBtn.addEventListener('click', () => {
+                if (index < contents.length - 1) {
+                    const temp = contents[index];
+                    contents[index] = contents[index + 1];
+                    contents[index + 1] = temp;
+                    
+                    // 순서 재정렬
+                    contents.forEach((c, i) => c.order = i);
+                    updateContentPreview();
+                }
+            });
+            
+            controls.appendChild(deleteBtn);
+            controls.appendChild(moveUpBtn);
+            controls.appendChild(moveDownBtn);
+            contentItem.appendChild(controls);
+            
+            contentPreview.appendChild(contentItem);
+        });
+    }
+    
+    // 매거진 생성
+    createMagazineBtn.addEventListener('click', async () => {
+        if (!checkAuthStatus()) return;
+        
+        const title = document.getElementById('magazine-title').value.trim();
+        const category = document.getElementById('magazine-category').value;
+        
+        if (!title) {
+            document.getElementById('create-status').textContent = '제목을 입력하세요.';
+            document.getElementById('create-status').className = 'error';
+            return;
+        }
+        
+        if (contents.length === 0) {
+            document.getElementById('create-status').textContent = '컨텐츠를 추가하세요.';
+            document.getElementById('create-status').className = 'error';
+            return;
+        }
+        
+        const magazineData = {
+            title,
+            category,
+            contents: contents.map(content => {
+                if (content.type === 'TEXT') {
+                    return {
+                        type: content.type,
+                        text: content.text,
+                        order: content.order
+                    };
+                } else if (content.type === 'IMAGE') {
+                    return {
+                        type: content.type,
+                        imageId: content.imageId,
+                        order: content.order
+                    };
+                } else if (content.type === 'EMOTICON') {
+                    return {
+                        type: content.type,
+                        emoticonId: content.emoticonId,
+                        order: content.order
+                    };
+                }
+            })
+        };
+        
+        try {
+            const response = await fetch(`${baseUrl}/api/magazine`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(magazineData)
+            });
+            
+            if (response.ok) {
+                const magazine = await response.json();
+                document.getElementById('create-status').textContent = '매거진이 생성되었습니다.';
+                document.getElementById('create-status').className = 'success';
+                
+                // 폼 초기화
+                document.getElementById('magazine-title').value = '';
+                document.getElementById('content-text').value = '';
+                contents = [];
+                uploadedImages = [];
+                updateContentPreview();
+                updateImagePreview();
+                
+                // 목록 새로고침
+                searchMagazines();
+                
+                // 생성된 매거진 상세 보기
+                getMagazineDetail(magazine.id);
+            } else {
+                const error = await response.json();
+                document.getElementById('create-status').textContent = `매거진 생성 실패: ${error.message || '오류 발생'}`;
+                document.getElementById('create-status').className = 'error';
+            }
+        } catch (error) {
+            document.getElementById('create-status').textContent = `매거진 생성 오류: ${error.message}`;
+            document.getElementById('create-status').className = 'error';
+        }
+    });
+    
+    // 매거진 수정
+    updateMagazineBtn.addEventListener('click', async () => {
+        if (!checkAuthStatus() || !currentMagazineId) return;
+        
+        const title = document.getElementById('magazine-title').value.trim();
+        const category = document.getElementById('magazine-category').value;
+        
+        if (!title) {
+            document.getElementById('create-status').textContent = '제목을 입력하세요.';
+            document.getElementById('create-status').className = 'error';
+            return;
+        }
+        
+        if (contents.length === 0) {
+            document.getElementById('create-status').textContent = '컨텐츠를 추가하세요.';
+            document.getElementById('create-status').className = 'error';
+            return;
+        }
+        
+        const magazineData = {
+            title,
+            category,
+            contents: contents.map(content => {
+                if (content.type === 'TEXT') {
+                    return {
+                        type: content.type,
+                        text: content.text,
+                        order: content.order
+                    };
+                } else if (content.type === 'IMAGE') {
+                    return {
+                        type: content.type,
+                        imageId: content.imageId,
+                        order: content.order
+                    };
+                } else if (content.type === 'EMOTICON') {
+                    return {
+                        type: content.type,
+                        emoticonId: content.emoticonId,
+                        order: content.order
+                    };
+                }
+            })
+        };
+        
+        try {
+            const response = await fetch(`${baseUrl}/api/magazine/${currentMagazineId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(magazineData)
+            });
+            
+            if (response.ok) {
+                const magazine = await response.json();
+                document.getElementById('create-status').textContent = '매거진이 수정되었습니다.';
+                document.getElementById('create-status').className = 'success';
+                
+                // 폼 초기화 및 수정 모드 종료
+                resetForm();
+                
+                // 목록 새로고침
+                searchMagazines();
+                
+                // 수정된 매거진 상세 보기
+                getMagazineDetail(magazine.id);
+            } else {
+                const error = await response.json();
+                document.getElementById('create-status').textContent = `매거진 수정 실패: ${error.message || '오류 발생'}`;
+                document.getElementById('create-status').className = 'error';
+            }
+        } catch (error) {
+            document.getElementById('create-status').textContent = `매거진 수정 오류: ${error.message}`;
+            document.getElementById('create-status').className = 'error';
+        }
+    });
+    
+    // 수정 취소
+    cancelEditBtn.addEventListener('click', () => {
+        resetForm();
+    });
+    
+    // 폼 초기화
+    function resetForm() {
+        document.getElementById('magazine-title').value = '';
+        document.getElementById('content-text').value = '';
+        contents = [];
+        uploadedImages = [];
+        updateContentPreview();
+        updateImagePreview();
+        
+        createMagazineBtn.style.display = 'block';
+        updateMagazineBtn.style.display = 'none';
+        cancelEditBtn.style.display = 'none';
+        
+        currentMagazineId = null;
+        editMode = false;
+    }
+    
+    // 매거진 검색
+    searchBtn.addEventListener('click', () => {
+        currentPage = 0;
+        searchMagazines();
+    });
+    
+    // 인기 매거진 조회
+    popularBtn.addEventListener('click', async () => {
+        if (!checkAuthStatus()) return;
+        
+        try {
+            const response = await fetch(`${baseUrl}/api/magazine/popular?limit=10`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const magazines = await response.json();
+                renderMagazineList(magazines);
+                
+                // 페이지네이션 숨기기
+                document.getElementById('pagination').style.display = 'none';
+            } else {
+                console.error('인기 매거진 조회 실패');
+            }
+        } catch (error) {
+            console.error('인기 매거진 조회 오류:', error);
+        }
+    });
+    
+    // 매거진 목록 검색
+    async function searchMagazines() {
+        if (!checkAuthStatus()) return;
+        
+        const category = document.getElementById('filter-category').value;
+        const keyword = document.getElementById('search-keyword').value.trim();
+        const sortBy = document.getElementById('sort-by').value;
+        
+        let url = `${baseUrl}/api/magazine?page=${currentPage}&size=10&sortBy=${sortBy}`;
+        
+        if (category) {
+            url += `&category=${category}`;
+        }
+        
+        if (keyword) {
+            url += `&keyword=${encodeURIComponent(keyword)}`;
+        }
+        
+        try {
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                renderMagazineList(data.content);
+                
+                // 페이지네이션 업데이트
+                totalPages = data.totalPages;
+                updatePagination();
+                
+                // 페이지네이션 표시
+                document.getElementById('pagination').style.display = 'block';
+            } else {
+                console.error('매거진 목록 조회 실패');
+            }
+        } catch (error) {
+            console.error('매거진 목록 조회 오류:', error);
+        }
+    }
+    
+    // 페이지네이션 업데이트
+    function updatePagination() {
+        pageInfo.textContent = `${currentPage + 1} / ${totalPages || 1}`;
+        prevPageBtn.disabled = currentPage <= 0;
+        nextPageBtn.disabled = currentPage >= totalPages - 1;
+    }
+    
+    // 이전 페이지
+    prevPageBtn.addEventListener('click', () => {
+        if (currentPage > 0) {
+            currentPage--;
+            searchMagazines();
+        }
+    });
+    
+    // 다음 페이지
+    nextPageBtn.addEventListener('click', () => {
+        if (currentPage < totalPages - 1) {
+            currentPage++;
+            searchMagazines();
+        }
+    });
+    
+    // 매거진 목록 렌더링
+    function renderMagazineList(magazines) {
+        const magazineList = document.getElementById('magazine-list');
+        magazineList.innerHTML = '';
+        
+        if (magazines.length === 0) {
+            magazineList.innerHTML = '<p>매거진이 없습니다.</p>';
+            return;
+        }
+        
+        magazines.forEach(magazine => {
+            const magazineItem = document.createElement('div');
+            magazineItem.className = 'magazine-item';
+            
+            const title = document.createElement('h3');
+            title.textContent = magazine.title;
+            
+            const info = document.createElement('p');
+            info.textContent = `작성자: ${magazine.authorName} | 카테고리: ${magazine.category} | 좋아요: ${magazine.likeCount}`;
+            
+            const viewBtn = document.createElement('button');
+            viewBtn.textContent = '상세 보기';
+            viewBtn.addEventListener('click', () => {
+                getMagazineDetail(magazine.id);
+            });
+            
+            magazineItem.appendChild(title);
+            magazineItem.appendChild(info);
+            magazineItem.appendChild(viewBtn);
+            magazineList.appendChild(magazineItem);
+        });
+    }
+    
+    // 매거진 상세 조회
+    async function getMagazineDetail(magazineId) {
+        if (!checkAuthStatus()) return;
+        
+        try {
+            const response = await fetch(`${baseUrl}/api/magazine/${magazineId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const magazine = await response.json();
+                renderMagazineDetail(magazine);
+                currentMagazineId = magazineId;
+                
+                // 사용자 활동 정보 전송
+                trackEngagement(magazineId);
+            } else {
+                console.error('매거진 상세 조회 실패');
+            }
+        } catch (error) {
+            console.error('매거진 상세 조회 오류:', error);
+        }
+    }
+    
+    // 사용자 활동 정보 전송
+    async function trackEngagement(magazineId) {
+        if (!checkAuthStatus()) return;
+        
+        const engagementData = {
+            readTimeSeconds: 10, // 예시 값
+            scrollDepthPercent: 100 // 예시 값
+        };
+        
+        try {
+            await fetch(`${baseUrl}/api/magazine/${magazineId}/engagement`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(engagementData)
+            });
+        } catch (error) {
+            console.error('활동 정보 전송 오류:', error);
+        }
+    }
+    
+    // 매거진 상세 렌더링
+    function renderMagazineDetail(magazine) {
+        const magazineDetail = document.getElementById('magazine-detail');
+        magazineDetail.innerHTML = '';
+        
+        const title = document.createElement('h2');
+        title.textContent = magazine.title;
+        
+        const info = document.createElement('p');
+        info.textContent = `작성자: ${magazine.authorName} | 카테고리: ${magazine.category} | 좋아요: ${magazine.likeCount}`;
+        
+        const contentContainer = document.createElement('div');
+        contentContainer.className = 'magazine-content';
+        
+        magazine.contents.forEach(content => {
+            const contentItem = document.createElement('div');
+            contentItem.className = 'content-item';
+            
+            if (content.type === 'TEXT') {
+                contentItem.textContent = content.text;
+            } else if (content.type === 'IMAGE') {
+                const img = document.createElement('img');
+                img.src = `http://localhost:8080${content.imageUrl}`;
+                contentItem.appendChild(img);
+            } else if (content.type === 'EMOTICON') {
+                const img = document.createElement('img');
+                img.src = content.emoticonUrl;
+                img.src = `http://localhost:8080${content.emoticonUrl}`;
+
+                
+                contentItem.appendChild(img);
+            }
+            
+            contentContainer.appendChild(contentItem);
+        });
+        
+        const actionButtons = document.createElement('div');
+        actionButtons.className = 'action-buttons';
+        
+        const likeBtn = document.createElement('button');
+        likeBtn.className = magazine.isLiked ? 'like-button liked' : 'like-button';
+        likeBtn.textContent = magazine.isLiked ? '좋아요 취소' : '좋아요';
+        likeBtn.addEventListener('click', () => toggleLike(magazine.id));
+        
+        actionButtons.appendChild(likeBtn);
+        
+        if (magazine.isAuthor) {
+            const editBtn = document.createElement('button');
+            editBtn.textContent = '수정';
+            editBtn.addEventListener('click', () => {
+                editMagazine(magazine);
+            });
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '삭제';
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.addEventListener('click', () => {
+                if (confirm('정말로 이 매거진을 삭제하시겠습니까?')) {
+                    deleteMagazine(magazine.id);
+                }
+            });
+            
+            actionButtons.appendChild(editBtn);
+            actionButtons.appendChild(deleteBtn);
+        }
+        
+        magazineDetail.appendChild(title);
+        magazineDetail.appendChild(info);
+        magazineDetail.appendChild(contentContainer);
+        magazineDetail.appendChild(actionButtons);
+    }
+    
+    // 매거진 수정 모드
+    function editMagazine(magazine) {
+        // 폼에 데이터 채우기
+        document.getElementById('magazine-title').value = magazine.title;
+        document.getElementById('magazine-category').value = magazine.category;
+        
+        // 컨텐츠 설정
+        contents = magazine.contents.map(content => {
+            if (content.type === 'TEXT') {
+                return {
+                    type: content.type,
+                    text: content.text,
+                    order: content.order
+                };
+            } else if (content.type === 'IMAGE') {
+                return {
+                    type: content.type,
+                    imageId: content.imageId,
+                    imageUrl: content.imageUrl,
+                    order: content.order
+                };
+            } else if (content.type === 'EMOTICON') {
+                return {
+                    type: content.type,
+                    emoticonId: content.emoticonId,
+                    emoticonUrl: content.emoticonUrl,
+                    order: content.order
+                };
+            }
+        });
+        
+        // 컨텐츠 미리보기 업데이트
+        updateContentPreview();
+        
+        // 버튼 상태 변경
+        createMagazineBtn.style.display = 'none';
+        updateMagazineBtn.style.display = 'block';
+        cancelEditBtn.style.display = 'block';
+        
+        // 수정 모드 설정
+        currentMagazineId = magazine.id;
+        editMode = true;
+        
+        // 스크롤을 폼 위치로 이동
+        document.querySelector('.left-panel').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // 매거진 삭제
+    async function deleteMagazine(magazineId) {
+        if (!checkAuthStatus()) return;
+        
+        try {
+            const response = await fetch(`${baseUrl}/api/magazine/${magazineId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+            
+            if (response.ok) {
+                alert('매거진이 삭제되었습니다.');
+                document.getElementById('magazine-detail').innerHTML = '';
+                searchMagazines();
+            } else {
+                alert('매거진 삭제에 실패했습니다.');
+            }
+        } catch (error) {
+            console.error('매거진 삭제 오류:', error);
+            alert('매거진 삭제 중 오류가 발생했습니다.');
+        }
+    }
+    
+    // 좋아요 토글
+    async function toggleLike(magazineId) {
+        if (!checkAuthStatus()) return;
+        
+        try {
+            const response = await fetch(`${baseUrl}/api/magazine/${magazineId}/like`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                // 매거진 상세 정보 새로고침
+                getMagazineDetail(magazineId);
+            } else {
+                console.error('좋아요 토글 실패');
+            }
+        } catch (error) {
+            console.error('좋아요 토글 오류:', error);
+        }
+    }
+    
+    // 초기 로드
+    if (checkAuthStatus()) {
+        loadEmoticons();
+        searchMagazines();
+    }
+</script>
+</body>
+</html>
