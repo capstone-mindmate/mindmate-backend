@@ -107,16 +107,6 @@ public class Matching extends BaseTimeEntity {
         return this.creator.getId().equals(user.getId());
     }
 
-    public boolean isCreatorSpeaker() {
-        return this.creatorRole == InitiatorType.SPEAKER;
-    }
-
-    public InitiatorType getRequiredRole() {
-        return this.creatorRole == InitiatorType.SPEAKER
-                ? InitiatorType.LISTENER
-                : InitiatorType.SPEAKER;
-    }
-
     public int getWaitingUsersCount() {
         return this.waitingUsers.size();
     }

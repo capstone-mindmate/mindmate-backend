@@ -61,8 +61,9 @@ public class WaitingUser extends BaseTimeEntity {
         return this.waitingUser.getId().equals(user.getId());
     }
 
-    public boolean isAutoMatching() {
-        return this.matchingType == MatchingType.AUTO_RANDOM;
+    public boolean isPending() {
+        return this.status == WaitingStatus.PENDING;
     }
+
 
 }
