@@ -46,28 +46,10 @@ public class RedisMatchingService {
         setExpiry(setKey, DEFAULT_EXPIRY_HOURS);
     }
 
-//    public Long getRandomMatching(InitiatorType userRole) {
-//        InitiatorType targetRole = (userRole == InitiatorType.SPEAKER)
-//                ? InitiatorType.LISTENER
-//                : InitiatorType.SPEAKER;
-//
-//        String setKey = String.format(MATCHING_SET_KEY, targetRole);
-//
-//        String matchingId = redisTemplate.opsForSet().randomMember(setKey);
-//
-//        if (matchingId.isEmpty()) {
-//            return null; // 가능한 매칭 없음
-//        }
-//
-//        return Long.valueOf(matchingId);
-//    }
-
     public void removeMatchingFromAvailableSet(Long matchingId, InitiatorType creatorRole) {
         String setKey = getAvailableMatchingSetKey(creatorRole);
         redisTemplate.opsForSet().remove(setKey, matchingId.toString());
     }
-
-    // 매칭 가능한 방 수??
 
     public void incrementUserActiveMatchingCount(Long userId) {
         String key = getUserActiveMatchingCountKey(userId);
@@ -102,10 +84,6 @@ public class RedisMatchingService {
         }
     }
 
-    // 사용자 로그아웃 or 세션 종료될 때 count 캐시 지우는 것도?
-
-    // 프로필 기반한 가중치 계산
-    // 가중치 계산 기반한 매칭방 선택
     public Long getRandomMatching(User user, InitiatorType userRole) {
         InitiatorType targetRole = getOppositeRole(userRole);
         String setKey = getAvailableMatchingSetKey(targetRole);

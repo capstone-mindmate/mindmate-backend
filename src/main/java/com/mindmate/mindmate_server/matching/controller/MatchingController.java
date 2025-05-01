@@ -103,7 +103,6 @@ public class MatchingController {
         return ResponseEntity.ok().build();
     }
 
-    // 생성한거
     @GetMapping("/history/created")
     public ResponseEntity<Page<MatchingResponse>> getCreatedMatchingHistory(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
@@ -112,7 +111,6 @@ public class MatchingController {
         return ResponseEntity.ok(matchingHistory);
     }
 
-    // 참여한거
     @GetMapping("/history/participated")
     public ResponseEntity<Page<MatchingResponse>> getParticipatedMatchingHistory(
             @AuthenticationPrincipal UserPrincipal userPrincipal,

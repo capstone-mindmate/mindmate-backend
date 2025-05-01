@@ -326,7 +326,6 @@ public class MatchingServiceImpl implements MatchingService {
             public void afterCommit() {
                 redisMatchingService.decrementUserActiveMatchingCount(userId);
                 redisMatchingService.removeMatchingFromAvailableSet(matchingId, matching.getCreatorRole());
-                // 채팅이 끝나면 상담횟수 +1 (리스너 역할에만?)
 
                 redisMatchingService.cleanupMatchingKeys(matching);
 

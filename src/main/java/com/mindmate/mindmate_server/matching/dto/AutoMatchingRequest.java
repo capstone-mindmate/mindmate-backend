@@ -15,5 +15,5 @@ public class AutoMatchingRequest {
 
     private InitiatorType userRole;
     private boolean anonymous;
-    private boolean showDepartment; // 굳이 학과를 보여줄 필요가 있나?
+    private boolean showDepartment;
 }

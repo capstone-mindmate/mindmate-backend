@@ -2,9 +2,6 @@ package com.mindmate.mindmate_server.matching.domain;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
-//import com.mindmate.mindmate_server.user.domain.CounselingField;
-//import com.mindmate.mindmate_server.user.domain.ListenerProfile;
-//import com.mindmate.mindmate_server.user.domain.SpeakerProfile;
 import com.mindmate.mindmate_server.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -14,9 +11,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Entity
 @Table(name = "matchings", indexes = {
@@ -47,7 +42,7 @@ public class Matching extends BaseTimeEntity {
     private MatchingStatus status;
 
     @Enumerated(EnumType.STRING)
-    private InitiatorType creatorRole; // 요청 주체
+    private InitiatorType creatorRole;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "accepted_user_id")
