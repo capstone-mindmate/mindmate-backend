@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.review.service;
 
+import com.mindmate.mindmate_server.review.domain.Review;
 import com.mindmate.mindmate_server.review.dto.ProfileReviewSummaryResponse;
 import com.mindmate.mindmate_server.review.dto.ReviewRequest;
 import com.mindmate.mindmate_server.review.dto.ReviewResponse;
@@ -28,5 +29,5 @@ public interface ReviewService {
 
     Double getAverageRatingByUserId(Long userId);
 
-    void findReviewById(Long reviewId);
+    Review findReviewById(Long reviewId);
 }

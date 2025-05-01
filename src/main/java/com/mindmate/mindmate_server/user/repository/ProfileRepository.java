@@ -20,4 +20,8 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
     Optional<Profile> findByUser(User user);
 
     boolean existsByNickname(String nickname);
+
+    @Query("SELECT p FROM Profile p JOIN FETCH p.user WHERE p.user.id = :userId")
+    Optional<Profile> findWithUserByUserId(@Param("userId") Long userId);
+
 }
