@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -389,7 +390,20 @@ public class MatchingServiceImpl implements MatchingService {
 
     @Override
     public Map<String, Integer> getCategoryCountsByUserId(Long userId) {
-        return null;
+        Map<String, Integer> categoryCounts = new HashMap<>();
+
+        for (MatchingCategory category : MatchingCategory.values()) {
+            categoryCounts.put(category.name(), 0);
+        }
+
+        List<Object[]> matchingCounts = matchingRepository.countMatchingsByUserAndCategory(userId);
+        for (Object[] result : matchingCounts) {
+            MatchingCategory category = (MatchingCategory) result[0];
+            Integer count = ((Long) result[1]).intValue();
+            categoryCounts.put(category.name(), count);
+        }
+
+        return categoryCounts;
     }
 
     private Matching validateMatchingOwnership(Long userId, Long matchingId) {

@@ -84,6 +84,12 @@ public interface MatchingRepository extends JpaRepository<Matching, Long>, Match
             @Param("keyword") String keyword,
             Pageable pageable);
 
+    @Query("SELECT m.category, COUNT(m) FROM Matching m " +
+            "WHERE (m.creator.id = :userId OR m.acceptedUser.id = :userId) " +
+            "AND m.status = 'MATCHED' " +
+            "GROUP BY m.category")
+    List<Object[]> countMatchingsByUserAndCategory(@Param("userId") Long userId);
+
 //    // 필터링 포함 검샏
 //    @Query("SELECT DISTINCT m FROM Matching m " +
 //            "LEFT JOIN m.creator u " +
