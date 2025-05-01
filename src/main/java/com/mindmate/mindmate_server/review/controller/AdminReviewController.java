@@ -28,10 +28,6 @@ public class AdminReviewController {
             @RequestParam(required = false) @Min(1) @Max(5) Integer maxRating,
             @RequestParam(required = false) Boolean reported) {
 
-        if (minRating != null && maxRating != null && minRating > maxRating) {
-            throw new CustomException(ReviewErrorCode.INVALID_RATING_VALUE);
-        }
-
         return ResponseEntity.ok(adminReviewService.getReviews(page, size, minRating, maxRating, reported));
     }
 
