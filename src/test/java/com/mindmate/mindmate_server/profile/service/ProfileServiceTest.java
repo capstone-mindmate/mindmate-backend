@@ -103,8 +103,8 @@ class ProfileServiceTest {
         // given
         Long userId = 1L;
 
-        when(userService.findUserById(userId)).thenReturn(mockUser);
-        when(profileRepository.findByUser(mockUser)).thenReturn(Optional.of(mockProfile));
+        when(profileRepository.findWithUserByUserId(userId)).thenReturn(Optional.of(mockProfile));
+        when(mockProfile.getUser()).thenReturn(mockUser);
 
         // when
         ProfileDetailResponse response = profileService.getProfileDetail(userId);
@@ -126,8 +126,6 @@ class ProfileServiceTest {
         assertEquals(100, response.getPoints());
         assertEquals(mockReviewResponses, response.getReviews());
 
-        verify(userService).findUserById(userId);
-        verify(profileRepository).findByUser(mockUser);
         verify(reviewService).getRecentReviewsByUserId(eq(userId), eq(5));
         verify(reviewService).getAverageRatingByUserId(userId);
         verify(reviewService).getTagCountsByProfileId(mockProfile.getId());
@@ -141,7 +139,7 @@ class ProfileServiceTest {
         // given
         Long userId = 1L;
         when(userService.findUserById(userId)).thenReturn(mockUser);
-        when(profileRepository.findByUser(mockUser)).thenReturn(Optional.empty());
+        when(profileRepository.findWithUserByUserId(userId)).thenReturn(Optional.empty());
 
         // when & then
         CustomException exception = assertThrows(CustomException.class, () -> {
@@ -149,8 +147,7 @@ class ProfileServiceTest {
         });
 
         assertEquals(ProfileErrorCode.PROFILE_NOT_FOUND, exception.getErrorCode());
-        verify(userService).findUserById(userId);
-        verify(profileRepository).findByUser(mockUser);
+        verify(profileRepository).findWithUserByUserId(userId);
     }
 
     @Test
@@ -318,7 +315,7 @@ class ProfileServiceTest {
                 .nickname("ajou")
                 .profileImage("http://example.com/new_image.jpg")
                 .department("소프트웨어학과")
-                .entranceTime(currentYear + 2) // 현재 년도 + 2는 유효하지 않음
+                .entranceTime(currentYear + 2)
                 .graduation(false)
                 .build();
 
@@ -544,7 +541,7 @@ class ProfileServiceTest {
         when(userService.findUserById(userId)).thenReturn(mockUser);
         when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(mockProfile));
 
-        // when - 내부 메서드를 호출하기 위해 다른 공개 메서드 사용
+        // when
         profileService.incrementCounselingCount(userId);
 
         // then
@@ -562,7 +559,7 @@ class ProfileServiceTest {
         when(profileRepository.findByUserId(userId)).thenReturn(Optional.empty());
         when(profileRepository.save(any(Profile.class))).thenReturn(mockProfile);
 
-        // when - 내부 메서드를 호출하기 위해 다른 공개 메서드 사용
+        // when
         profileService.incrementCounselingCount(userId);
 
         // then

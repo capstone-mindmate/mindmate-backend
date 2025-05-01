@@ -34,8 +34,9 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional(readOnly = true)
     public ProfileDetailResponse getProfileDetail(Long userId) {
-        User user = userService.findUserById(userId);
-        Profile profile = findProfileByUser(user);
+        Profile profile = profileRepository.findWithUserByUserId(userId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
+        User user = profile.getUser();
 
         return buildProfileDetailResponse(profile, user);
     }
@@ -109,6 +110,7 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Profile findProfileById(Long profileId) {
         return profileRepository.findById(profileId)
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
