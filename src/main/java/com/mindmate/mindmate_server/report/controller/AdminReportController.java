@@ -21,7 +21,7 @@ import java.time.LocalDate;
 )
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/admin/reports")
+@RequestMapping("/admin/reports")
 public class AdminReportController {
     private final AdminReportService adminReportService;
 

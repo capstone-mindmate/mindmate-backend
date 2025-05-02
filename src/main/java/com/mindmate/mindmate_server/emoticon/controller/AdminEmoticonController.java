@@ -15,7 +15,7 @@ import java.util.List;
         description = "관리자가 이모티콘 등록 요청을 승인 또는 거절할 수 있는 API"
 )
 @RestController
-@RequestMapping("/api/admin/emoticons")
+@RequestMapping("/admin/emoticons")
 @RequiredArgsConstructor
 public class AdminEmoticonController {
     private final AdminEmoticonService emoticonService;

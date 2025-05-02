@@ -26,7 +26,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
-@RequestMapping("/api/emoticons")
+@RequestMapping("/emoticons")
 public class EmoticonController {
     private final EmoticonService emoticonService;
 
@@ -44,7 +44,7 @@ public class EmoticonController {
             summary = "이모티콘 상세 조회",
             description = "특정 이모티콘의 상세 정보(이미지, 가격, 유사 이모티콘 등)를 조회합니다."
     )
-    @GetMapping("/{emoticonId}")
+    @GetMapping("/detail/{emoticonId}")
     public ResponseEntity<EmoticonDetailResponse> getEmoticonDetail(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long emoticonId) {
@@ -77,7 +77,7 @@ public class EmoticonController {
             summary = "이모티콘 구매",
             description = "지정한 이모티콘을 포인트로 구매합니다."
     )
-    @PostMapping("/{emoticonId}/purchase")
+    @PostMapping("/purchase/{emoticonId}")
     public ResponseEntity<EmoticonResponse> purchaseEmoticon(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long emoticonId) {

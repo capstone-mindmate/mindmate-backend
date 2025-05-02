@@ -20,7 +20,7 @@ import java.util.List;
 )
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/custom-forms")
+@RequestMapping("/custom-forms")
 public class CustomFormController {
     private final CustomFormService customFormService;
 

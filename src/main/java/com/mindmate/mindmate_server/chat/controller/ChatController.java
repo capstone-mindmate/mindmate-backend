@@ -27,7 +27,7 @@ import java.util.List;
         description = "채팅방 목록 조회, 검색, 읽음/안읽음 등 채팅 관련 API"
 )
 @RestController
-@RequestMapping("/api/chat")
+@RequestMapping("/chat")
 @RequiredArgsConstructor
 @Slf4j
 public class ChatController {

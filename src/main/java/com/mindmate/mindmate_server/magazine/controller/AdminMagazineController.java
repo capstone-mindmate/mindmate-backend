@@ -21,7 +21,7 @@ import java.util.List;
 )
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/admin/magazine")
+@RequestMapping("/admin/magazine")
 public class AdminMagazineController {
     private final MagazineService magazineService;
     private final MagazineStatisticsService statisticsService;

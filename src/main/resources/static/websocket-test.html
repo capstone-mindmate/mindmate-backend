@@ -452,7 +452,7 @@
         
         logMessage("총 읽지 않은 메시지 수를 조회합니다...", "info");
         
-        fetch(`${baseUrl}/api/chat/unread/total`, {
+        fetch(`${baseUrl}/chat/unread/total`, {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + token,
@@ -516,7 +516,7 @@
         
         logMessage("사용 가능한 이모티콘을 조회합니다...", "info");
         
-        fetch(`${baseUrl}/api/emoticons/available`, {
+        fetch(`${baseUrl}/emoticons/available`, {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + token,
@@ -546,6 +546,7 @@
         container.innerHTML = '';
         
         emoticons.forEach(emoticon => {
+        console.log('emoticon:', emoticon);
             const emoticonElement = document.createElement('div');
             emoticonElement.className = 'emoticon-item';
             emoticonElement.onclick = () => sendEmoticon(emoticon.id);
@@ -628,7 +629,7 @@
         
         logMessage(`채팅방 ${currentRoomId}의 메시지를 조회합니다...`, "info");
         
-        fetch(`${baseUrl}/api/chat/rooms/${currentRoomId}/messages?page=0&size=20`, {
+        fetch(`${baseUrl}/chat/rooms/${currentRoomId}/messages?page=0&size=20`, {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + token,
@@ -656,7 +657,7 @@
         
         logMessage("채팅방 목록을 조회합니다...", "info");
         
-        fetch(`${baseUrl}/api/chat/rooms?page=0&size=10`, {
+        fetch(`${baseUrl}/chat/rooms?page=0&size=10`, {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + token,

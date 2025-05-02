@@ -21,7 +21,7 @@ import java.util.List;
 )
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/magazine/image")
+@RequestMapping("/magazine/image")
 public class MagazineImageController {
     private final MagazineImageService magazineImageService;
 

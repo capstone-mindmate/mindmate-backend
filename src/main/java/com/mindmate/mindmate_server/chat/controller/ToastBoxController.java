@@ -18,7 +18,7 @@ import java.util.List;
         description = "관리자가 토스트박스(알림/가이드) 키워드를 등록, 수정, 삭제, 활성/비활성, 갱신할 수 있는 API"
 )
 @RestController
-@RequestMapping("/api/admin/toast-box")
+@RequestMapping("/admin/toast-box")
 @RequiredArgsConstructor
 public class ToastBoxController {
     private final ToastBoxService toastBoxService;

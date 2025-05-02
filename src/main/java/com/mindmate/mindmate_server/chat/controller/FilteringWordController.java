@@ -18,7 +18,7 @@ import java.util.List;
         description = "관리자가 채팅 등에서 사용할 필터링(금칙어) 단어를 등록, 조회, 삭제, 활성/비활성, 갱신할 수 있는 API"
 )
 @RestController
-@RequestMapping("/api/admin/filtering")
+@RequestMapping("/admin/filtering")
 @RequiredArgsConstructor
 public class FilteringWordController {
     private final FilteringWordService filteringWordService;

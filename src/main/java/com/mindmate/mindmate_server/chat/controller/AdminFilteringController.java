@@ -19,7 +19,7 @@ import java.util.List;
 )
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/admin/filtering")
+@RequestMapping("/admin/filtering")
 public class AdminFilteringController {
     private final AdminFilteringService adminFilteringService;
 

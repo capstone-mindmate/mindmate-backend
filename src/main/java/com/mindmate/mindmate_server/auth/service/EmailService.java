@@ -6,6 +6,7 @@ import com.mindmate.mindmate_server.user.domain.User;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -15,6 +16,9 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class EmailService {
     private final JavaMailSender mailSender;
+
+    @Value("${app.base-url}")
+    private static String baseUrl;
 
     /**
      * 인증 이메일 보내기
@@ -39,7 +43,7 @@ public class EmailService {
     }
 
     private static String getString(String token) {
-        String verificationLink = "http://localhost:8080/api/auth/email/verify?token=" + token;
+        String verificationLink = baseUrl + "/auth/email/verify?token=" + token;
 
         return String.format(
                     "아래 링크를 클릭하여 이메일 인증을 완료해주세요:<br>"
