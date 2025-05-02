@@ -40,5 +40,4 @@ public class AdminReviewController {
         adminReviewService.deleteReview(reviewId);
         return ResponseEntity.noContent().build();
     }
-
 }

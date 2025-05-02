@@ -12,10 +12,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Set;
 
-@Tag(name = "프로필", description = "스피커/리스너 프로필 관리 API")
+@Tag(name = "프로필", description = "프로필 관리 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/profile")
+@RequestMapping("/profile")
 public class ProfileController {
     private final ProfileService profileService;
 
@@ -40,6 +40,7 @@ public class ProfileController {
         return ResponseEntity.ok(profile);
     }
 
+    @Operation(summary = "프로필 생성", description = "새로운 사용자 프로필을 생성합니다.")
     @PostMapping
     public ResponseEntity<ProfileResponse> createProfile(@AuthenticationPrincipal UserPrincipal principal, @RequestBody ProfileCreateRequest request) {
         Long userId = principal.getUserId();
@@ -47,6 +48,7 @@ public class ProfileController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "프로필 수정", description = "기존 사용자 프로필 정보를 수정합니다.")
     @PutMapping
     public ResponseEntity<ProfileResponse> updateProfile(@AuthenticationPrincipal UserPrincipal principal, @RequestBody ProfileUpdateRequest request) {
         Long userId = principal.getUserId();
