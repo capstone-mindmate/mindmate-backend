@@ -31,6 +31,7 @@ public class ChatMessageResponse {
 
     private boolean error;
     private String errorMessage;
+    private boolean filtered;
 
     private CustomFormResponse customForm;
 
@@ -97,6 +98,7 @@ public class ChatMessageResponse {
                 .senderName(senderName)
                 .content(filteredContent)
                 .type(type)
+                .filtered(true)
                 .createdAt(LocalDateTime.now())
                 .reactionCounts(new HashMap<>())
                 .error(false)

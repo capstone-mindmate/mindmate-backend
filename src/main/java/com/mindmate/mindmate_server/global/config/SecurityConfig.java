@@ -54,7 +54,7 @@ public class SecurityConfig {
                                         "default-src 'self'; " +
                                                 "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
                                                 "style-src 'self' 'unsafe-inline'; " +
-                                                "img-src 'self' data: https:; " +
+                                                "img-src 'self' data: blob: http: https:; " +
                                                 "font-src 'self' data:;" +
                                                 "connect-src 'self' ws: wss:;" // WebSocket 연결 허용
                                 )
@@ -67,22 +67,22 @@ public class SecurityConfig {
                         .authenticationEntryPoint(customAuthenticationEntryPoint()) // 인증 실패시
                         .accessDeniedHandler(customAccessDeniedHandler())) // 권한 부족시
                 .authorizeHttpRequests(auth -> auth
-                    .requestMatchers(
-                            "/emoticons/**",
-                            "/images/**",
-                            "/ws/**",
-                            "/api/auth/register",
-                            "/api/auth/login",
-                            "/api/auth/email/verify",
-                            "/api/auth/email/resend",
-                            "/swagger-ui/**",
-                            "/swagger-resources/**",
-                            "/v3/api-docs/**"
-                            ).permitAll() // 향후 수정 (api 접근, role 별 접근 등)
-                        .requestMatchers("/api/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
-                        .requestMatchers("/api/profile/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
-                        .requestMatchers("/api/chat/**", "/ws/**").hasAnyAuthority("ROLE_PROFILE", "ROLE_ADMIN")
-//                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN") 나중에 admin 접근 제한 시 사용
+                        .requestMatchers(
+                                "/emoticons/**",
+                                "/images/**",
+                                "/ws/**",
+                                "/auth/register",
+                                "/auth/login",
+                                "/auth/email/verify",
+                                "/auth/email/resend",
+                                "/swagger-ui/**",
+                                "/swagger-resources/**",
+                                "/v3/api-docs/**"
+                        ).permitAll() // 향후 수정 (api 접근, role 별 접근 등)
+                        .requestMatchers("/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
+                        .requestMatchers("/profile/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
+                        .requestMatchers("/chat/**", "/ws/**").hasAnyAuthority("ROLE_PROFILE", "ROLE_ADMIN")
+//        .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN") 나중에 admin 접근 제한 시 사용
                         .anyRequest().authenticated())
                 .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class) // 초당 10개 요청 제한
                 .addFilterBefore(new XssFilter(), UsernamePasswordAuthenticationFilter.class) // XSS 공격 방지
@@ -118,7 +118,7 @@ public class SecurityConfig {
                 "Sec-WebSocket-Version",
                 "Sec-WebSocket-Key"
         ));
-        configuration.setExposedHeaders(Arrays.asList("Authorization"));
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

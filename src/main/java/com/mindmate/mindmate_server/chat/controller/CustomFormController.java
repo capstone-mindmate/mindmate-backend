@@ -5,6 +5,8 @@ import com.mindmate.mindmate_server.chat.dto.CustomFormRequest;
 import com.mindmate.mindmate_server.chat.dto.CustomFormResponse;
 import com.mindmate.mindmate_server.chat.dto.RespondToCustomFormRequest;
 import com.mindmate.mindmate_server.chat.service.CustomFormService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,15 +14,20 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(
+        name = "커스텀 폼",
+        description = "채팅방 내에서 사용하는 커스텀 폼(설문/질문지) 생성, 조회, 응답 관련 API"
+)
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/custom-forms")
+@RequestMapping("/custom-forms")
 public class CustomFormController {
     private final CustomFormService customFormService;
 
-    /**
-     * 커스텀폼 생성
-     */
+    @Operation(
+            summary = "커스텀 폼 생성",
+            description = "채팅방 내에서 커스텀 폼(설문/질문지)을 생성합니다. - websocket 장애시 사용"
+    )
     @PostMapping
     public ResponseEntity<CustomFormResponse> createCustomForm(@RequestBody CustomFormRequest request,
                                                                @AuthenticationPrincipal UserPrincipal principal) {
@@ -28,18 +35,19 @@ public class CustomFormController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * 커스텀폼 조회
-     */
+    @Operation(
+            summary = "커스텀 폼 단건 조회",
+            description = "특정 커스텀 폼의 상세 정보를 조회합니다."
+    )
     @GetMapping("/{formId}")
     public ResponseEntity<CustomFormResponse> getCustomForm(@PathVariable Long formId) {
         return ResponseEntity.ok(CustomFormResponse.from(customFormService.findCustomFormById(formId)));
     }
 
-    /**
-     * 커스텀폼 답변하기
-     * todo: 지금 질문과 답변의 순서가 일치한다는 보장으로 진행하고 있음 -> id 매핑을 해줘야 확실히 구분 가능
-     */
+    @Operation(
+            summary = "커스텀 폼 응답 제출",
+            description = "지정된 커스텀 폼에 대한 답변을 제출합니다. - websocket 장애시 사용"
+    )
     @PostMapping("/{formId}/respond")
     public ResponseEntity<CustomFormResponse> respondToCustomForm(@PathVariable Long formId,
                                                                   @RequestBody RespondToCustomFormRequest request,
@@ -49,9 +57,10 @@ public class CustomFormController {
     }
 
 
-    /**
-     * 해당 채팅방의 모든 커스텀폼 조회
-     */
+    @Operation(
+            summary = "채팅방 내 커스텀 폼 전체 조회",
+            description = "특정 채팅방에서 생성된 모든 커스텀 폼 목록을 조회합니다."
+    )
     @GetMapping("/chat-room/{chatRoomId}")
     public ResponseEntity<List<CustomFormResponse>> getCustomFormsByChatRoom(@PathVariable Long chatRoomId) {
         List<CustomFormResponse> responses = customFormService.getCustomFormsByChatRoom(chatRoomId);

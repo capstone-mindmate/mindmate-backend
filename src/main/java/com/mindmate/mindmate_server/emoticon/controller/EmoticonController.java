@@ -6,6 +6,8 @@ import com.mindmate.mindmate_server.emoticon.dto.EmoticonResponse;
 import com.mindmate.mindmate_server.emoticon.dto.EmoticonUploadRequest;
 import com.mindmate.mindmate_server.emoticon.dto.UserEmoticonResponse;
 import com.mindmate.mindmate_server.emoticon.service.EmoticonService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -17,27 +19,32 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 
+@Tag(
+        name = "이모티콘",
+        description = "이모티콘 상점, 구매, 보유 이모티콘, 업로드 등 이모티콘 관련 API"
+)
 @RestController
 @RequiredArgsConstructor
 @Slf4j
-@RequestMapping("/api/emoticons")
+@RequestMapping("/emoticons")
 public class EmoticonController {
     private final EmoticonService emoticonService;
-    /**
-     * 이모티콘 샾에서 조회
-     * -> 구매 가능한 이모티콘
-     */
+
+    @Operation(
+            summary = "이모티콘 상점 목록 조회",
+            description = "구매 가능한 모든 이모티콘 목록을 조회합니다."
+    )
     @GetMapping("/shop")
     public ResponseEntity<List<EmoticonResponse>> getShopEmoticons(@AuthenticationPrincipal UserPrincipal principal) {
         List<EmoticonResponse> emoticons = emoticonService.getShopEmoticons(principal.getUserId());
         return ResponseEntity.ok(emoticons);
     }
 
-    /**
-     * 이모티콘 상세 조회
-     * -> 샾에서 해당 이모티콘 클릭했을 때 이미지, 가격, 다른 구매 가능한 이모티콘 보여주기
-     */
-    @GetMapping("/{emoticonId}")
+    @Operation(
+            summary = "이모티콘 상세 조회",
+            description = "특정 이모티콘의 상세 정보(이미지, 가격, 유사 이모티콘 등)를 조회합니다."
+    )
+    @GetMapping("/detail/{emoticonId}")
     public ResponseEntity<EmoticonDetailResponse> getEmoticonDetail(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long emoticonId) {
@@ -45,18 +52,20 @@ public class EmoticonController {
         return ResponseEntity.ok(emoticonDetail);
     }
 
-    /**
-     * 자신의 보유 이모티콘 확인 + 보유하지 않은 다른 이모티콘도 보여주기
-     */
+    @Operation(
+            summary = "내 보유 이모티콘 목록 조회",
+            description = "사용자가 보유한 이모티콘과 아직 보유하지 않은 이모티콘 목록을 함께 조회합니다."
+    )
     @GetMapping("/my")
     public ResponseEntity<UserEmoticonResponse> getMyEmoticons(@AuthenticationPrincipal UserPrincipal principal) {
         UserEmoticonResponse response = emoticonService.getUserEmoticons(principal.getUserId());
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * 채팅 or 매거진에서 이모티콘 클릭 시 보여주는 조회 기능 -> 보유한 것만
-     */
+    @Operation(
+            summary = "채팅/매거진에서 사용 가능한 이모티콘 조회",
+            description = "채팅방 또는 매거진에서 실제로 사용할 수 있는(보유 중인) 이모티콘 목록만 조회합니다."
+    )
     @GetMapping("/available")
     public ResponseEntity<List<EmoticonResponse>> getAvailableEmoticons(@AuthenticationPrincipal UserPrincipal principal) {
         List<EmoticonResponse> emoticons = emoticonService.getAvailableEmoticons(principal.getUserId());
@@ -64,11 +73,11 @@ public class EmoticonController {
     }
 
 
-
-    /**
-     * 이모티콘 구매하기
-     */
-    @PostMapping("/{emoticonId}/purchase")
+    @Operation(
+            summary = "이모티콘 구매",
+            description = "지정한 이모티콘을 포인트로 구매합니다."
+    )
+    @PostMapping("/purchase/{emoticonId}")
     public ResponseEntity<EmoticonResponse> purchaseEmoticon(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long emoticonId) {
@@ -76,9 +85,10 @@ public class EmoticonController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * 이모티콘 등록
-     */
+    @Operation(
+            summary = "이모티콘 등록(업로드)",
+            description = "새로운 이모티콘을 파일 업로드 방식으로 등록합니다."
+    )
     @PostMapping("/upload")
     public ResponseEntity<EmoticonResponse> uploadEmoticon(
             @AuthenticationPrincipal UserPrincipal principal,

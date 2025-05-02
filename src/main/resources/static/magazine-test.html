@@ -311,7 +311,7 @@
         }
         
         try {
-            const response = await fetch(`${baseUrl}/api/auth/login`, {
+            const response = await fetch(`${baseUrl}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -365,7 +365,7 @@
         if (!checkAuthStatus()) return;
         
         try {
-            const response = await fetch(`${baseUrl}/api/emoticons/available`, {
+            const response = await fetch(`${baseUrl}/emoticons/available`, {
                 method: 'GET',
                 headers: {
                     'Authorization': 'Bearer ' + token,
@@ -467,7 +467,7 @@
         }
         
         try {
-            const response = await fetch(`${baseUrl}/api/magazine/image`, {
+            const response = await fetch(`${baseUrl}/magazine/image`, {
                 method: 'POST',
                 headers: {
                     'Authorization': 'Bearer ' + token
@@ -639,7 +639,7 @@
         };
         
         try {
-            const response = await fetch(`${baseUrl}/api/magazine`, {
+            const response = await fetch(`${baseUrl}/magazine`, {
                 method: 'POST',
                 headers: {
                     'Authorization': 'Bearer ' + token,
@@ -723,7 +723,7 @@
         };
         
         try {
-            const response = await fetch(`${baseUrl}/api/magazine/${currentMagazineId}`, {
+            const response = await fetch(`${baseUrl}/magazine/${currentMagazineId}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': 'Bearer ' + token,
@@ -789,7 +789,7 @@
         if (!checkAuthStatus()) return;
         
         try {
-            const response = await fetch(`${baseUrl}/api/magazine/popular?limit=10`, {
+            const response = await fetch(`${baseUrl}/magazine/popular?limit=10`, {
                 method: 'GET',
                 headers: {
                     'Authorization': 'Bearer ' + token,
@@ -819,7 +819,7 @@
         const keyword = document.getElementById('search-keyword').value.trim();
         const sortBy = document.getElementById('sort-by').value;
         
-        let url = `${baseUrl}/api/magazine?page=${currentPage}&size=10&sortBy=${sortBy}`;
+        let url = `${baseUrl}/magazine?page=${currentPage}&size=10&sortBy=${sortBy}`;
         
         if (category) {
             url += `&category=${category}`;
@@ -917,7 +917,7 @@
         if (!checkAuthStatus()) return;
         
         try {
-            const response = await fetch(`${baseUrl}/api/magazine/${magazineId}`, {
+            const response = await fetch(`${baseUrl}/magazine/${magazineId}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': 'Bearer ' + token,
@@ -950,7 +950,7 @@
         };
         
         try {
-            await fetch(`${baseUrl}/api/magazine/${magazineId}/engagement`, {
+            await fetch(`${baseUrl}/magazine/${magazineId}/engagement`, {
                 method: 'POST',
                 headers: {
                     'Authorization': 'Bearer ' + token,
@@ -1087,7 +1087,7 @@
         if (!checkAuthStatus()) return;
         
         try {
-            const response = await fetch(`${baseUrl}/api/magazine/${magazineId}`, {
+            const response = await fetch(`${baseUrl}/magazine/${magazineId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': 'Bearer ' + token
@@ -1112,7 +1112,7 @@
         if (!checkAuthStatus()) return;
         
         try {
-            const response = await fetch(`${baseUrl}/api/magazine/${magazineId}/like`, {
+            const response = await fetch(`${baseUrl}/magazine/${magazineId}/like`, {
                 method: 'POST',
                 headers: {
                     'Authorization': 'Bearer ' + token,

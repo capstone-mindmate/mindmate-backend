@@ -20,7 +20,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/points")
+@RequestMapping("/points")
 @Tag(name = "포인트", description = "포인트 적립/사용 및 조회 API")
 public class PointController {
 
@@ -32,16 +32,22 @@ public class PointController {
         return ResponseEntity.ok(pointService.getCurrentBalance(principal.getUserId()));
     }
 
-    @Operation(summary = "포인트 적립 요청", description = "포인트를 적립합니다.")
-    @PostMapping("/earn")
+    @Operation(summary = "포인트 요약 정보 조회", description = "현재 잔액, 총 적립, 총 사용 정보를 조회합니다.")
+    @GetMapping("/balance-summary")
+    public ResponseEntity<PointSummaryResponse> getPointSummary(@AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(pointService.getUserPointSummary(principal.getUserId()));
+    }
+
+    @Operation(summary = "포인트 적립", description = "포인트를 적립합니다.")
+    @PostMapping("/earnings")
     public ResponseEntity<PointTransactionResponse> earnPoints(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody PointAddRequest request) {
         return ResponseEntity.ok(pointService.addPoints(principal.getUserId(), request));
     }
 
-    @Operation(summary = "포인트 사용 요청", description = "포인트를 사용합니다.")
-    @PostMapping("/spend")
+    @Operation(summary = "포인트 사용", description = "포인트를 사용합니다.")
+    @PostMapping("/expenses")
     public ResponseEntity<PointTransactionResponse> spendPoints(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody PointUseRequest request) {
@@ -49,7 +55,7 @@ public class PointController {
     }
 
     @Operation(summary = "포인트 거래내역 조회", description = "포인트 거래내역을 조회합니다.")
-    @GetMapping("/history")
+    @GetMapping("/transactions")
     public ResponseEntity<List<PointTransactionResponse>> getTransactionHistory(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "0") int page,
@@ -58,8 +64,8 @@ public class PointController {
         return ResponseEntity.ok(historyPage.getContent());
     }
 
-    @Operation(summary = "기간별 총 적립 포인트 조회", description = "특정 기간 동안 적립한 포인트의 총합을 조회합니다.")
-    @GetMapping("/total-earned")
+    @Operation(summary = "기간별 적립 포인트 조회", description = "특정 기간 동안 적립한 포인트의 총합을 조회합니다.")
+    @GetMapping("/transactions/earnings")
     public ResponseEntity<Integer> getTotalEarnedPoints(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam LocalDateTime start,
@@ -67,18 +73,12 @@ public class PointController {
         return ResponseEntity.ok(pointService.getTotalEarnedPointsInPeriod(principal.getUserId(), start, end));
     }
 
-    @Operation(summary = "기간별 총 사용 포인트 조회", description = "특정 기간 동안 사용한 포인트의 총합을 조회합니다.")
-    @GetMapping("/total-spent")
+    @Operation(summary = "기간별 사용 포인트 조회", description = "특정 기간 동안 사용한 포인트의 총합을 조회합니다.")
+    @GetMapping("/transactions/expenses")
     public ResponseEntity<Integer> getTotalSpentPoints(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam LocalDateTime start,
             @RequestParam LocalDateTime end) {
         return ResponseEntity.ok(pointService.getTotalSpentPointsInPeriod(principal.getUserId(), start, end));
-    }
-
-    @Operation(summary = "포인트 요약 정보 조회", description = "현재 잔액, 총 적립, 총 사용 정보를 조회합니다.")
-    @GetMapping("/summary")
-    public ResponseEntity<PointSummaryResponse> getPointSummary(@AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(pointService.getUserPointSummary(principal.getUserId()));
     }
 }
