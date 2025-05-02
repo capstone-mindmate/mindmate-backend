@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/matching")
+@RequestMapping("/matchings")
 @RequiredArgsConstructor
 @Tag(name = "Matching", description = "매칭 관련 API")
 public class MatchingController {
@@ -114,7 +114,7 @@ public class MatchingController {
     }
 
     @Operation(summary = "매칭 신청", description = "특정 매칭에 참여 신청을 합니다. 포인트가 차감됩니다.")
-    @PostMapping("/{matchingId}")
+    @PostMapping("/{matchingId}/applications")
     public ResponseEntity<Long> applyForMatching(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long matchingId,
@@ -136,7 +136,7 @@ public class MatchingController {
     }
 
     @Operation(summary = "매칭 수락", description = "매칭 생성자가 대기 중인 사용자의 신청을 수락합니다.")
-    @PostMapping("/{matchingId}/{waitingId}")
+    @PostMapping("/{matchingId}/{waitingId}/acceptance")
     public ResponseEntity<Long> acceptMatching(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long matchingId,

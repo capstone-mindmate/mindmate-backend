@@ -15,7 +15,7 @@ import java.util.Set;
 @Tag(name = "프로필", description = "프로필 관리 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/profile")
+@RequestMapping("/profiles")
 public class ProfileController {
     private final ProfileService profileService;
 
