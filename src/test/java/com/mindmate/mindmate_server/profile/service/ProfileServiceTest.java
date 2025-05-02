@@ -8,6 +8,7 @@ import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.review.domain.Review;
 import com.mindmate.mindmate_server.review.dto.ReviewResponse;
 import com.mindmate.mindmate_server.review.repository.ReviewRepository;
+import com.mindmate.mindmate_server.review.service.ReviewDataService;
 import com.mindmate.mindmate_server.review.service.ReviewService;
 import com.mindmate.mindmate_server.user.domain.*;
 import com.mindmate.mindmate_server.user.dto.*;
@@ -39,7 +40,7 @@ import static org.mockito.Mockito.*;
 class ProfileServiceTest {
     @Mock private UserService userService;
     @Mock private ProfileRepository profileRepository;
-    @Mock private ReviewService reviewService;
+    @Mock private ReviewDataService reviewService;
     @Mock private MatchingService matchingService;
     @Mock private PointService pointService;
 
