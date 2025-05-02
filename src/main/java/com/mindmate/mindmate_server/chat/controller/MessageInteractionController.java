@@ -4,6 +4,8 @@ import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import com.mindmate.mindmate_server.chat.dto.MessageReactionResponse;
 import com.mindmate.mindmate_server.chat.dto.ReactionRequest;
 import com.mindmate.mindmate_server.chat.service.MessageReactionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,16 +15,20 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(
+        name = "메시지 감정표현",
+        description = "채팅 메시지에 대한 감정표현(이모지 리액션) 추가 및 조회 API"
+)
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/chat")
 public class MessageInteractionController {
     private final MessageReactionService reactionService;
 
-    /**
-     * 메시지에 감정표현 추가
-     * 이미 있으면 그냥 값 변경
-     */
+    @Operation(
+            summary = "메시지 감정표현 추가/변경/삭제",
+            description = "채팅 메시지에 감정표현(이모지 리액션)을 추가, 변경 또는 삭제합니다. - websocket 장애시 사용 "
+    )
     @PostMapping("/messages/{messageId}/reactions")
     public ResponseEntity<MessageReactionResponse> addReaction(
             @AuthenticationPrincipal UserPrincipal principal,
@@ -33,9 +39,10 @@ public class MessageInteractionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /**
-     * 메시지에 달린 모든 감정표현 조회
-     */
+    @Operation(
+            summary = "메시지 감정표현 목록 조회",
+            description = "특정 메시지에 추가된 모든 감정표현(이모지 리액션) 목록을 조회합니다."
+    )
     @GetMapping("/messages/{messageId}/reactions")
     public ResponseEntity<List<MessageReactionResponse>> getReactions(
             @AuthenticationPrincipal UserPrincipal principal,
