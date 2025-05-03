@@ -4,6 +4,7 @@ import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MatchingErrorCode;
+import com.mindmate.mindmate_server.global.exception.PointErrorCode;
 import com.mindmate.mindmate_server.matching.domain.*;
 import com.mindmate.mindmate_server.matching.dto.*;
 import com.mindmate.mindmate_server.matching.repository.MatchingRepository;
@@ -48,12 +49,10 @@ public class MatchingServiceImpl implements MatchingService {
 
     private static final int  MAX_ACTIVE_MATCHINGS = 3;
 
-    // 매칭 생성 -> + 채팅 생성
     @Override @Transactional
     public MatchingCreateResponse createMatching(Long userId, MatchingCreateRequest request) {
         User user = userService.findUserById(userId);
 
-        // 활성화된 매칭 수 카운트
         validateActiveMatchingCount(userId);
 
         Matching matching = Matching.builder()
@@ -91,20 +90,13 @@ public class MatchingServiceImpl implements MatchingService {
                 .build();
     }
 
-    @Override @Transactional // 수동
+    @Override @Transactional
     public Long applyForMatching(Long userId, Long matchingId, WaitingUserRequest request) {
         User user = userService.findUserById(userId);
         Matching matching = findMatchingById(matchingId);
 
         validateMatchingApplication(user, matching);
 
-        pointService.usePoints(userId, PointUseRequest.builder()
-                .amount(100)
-                .reasonType(PointReasonType.COUNSELING_REQUESTED)
-                .entityId(matchingId)
-                .build());
-
-        // 수동 매칭 신청 생성
         WaitingUser waitingUser = createWaitingUser(user, matching, request);
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -112,7 +104,6 @@ public class MatchingServiceImpl implements MatchingService {
             public void afterCommit() {
                 redisMatchingService.incrementUserActiveMatchingCount(userId);
 
-                // 알림 전송 (생성자한테)
                 sendMatchingAppliedNotification(user, matching, request.isAnonymous());
             }
         });
@@ -125,6 +116,26 @@ public class MatchingServiceImpl implements MatchingService {
         Matching matching = validateMatchingOwnership(userId, matchingId, true);
         WaitingUser waitingUser = validateWaitingUser(waitingId, matchingId);
 
+        User speakerUser;
+        if (matching.getCreatorRole() == InitiatorType.SPEAKER) {
+            speakerUser = matching.getCreator();
+        } else {
+            speakerUser = waitingUser.getWaitingUser();
+        }
+
+        try {
+            pointService.usePoints(speakerUser.getId(), PointUseRequest.builder()
+                    .amount(100)
+                    .reasonType(PointReasonType.COUNSELING_REQUESTED)
+                    .entityId(matchingId)
+                    .build());
+        } catch (CustomException e) {
+            if (e.getErrorCode() == PointErrorCode.INSUFFICIENT_POINTS) {
+                throw new CustomException(MatchingErrorCode.INSUFFICIENT_POINTS_FOR_MATCHING);
+            }
+            throw e;
+        }
+
         waitingUser.accept();
         matching.acceptMatching(waitingUser.getWaitingUser());
         matchingRepository.save(matching);
@@ -136,7 +147,6 @@ public class MatchingServiceImpl implements MatchingService {
             public void afterCommit() {
                 redisMatchingService.cleanupMatchingKeys(matching);
 
-                // 알림 전송 (신청자한테)
                 sendMatchingAcceptedNotification(matching, waitingUser);
 
                 if (!pendingWaitingUserIds.isEmpty()) {
@@ -162,6 +172,13 @@ public class MatchingServiceImpl implements MatchingService {
 
         validateActiveMatchingCount(userId);
 
+        if (userRole == InitiatorType.SPEAKER) {
+            int currentBalance = pointService.getCurrentBalance(userId);
+            if (currentBalance < 100) {
+                throw new CustomException(MatchingErrorCode.INSUFFICIENT_POINTS_FOR_MATCHING);
+            }
+        }
+
         Long matchingId = redisMatchingService.getRandomMatching(user, userRole);
         if (matchingId == null) {
             throw new CustomException(MatchingErrorCode.NO_MATCHING_AVAILABLE);
@@ -169,7 +186,6 @@ public class MatchingServiceImpl implements MatchingService {
 
         Matching matching = findMatchingById(matchingId);
 
-        // 자동 매칭 신청
         WaitingUser waitingUser = WaitingUser.builder()
                 .waitingUser(user)
                 .matchingType(MatchingType.AUTO_RANDOM)
@@ -179,7 +195,6 @@ public class MatchingServiceImpl implements MatchingService {
         matching.addWaitingUser(waitingUser);
         Long waitingUserId = waitingUserRepository.save(waitingUser).getId();
 
-        // 매칭 수락
         try {
             acceptMatching(matching.getCreator().getId(), matching.getId(), waitingUserId);
         } catch (CustomException e) {
@@ -390,7 +405,7 @@ public class MatchingServiceImpl implements MatchingService {
         WaitingUser waitingUser = WaitingUser.builder()
                 .waitingUser(user)
                 .message(request.getMessage())
-                .matchingType(MatchingType.MANUAL) // 수동 매칭
+                .matchingType(MatchingType.MANUAL)
                 .anonymous(request.isAnonymous())
                 .build();
 

@@ -4,6 +4,7 @@ import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MatchingErrorCode;
+import com.mindmate.mindmate_server.global.exception.PointErrorCode;
 import com.mindmate.mindmate_server.matching.domain.*;
 import com.mindmate.mindmate_server.matching.dto.*;
 import com.mindmate.mindmate_server.matching.repository.MatchingRepository;
@@ -295,29 +296,7 @@ class MatchingServiceImplTest {
             verify(waitingUserRepository).findByMatchingAndWaitingUser(matching, applicant);
             verify(waitingUserRepository).save(any(WaitingUser.class));
             verify(redisMatchingService).incrementUserActiveMatchingCount(2L);
-            verify(pointService).usePoints(eq(2L), any(PointUseRequest.class));
             verify(notificationService).processNotification(any(MatchingAppliedNotificationEvent.class));
-        }
-
-        @Test
-        @DisplayName("포인트 필요한 매칭 신청 시 포인트 차감")
-        void usePointsWhenApplying() {
-            // given
-            WaitingUserRequest request = new WaitingUserRequest("I want to participate", false);
-
-            given(userService.findUserById(2L)).willReturn(applicant);
-            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
-            given(waitingUserRepository.findByMatchingAndWaitingUser(matching, applicant))
-                    .willReturn(Optional.empty());
-            given(waitingUserRepository.save(any(WaitingUser.class))).willReturn(waitingUser);
-
-            // when
-            matchingService.applyForMatching(2L, 1L, request);
-
-            // then
-            verify(pointService).usePoints(eq(2L), argThat(pointRequest ->
-                    pointRequest.getAmount() == 100 &&
-                            pointRequest.getReasonType() == PointReasonType.COUNSELING_REQUESTED));
         }
 
         @Test
@@ -486,6 +465,84 @@ class MatchingServiceImplTest {
 
             verify(matchingRepository).findById(1L);
             verify(waitingUserRepository).findById(2L);
+        }
+
+        @Test
+        @DisplayName("매칭 수락 시 스피커 역할 유저의 포인트 차감")
+        void chargePointsToSpeakerWhenAccepting() {
+            // given
+            // 생성자가 스피커인 경우
+            when(matching.getCreatorRole()).thenReturn(InitiatorType.SPEAKER);
+
+            List<WaitingUser> waitingUsers = List.of(waitingUser);
+
+            given(userService.findUserById(1L)).willReturn(creator);
+            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+            given(waitingUserRepository.findById(1L)).willReturn(Optional.of(waitingUser));
+            given(waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching))
+                    .willReturn(waitingUsers);
+            given(matchingRepository.save(matching)).willReturn(matching);
+
+            // when
+            Long matchingId = matchingService.acceptMatching(1L, 1L, 1L);
+
+            // then
+            assertThat(matchingId).isEqualTo(1L);
+
+            // 생성자가 스피커이므로 creator에게 포인트가 차감되어야 함
+            verify(pointService).usePoints(eq(1L), argThat(pointRequest ->
+                    pointRequest.getAmount() == 100 &&
+                            pointRequest.getReasonType() == PointReasonType.COUNSELING_REQUESTED));
+        }
+
+        @Test
+        @DisplayName("매칭 수락 시 대기자가 스피커인 경우 포인트 차감")
+        void chargePointsToWaitingUserWhenAcceptingWithListenerCreator() {
+            // given
+            when(matching.getCreatorRole()).thenReturn(InitiatorType.LISTENER);
+
+            List<WaitingUser> waitingUsers = List.of(waitingUser);
+
+            given(userService.findUserById(1L)).willReturn(creator);
+            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+            given(waitingUserRepository.findById(1L)).willReturn(Optional.of(waitingUser));
+            given(waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching))
+                    .willReturn(waitingUsers);
+            given(matchingRepository.save(matching)).willReturn(matching);
+
+            // when
+            Long matchingId = matchingService.acceptMatching(1L, 1L, 1L);
+
+            // then
+            assertThat(matchingId).isEqualTo(1L);
+
+            verify(pointService).usePoints(eq(2L), argThat(pointRequest ->
+                    pointRequest.getAmount() == 100 &&
+                            pointRequest.getReasonType() == PointReasonType.COUNSELING_REQUESTED));
+        }
+
+        @Test
+        @DisplayName("매칭 수락 시 스피커 포인트 부족하면 예외 발생")
+        void throwExceptionWhenInsufficientPointsForMatching() {
+            // given
+            when(matching.getCreatorRole()).thenReturn(InitiatorType.SPEAKER);
+
+            CustomException pointException = new CustomException(PointErrorCode.INSUFFICIENT_POINTS);
+
+            given(userService.findUserById(1L)).willReturn(creator);
+            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+            given(waitingUserRepository.findById(1L)).willReturn(Optional.of(waitingUser));
+            given(pointService.usePoints(eq(1L), any(PointUseRequest.class)))
+                    .willThrow(pointException);
+
+            // when & then
+            assertThatThrownBy(() -> matchingService.acceptMatching(1L, 1L, 1L))
+                    .isInstanceOf(CustomException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.INSUFFICIENT_POINTS_FOR_MATCHING);
+
+            verify(waitingUser, never()).accept();
+            verify(matching, never()).acceptMatching(any(User.class));
+            verify(matchingRepository, never()).save(any(Matching.class));
         }
     }
 
