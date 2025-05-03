@@ -24,7 +24,7 @@ public enum MatchingErrorCode implements ErrorCode {
     AUTO_MATCHING_FAILED(HttpStatus.NOT_FOUND, "자동 매칭에 실패했습니다."),
     CANNOT_CANCEL_PROCESSED_WAITING(HttpStatus.NOT_FOUND, "처리된 신청에 대해 취소할 수 없습니다."),
     INVALID_MATCHING_WAITING(HttpStatus.BAD_REQUEST, "유효하지 않은 매칭 신청입니다."),
-
+    INSUFFICIENT_POINTS_FOR_MATCHING(HttpStatus.BAD_REQUEST, "매칭 성사에 필요한 포인트가 부족합니다."),
 
 
     ALREADY_APPLIED_TO_MATCHING(HttpStatus.BAD_REQUEST, "이미 해당 매칭방에 신청하였습니다."),;

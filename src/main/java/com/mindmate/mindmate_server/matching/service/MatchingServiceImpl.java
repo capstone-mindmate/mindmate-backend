@@ -4,6 +4,7 @@ import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MatchingErrorCode;
+import com.mindmate.mindmate_server.global.exception.PointErrorCode;
 import com.mindmate.mindmate_server.matching.domain.*;
 import com.mindmate.mindmate_server.matching.dto.*;
 import com.mindmate.mindmate_server.matching.repository.MatchingRepository;
@@ -98,12 +99,6 @@ public class MatchingServiceImpl implements MatchingService {
 
         validateMatchingApplication(user, matching);
 
-        pointService.usePoints(userId, PointUseRequest.builder()
-                .amount(100)
-                .reasonType(PointReasonType.COUNSELING_REQUESTED)
-                .entityId(matchingId)
-                .build());
-
         // 수동 매칭 신청 생성
         WaitingUser waitingUser = createWaitingUser(user, matching, request);
 
@@ -124,6 +119,26 @@ public class MatchingServiceImpl implements MatchingService {
     public Long acceptMatching(Long userId, Long matchingId, Long waitingId) {
         Matching matching = validateMatchingOwnership(userId, matchingId, true);
         WaitingUser waitingUser = validateWaitingUser(waitingId, matchingId);
+
+        User speakerUser;
+        if (matching.getCreatorRole() == InitiatorType.SPEAKER) {
+            speakerUser = matching.getCreator();
+        } else {
+            speakerUser = waitingUser.getWaitingUser();
+        }
+
+        try {
+            pointService.usePoints(speakerUser.getId(), PointUseRequest.builder()
+                    .amount(100)
+                    .reasonType(PointReasonType.COUNSELING_REQUESTED)
+                    .entityId(matchingId)
+                    .build());
+        } catch (CustomException e) {
+            if (e.getErrorCode() == PointErrorCode.INSUFFICIENT_POINTS) {
+                throw new CustomException(MatchingErrorCode.INSUFFICIENT_POINTS_FOR_MATCHING);
+            }
+            throw e;
+        }
 
         waitingUser.accept();
         matching.acceptMatching(waitingUser.getWaitingUser());
@@ -161,6 +176,13 @@ public class MatchingServiceImpl implements MatchingService {
         User user = userService.findUserById(userId);
 
         validateActiveMatchingCount(userId);
+
+        if (userRole == InitiatorType.SPEAKER) {
+            int currentBalance = pointService.getCurrentBalance(userId);
+            if (currentBalance < 100) {
+                throw new CustomException(MatchingErrorCode.INSUFFICIENT_POINTS_FOR_MATCHING);
+            }
+        }
 
         Long matchingId = redisMatchingService.getRandomMatching(user, userRole);
         if (matchingId == null) {
