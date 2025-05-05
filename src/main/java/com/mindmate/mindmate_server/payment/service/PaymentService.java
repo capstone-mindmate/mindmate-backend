@@ -13,4 +13,8 @@ public interface PaymentService {
     PaymentConfirmResponse confirmPayment(PaymentConfirmRequest request);
 
     PaymentConfigResponse getPaymentConfig();
+
+    List<PaymentHistoryResponse> getUserPaymentHistory(Long userId);
+
+    PaymentDetailResponse getPaymentDetail(Long userId, String orderId);
 }

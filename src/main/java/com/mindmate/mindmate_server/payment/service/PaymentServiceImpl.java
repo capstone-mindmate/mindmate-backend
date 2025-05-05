@@ -132,6 +132,7 @@ public class PaymentServiceImpl implements PaymentService{
                 .build();
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<PaymentHistoryResponse> getUserPaymentHistory(Long userId) {
         User user = userService.findUserById(userId);
@@ -143,6 +144,7 @@ public class PaymentServiceImpl implements PaymentService{
                 .collect(Collectors.toList());
     }
 
+    @Override
     @Transactional(readOnly = true)
     public PaymentDetailResponse getPaymentDetail(Long userId, String orderId) {
         PaymentOrder order = paymentOrderRepository.findByOrderId(orderId)
