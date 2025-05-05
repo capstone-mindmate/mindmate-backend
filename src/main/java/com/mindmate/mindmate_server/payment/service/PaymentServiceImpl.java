@@ -1,6 +1,8 @@
 package com.mindmate.mindmate_server.payment.service;
 
 import com.mindmate.mindmate_server.global.config.TossPaymentsConfig;
+import com.mindmate.mindmate_server.global.exception.CustomException;
+import com.mindmate.mindmate_server.global.exception.PaymentErrorCode;
 import com.mindmate.mindmate_server.payment.domain.PaymentOrder;
 import com.mindmate.mindmate_server.payment.domain.PaymentProduct;
 import com.mindmate.mindmate_server.payment.domain.PaymentStatus;
@@ -43,7 +45,7 @@ public class PaymentServiceImpl implements PaymentService{
     @Transactional
     public PaymentOrderResponse createOrder(Long userId, Long productId) {
         PaymentProduct product = paymentProductRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(PaymentErrorCode.PRODUCT_NOT_FOUND));
 
         User user = userService.findUserById(userId);
 
@@ -70,10 +72,10 @@ public class PaymentServiceImpl implements PaymentService{
     @Transactional
     public PaymentConfirmResponse confirmPayment(PaymentConfirmRequest request) {
         PaymentOrder order = paymentOrderRepository.findByOrderId(request.getOrderId())
-                .orElseThrow(() -> new IllegalArgumentException("주문을 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(PaymentErrorCode.ORDER_NOT_FOUND));
 
         if (!order.getPrice().equals(request.getPrice())) {
-            throw new IllegalArgumentException("결제 금액이 일치하지 않습니다.");
+            throw new CustomException(PaymentErrorCode.UNMATCHED_AMOUNT);
         }
 
         HttpHeaders headers = new HttpHeaders();
@@ -116,7 +118,7 @@ public class PaymentServiceImpl implements PaymentService{
         } catch (Exception e) {
             order.failPayment();
             paymentOrderRepository.save(order);
-            throw new RuntimeException("결제 승인 실패: " + e.getMessage(), e);
+            throw new CustomException(PaymentErrorCode.FAILED_CONFIRM_PAYMENT);
         }
     }
 
