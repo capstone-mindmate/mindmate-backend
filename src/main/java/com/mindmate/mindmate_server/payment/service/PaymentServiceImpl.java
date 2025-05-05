@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -129,5 +130,33 @@ public class PaymentServiceImpl implements PaymentService{
                 .successCallbackUrl(tossPaymentsConfig.getSuccessCallbackUrl())
                 .failCallbackUrl(tossPaymentsConfig.getFailCallbackUrl())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentHistoryResponse> getUserPaymentHistory(Long userId) {
+        User user = userService.findUserById(userId);
+
+        List<PaymentOrder> orders = paymentOrderRepository.findByUserIdOrderByCreatedAtDesc(userId);
+
+        return orders.stream()
+                .map(PaymentHistoryResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentDetailResponse getPaymentDetail(Long userId, String orderId) {
+        PaymentOrder order = paymentOrderRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new CustomException(PaymentErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getUser().getId().equals(userId)) {
+            throw new CustomException(PaymentErrorCode.UNAUTHORIZED);
+        }
+
+        String receiptUrl = null;
+        if (order.getStatus() == PaymentStatus.DONE && order.getPaymentKey() != null) {
+            receiptUrl = "https://docs.tosspayments.com/창구매영수증?paymentKey=" + order.getPaymentKey();
+        }
+
+        return PaymentDetailResponse.from(order, receiptUrl);
     }
 }
