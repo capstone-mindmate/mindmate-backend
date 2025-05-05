@@ -11,11 +11,11 @@ public class PaymentOrderResponse {
     private Integer pointAmount;
     private Integer price;
 
-    public static PaymentOrderResponse fromEntity(PaymentOrder order) {
+    public static PaymentOrderResponse from(PaymentOrder order) {
         return PaymentOrderResponse.builder()
                 .orderId(order.getOrderId())
                 .pointAmount(order.getProduct().getPointAmount())
-                .price(order.getAmount())
+                .price(order.getPrice())
                 .build();
     }
 }

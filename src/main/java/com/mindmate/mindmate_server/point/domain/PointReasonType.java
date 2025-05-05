@@ -9,6 +9,7 @@ public enum PointReasonType {
 
     COUNSELING_REQUESTED,
     EMOTICON_PURCHASED,
-    GIFT_EXCHANGED
+    GIFT_EXCHANGED,
+    PURCHASE
     // 기프티콘, 이모티콘 구매, 데일리 보상?, 관리자 조정 등
 }

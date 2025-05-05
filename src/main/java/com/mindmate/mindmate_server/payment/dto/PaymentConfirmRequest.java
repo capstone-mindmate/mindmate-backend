@@ -12,5 +12,5 @@ import lombok.NoArgsConstructor;
 public class PaymentConfirmRequest {
     private String paymentKey;
     private String orderId;
-    private Integer pointAmount;
+    private Integer price;
 }
