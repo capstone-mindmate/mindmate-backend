@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.payment.dto;
 
+import com.mindmate.mindmate_server.payment.domain.PaymentOrder;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -7,6 +8,14 @@ import lombok.Getter;
 @Builder
 public class PaymentOrderResponse {
     private String orderId;
-    private String productName;
-    private Integer amount;
+    private Integer pointAmount;
+    private Integer price;
+
+    public static PaymentOrderResponse fromEntity(PaymentOrder order) {
+        return PaymentOrderResponse.builder()
+                .orderId(order.getOrderId())
+                .pointAmount(order.getProduct().getPointAmount())
+                .price(order.getAmount())
+                .build();
+    }
 }

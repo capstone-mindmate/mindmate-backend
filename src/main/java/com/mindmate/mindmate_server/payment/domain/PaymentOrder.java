@@ -52,4 +52,14 @@ public class PaymentOrder extends BaseTimeEntity {
         this.amount = amount;
         this.status = status;
     }
+
+    public void completePayment(String paymentKey) {
+        this.paymentKey = paymentKey;
+        this.status = PaymentStatus.DONE;
+        this.paidAt = LocalDateTime.now();
+    }
+
+    public void failPayment() {
+        this.status = PaymentStatus.FAILED;
+    }
 }

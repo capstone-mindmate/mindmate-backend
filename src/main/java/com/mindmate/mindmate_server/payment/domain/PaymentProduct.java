@@ -18,16 +18,10 @@ public class PaymentProduct extends BaseTimeEntity {
     private Long id;
 
     @Column(nullable = false)
-    private String name;
+    private Integer pointAmount;
 
     @Column(nullable = false)
-    private Integer amount;
-
-    @Column(nullable = false)
-    private Integer pointValue;
-
-    @Column
-    private String description;
+    private Integer price;
 
     @Column(nullable = false)
     private Boolean isPromotion = false;
@@ -39,12 +33,10 @@ public class PaymentProduct extends BaseTimeEntity {
     private Boolean active = true;
 
     @Builder
-    public PaymentProduct(String name, Integer amount, Integer pointValue,
-                          String description, Boolean isPromotion, String promotionPeriod) {
-        this.name = name;
-        this.amount = amount;
-        this.pointValue = pointValue;
-        this.description = description;
+    public PaymentProduct( Integer pointAmount, Integer price,
+                          Boolean isPromotion, String promotionPeriod) {
+        this.pointAmount = pointAmount;
+        this.price = price;
         this.isPromotion = isPromotion != null ? isPromotion : false;
         this.promotionPeriod = promotionPeriod;
     }
