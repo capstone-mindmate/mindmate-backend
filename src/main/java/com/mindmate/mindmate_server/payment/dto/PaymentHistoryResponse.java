@@ -12,8 +12,8 @@ import java.time.LocalDateTime;
 public class PaymentHistoryResponse {
     private Long id;
     private String orderId;
-    private Integer pointAmount;
-    private Integer price;
+    private Integer points;
+    private Integer amount;
     private PaymentStatus status;
     private LocalDateTime paidAt;
     private LocalDateTime createdAt;
@@ -22,8 +22,8 @@ public class PaymentHistoryResponse {
         return PaymentHistoryResponse.builder()
                 .id(order.getId())
                 .orderId(order.getOrderId())
-                .pointAmount(order.getProduct().getPointAmount())
-                .price(order.getPrice())
+                .points(order.getProduct().getPoints())
+                .amount(order.getAmount())
                 .status(order.getStatus())
                 .paidAt(order.getPaidAt())
                 .createdAt(order.getCreatedAt())

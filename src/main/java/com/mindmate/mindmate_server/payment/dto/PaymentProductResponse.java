@@ -8,16 +8,16 @@ import lombok.Getter;
 @Builder
 public class PaymentProductResponse {
     private Long id;
-    private Integer pointAmount;
-    private Integer price;
+    private Integer points;
+    private Integer amount;
     private Boolean isPromotion;
     private String promotionPeriod;
 
     public static PaymentProductResponse from(PaymentProduct product) {
         return PaymentProductResponse.builder()
                 .id(product.getId())
-                .pointAmount(product.getPointAmount())
-                .price(product.getPrice())
+                .points(product.getPoints())
+                .amount(product.getAmount())
                 .isPromotion(product.getIsPromotion())
                 .promotionPeriod(product.getPromotionPeriod())
                 .build();

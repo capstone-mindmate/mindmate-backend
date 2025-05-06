@@ -31,7 +31,7 @@ public class PaymentOrder extends BaseTimeEntity {
     private String orderId;
 
     @Column(nullable = false)
-    private Integer price;
+    private Integer amount;
 
     @Column
     private String paymentKey;
@@ -45,11 +45,11 @@ public class PaymentOrder extends BaseTimeEntity {
 
     @Builder
     public PaymentOrder(User user, PaymentProduct product, String orderId,
-                        Integer price, PaymentStatus status) {
+                        Integer amount, PaymentStatus status) {
         this.user = user;
         this.product = product;
         this.orderId = orderId;
-        this.price = price;
+        this.amount = amount;
         this.status = status;
     }
 

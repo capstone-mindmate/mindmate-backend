@@ -18,8 +18,8 @@ public class TossPaymentsConfig {
     private String failCallbackUrl;
     private String confirmUrl;
 
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
+//    @Bean
+//    public RestTemplate restTemplate() {
+//        return new RestTemplate();
+//    }
 }

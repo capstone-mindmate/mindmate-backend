@@ -48,6 +48,10 @@ public class PaymentServiceImpl implements PaymentService{
         PaymentProduct product = paymentProductRepository.findById(productId)
                 .orElseThrow(() -> new CustomException(PaymentErrorCode.PRODUCT_NOT_FOUND));
 
+        if (!product.getActive()) {
+            throw new CustomException(PaymentErrorCode.INACTIVE_PRODUCT);
+        }
+
         User user = userService.findUserById(userId);
 
         String orderId = UUID.randomUUID().toString();
@@ -56,7 +60,7 @@ public class PaymentServiceImpl implements PaymentService{
                 .user(user)
                 .product(product)
                 .orderId(orderId)
-                .price(product.getPrice())
+                .amount(product.getAmount())
                 .status(PaymentStatus.READY)
                 .build();
 
@@ -64,8 +68,8 @@ public class PaymentServiceImpl implements PaymentService{
 
         return PaymentOrderResponse.builder()
                 .orderId(orderId)
-                .pointAmount(product.getPointAmount())
-                .price(product.getPrice())
+                .points(product.getPoints())
+                .amount(product.getAmount())
                 .build();
     }
 
@@ -75,8 +79,12 @@ public class PaymentServiceImpl implements PaymentService{
         PaymentOrder order = paymentOrderRepository.findByOrderId(request.getOrderId())
                 .orElseThrow(() -> new CustomException(PaymentErrorCode.ORDER_NOT_FOUND));
 
-        if (!order.getPrice().equals(request.getPrice())) {
+        if (!order.getAmount().equals(request.getAmount())) {
             throw new CustomException(PaymentErrorCode.UNMATCHED_AMOUNT);
+        }
+
+        if (order.getStatus() == PaymentStatus.DONE) {
+            throw new CustomException(PaymentErrorCode.ALREADY_PROCESSED_ORDER);
         }
 
         HttpHeaders headers = new HttpHeaders();
@@ -86,7 +94,7 @@ public class PaymentServiceImpl implements PaymentService{
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("paymentKey", request.getPaymentKey());
         requestBody.put("orderId", request.getOrderId());
-        requestBody.put("price", request.getPrice());
+        requestBody.put("amount", request.getAmount());
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
@@ -102,7 +110,7 @@ public class PaymentServiceImpl implements PaymentService{
             paymentOrderRepository.save(order);
 
             PointAddRequest pointRequest = PointAddRequest.builder()
-                    .amount(order.getProduct().getPointAmount())
+                    .amount(order.getProduct().getPoints())
                     .reasonType(PointReasonType.PURCHASE)
                     .entityId(order.getId())
                     .build();
@@ -113,8 +121,8 @@ public class PaymentServiceImpl implements PaymentService{
                     .orderId(order.getOrderId())
                     .status("success")
                     .paymentKey(order.getPaymentKey())
-                    .price(order.getPrice())
-                    .addedPoints(order.getProduct().getPointAmount())
+                    .amount(order.getAmount())
+                    .addedPoints(order.getProduct().getPoints())
                     .build();
         } catch (Exception e) {
             order.failPayment();

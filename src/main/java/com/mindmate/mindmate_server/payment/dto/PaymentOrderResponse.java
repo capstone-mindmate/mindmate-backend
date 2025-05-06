@@ -8,14 +8,14 @@ import lombok.Getter;
 @Builder
 public class PaymentOrderResponse {
     private String orderId;
-    private Integer pointAmount;
-    private Integer price;
+    private Integer points;
+    private Integer amount;
 
     public static PaymentOrderResponse from(PaymentOrder order) {
         return PaymentOrderResponse.builder()
                 .orderId(order.getOrderId())
-                .pointAmount(order.getProduct().getPointAmount())
-                .price(order.getPrice())
+                .points(order.getProduct().getPoints())
+                .amount(order.getAmount())
                 .build();
     }
 }

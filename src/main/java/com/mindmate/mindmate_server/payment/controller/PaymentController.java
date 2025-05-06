@@ -39,12 +39,12 @@ public class PaymentController {
     public ResponseEntity<PaymentConfirmResponse> paymentSuccess(
             @RequestParam String paymentKey,
             @RequestParam String orderId,
-            @RequestParam Integer price) {
+            @RequestParam Integer amount) {
 
         PaymentConfirmRequest request = PaymentConfirmRequest.builder()
                 .paymentKey(paymentKey)
                 .orderId(orderId)
-                .price(price)
+                .amount(amount)
                 .build();
 
         PaymentConfirmResponse response = paymentService.confirmPayment(request);

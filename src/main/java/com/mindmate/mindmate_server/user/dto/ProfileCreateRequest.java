@@ -16,7 +16,7 @@ public class ProfileCreateRequest {
     private String profileImage;
 
     @NotBlank(message = "학과는 필수입니다")
-    @Size(max = 50, message = "학과명은 최대 20자까지 가능합니다.")
+    @Size(max = 20, message = "학과명은 최대 20자까지 가능합니다.")
     private String department;
 
     @NotNull(message = "입학년도는 필수입니다")

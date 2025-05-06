@@ -9,6 +9,6 @@ public class PaymentConfirmResponse {
     private String orderId;
     private String status;
     private String paymentKey;
-    private Integer price;
+    private Integer amount;
     private Integer addedPoints;
 }
