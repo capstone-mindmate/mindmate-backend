@@ -156,9 +156,9 @@ public class AuthServiceImpl implements AuthService {
             throw new CustomException(AuthErrorCode.EMAIL_NOT_VERIFIED);
         }
 
-        if (user.getProfile() == null) {
-            throw new CustomException(AuthErrorCode.PROFILE_NOT_REGISTER);
-        }
+//        if (user.getProfile() == null) {
+//            throw new CustomException(AuthErrorCode.PROFILE_NOT_REGISTER);
+//        }
 
         validatePassword(email, request.getPassword(), user.getPassword());
         loginAttemptService.loginSucceeded(email);
