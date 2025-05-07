@@ -8,6 +8,7 @@ import com.mindmate.mindmate_server.review.dto.ReviewResponse;
 import com.mindmate.mindmate_server.review.service.ReviewDataService;
 import com.mindmate.mindmate_server.review.service.ReviewService;
 import com.mindmate.mindmate_server.user.domain.Profile;
+import com.mindmate.mindmate_server.user.domain.ProfileImage;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.dto.*;
@@ -31,6 +32,7 @@ public class ProfileServiceImpl implements ProfileService {
     private final MatchingService matchingService;
     private final ReviewDataService reviewService;
     private final PointService pointService;
+    private final ProfileImageService profileImageService;
 
     @Override
     @Transactional(readOnly = true)
@@ -140,10 +142,12 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     private Profile buildProfileFromRequest(User user, ProfileCreateRequest request) {
+        ProfileImage image = profileImageService.findProfileImageById(request.getProfileImageId());
+
         return Profile.builder()
                 .user(user)
                 .nickname(request.getNickname())
-                .profileImage(request.getProfileImage())
+                .profileImage(image)
                 .department(request.getDepartment())
                 .entranceTime(request.getEntranceTime())
                 .graduation(request.isGraduation())
@@ -151,13 +155,15 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     private void updateProfileFields(Profile profile, ProfileUpdateRequest request) {
+
         if (request.getNickname() != null && !request.getNickname().equals(profile.getNickname())) {
             validateNickname(request.getNickname());
             profile.updateNickname(request.getNickname());
         }
 
-        if (request.getProfileImage() != null) {
-            profile.updateProfileImage(request.getProfileImage());
+        if (request.getProfileImageId() != null) {
+            ProfileImage image = profileImageService.findProfileImageById(request.getProfileImageId());
+            profile.updateProfileImage(image);
         }
 
         if (request.getDepartment() != null) {
@@ -189,7 +195,7 @@ public class ProfileServiceImpl implements ProfileService {
                 .id(profileId)
                 .userId(userId)
                 .nickname(profile.getNickname())
-                .profileImage(profile.getProfileImage())
+                .profileImage(profile.getProfileImage().getImageUrl())
                 .department(profile.getDepartment())
                 .entranceTime(profile.getEntranceTime())
                 .graduation(profile.isGraduation())
@@ -209,7 +215,7 @@ public class ProfileServiceImpl implements ProfileService {
                 .id(profile.getId())
                 .userId(user.getId())
                 .nickname(profile.getNickname())
-                .profileImage(profile.getProfileImage())
+                .profileImage(profile.getProfileImage().getImageUrl())
                 .totalCounselingCount(profile.getCounselingCount())
                 .averageRating(averageRating)
                 .build();

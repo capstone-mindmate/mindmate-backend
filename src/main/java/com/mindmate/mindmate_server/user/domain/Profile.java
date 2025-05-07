@@ -25,7 +25,9 @@ public class Profile extends BaseTimeEntity {
     @JoinColumn(name = "user_id", unique = true)
     private User user;
 
-    private String profileImage;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "profile_image_id", unique = true)
+    private ProfileImage profileImage;
 
     @Column(unique = true, nullable = false)
     private String nickname;
@@ -49,7 +51,7 @@ public class Profile extends BaseTimeEntity {
     private Long version;
 
     @Builder
-    public Profile(User user, String nickname, String department, Integer entranceTime, boolean graduation, String profileImage) {
+    public Profile(User user, String nickname, String department, Integer entranceTime, boolean graduation, ProfileImage profileImage) {
         this.user = user;
         this.profileImage = profileImage;
         this.nickname = nickname;
@@ -58,10 +60,7 @@ public class Profile extends BaseTimeEntity {
         this.graduation = graduation;
     }
 
-    public void updateProfileImage(String profileImage) {
-        this.profileImage = profileImage;
-    }
-
+    public void updateProfileImage(ProfileImage profileImage) {this.profileImage = profileImage;}
     public void incrementCounselingCount() {
         this.counselingCount++;
     }

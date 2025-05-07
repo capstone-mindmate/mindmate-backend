@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@Table(name = "profile_images")
+@Table(name = "profile_image")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ProfileImage extends BaseTimeEntity {
     @Id

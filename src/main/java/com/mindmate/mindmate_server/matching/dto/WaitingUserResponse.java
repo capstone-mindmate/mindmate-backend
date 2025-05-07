@@ -38,7 +38,7 @@ public class WaitingUserResponse {
 
         if (!waitingUser.isAnonymous()) {
             nickname = waitingUser.getWaitingUser().getProfile().getNickname();
-            profileImage = waitingUser.getWaitingUser().getProfile().getProfileImage();
+            profileImage = waitingUser.getWaitingUser().getProfile().getProfileImage().getImageUrl();
         }
 
         if (waitingUser.getMatching().isShowDepartment()) {

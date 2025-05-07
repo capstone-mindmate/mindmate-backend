@@ -103,4 +103,10 @@ public class ProfileImageService {
         return profileImageRepository.findByUserId(userId)
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_IMAGE_NOT_FOUND));
     }
+
+    @Transactional(readOnly = true)
+    public ProfileImage findProfileImageById(Long id){
+        return profileImageRepository.findById(id)
+                .orElseThrow(()->new CustomException(ProfileErrorCode.PROFILE_IMAGE_NOT_FOUND));
+    }
 }
