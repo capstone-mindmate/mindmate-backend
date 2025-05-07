@@ -30,4 +30,6 @@ public interface ProfileService {
     void updateResponseTimes(Long userId, List<Integer> responseTimes);
 
     Profile findProfileById(Long profileId);
+
+    ProfileDetailResponse getMyProfileDetail(Long userId);
 }

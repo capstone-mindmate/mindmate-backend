@@ -101,7 +101,8 @@ public class SecurityConfig {
                 "http://localhost:8080",
                 "http://localhost:63342",
                 "ws://localhost:8080",
-                "wss://localhost:8080"
+                "wss://localhost:8080",
+                "https://mindmate.shop/"
         ));
         configuration.setAllowedMethods(Arrays.asList(
                 "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
