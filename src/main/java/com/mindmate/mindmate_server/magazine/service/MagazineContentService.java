@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.magazine.service;
 
 import com.mindmate.mindmate_server.emoticon.domain.Emoticon;
+import com.mindmate.mindmate_server.emoticon.service.EmoticonInteractionService;
 import com.mindmate.mindmate_server.emoticon.service.EmoticonService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MagazineErrorCode;
@@ -22,6 +23,8 @@ import java.util.Optional;
 public class MagazineContentService {
     private final EmoticonService emoticonService;
     private final MagazineImageService magazineImageService;
+    private final EmoticonInteractionService emoticonInteractionService;
+
     private final MagazineContentRepository magazineContentRepository;
 
     public void processContents(Magazine magazine, List<MagazineContentDTO> contents) {
@@ -63,6 +66,8 @@ public class MagazineContentService {
             case EMOTICON:
                 if (dto.getEmoticonId() == null) return null;
                 Emoticon emoticon = emoticonService.findEmoticonById(dto.getEmoticonId());
+                emoticonInteractionService.incrementUsage(emoticon.getId());
+
                 return MagazineContent.builder()
                         .magazine(magazine)
                         .type(MagazineContentType.EMOTICON)

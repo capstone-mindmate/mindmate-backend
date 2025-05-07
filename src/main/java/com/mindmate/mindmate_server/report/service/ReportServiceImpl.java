@@ -4,6 +4,7 @@ import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ReportErrorCode;
 import com.mindmate.mindmate_server.global.exception.UserErrorCode;
+import com.mindmate.mindmate_server.global.util.SlackNotifier;
 import com.mindmate.mindmate_server.matching.service.MatchingService;
 import com.mindmate.mindmate_server.report.domain.Report;
 import com.mindmate.mindmate_server.report.domain.ReportTarget;
@@ -31,6 +32,7 @@ public class ReportServiceImpl implements ReportService {
     private final ReviewService reviewService;
     private final AdminUserSuspensionService suspensionService;
 
+    private final SlackNotifier slackNotifier;
     private final ReportRepository reportRepository;
 
     public static final long REPORT_COUNT_WEAK_THRESHOLD = 5;
@@ -68,6 +70,7 @@ public class ReportServiceImpl implements ReportService {
 
         Report savedReport = reportRepository.save(report);
 
+        slackNotifier.sendReportAlert(savedReport);
         reportedUser.incrementReportCount();
         checkReportThreshold(reportedUser);
         userService.save(reportedUser);

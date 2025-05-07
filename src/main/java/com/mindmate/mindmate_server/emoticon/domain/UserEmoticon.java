@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.emoticon.domain;
 
+import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import com.mindmate.mindmate_server.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -11,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "user_emoticons")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class UserEmoticon {
+public class UserEmoticon extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

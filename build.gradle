@@ -81,6 +81,7 @@ dependencies {
 	implementation "com.sksamuel.scrimage:scrimage-core:4.0.32"
 	implementation "com.sksamuel.scrimage:scrimage-webp:4.0.32"
 
+	implementation 'org.threeten:threeten-extra:1.7.2'
 }
 
 // JaCoCo 설정 추가
