@@ -47,7 +47,7 @@ public class MatchingDetailResponse {
 
             if (!isAnonymous) {
                 nickname = matching.getCreator().getProfile().getNickname();
-                profileImage = matching.getCreator().getProfile().getProfileImage();
+                profileImage = matching.getCreator().getProfile().getProfileImage().getImageUrl();
             }
 
             if (matching.isShowDepartment()) {

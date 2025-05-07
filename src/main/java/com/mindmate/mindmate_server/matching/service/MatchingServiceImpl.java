@@ -315,8 +315,8 @@ public class MatchingServiceImpl implements MatchingService {
     @Override
     public Page<MatchingResponse> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant) {
 
-        User user = userService.findUserById(userId);
-        Page<Matching> matchings = getUserMatchings(user, asParticipant, pageable);
+//        User user = userService.findUserById(userId);
+        Page<Matching> matchings = getUserMatchings(userId, asParticipant, pageable);
 
         return matchings.map(MatchingResponse::of);
     }
@@ -445,13 +445,13 @@ public class MatchingServiceImpl implements MatchingService {
                 .collect(Collectors.toList());
     }
 
-    private Page<Matching> getUserMatchings(User user, boolean asParticipant, Pageable pageable) {
+    private Page<Matching> getUserMatchings(Long userId, boolean asParticipant, Pageable pageable) {
         if (asParticipant) {
-            return matchingRepository.findByAcceptedUserAndStatusOrderByMatchedAtDesc(
-                    user, MatchingStatus.MATCHED, pageable);
+            return matchingRepository.findByAcceptedUserIdAndStatusOrderByMatchedAtDesc(
+                    userId, MatchingStatus.MATCHED, pageable);
         } else {
-            return matchingRepository.findByCreatorAndStatusOrderByMatchedAtDesc(
-                    user, MatchingStatus.MATCHED, pageable);
+            return matchingRepository.findByCreatorIdAndStatusOrderByMatchedAtDesc(
+                    userId, MatchingStatus.MATCHED, pageable);
         }
     }
 

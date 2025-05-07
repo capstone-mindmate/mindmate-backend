@@ -14,6 +14,9 @@ public enum ProfileErrorCode implements ErrorCode {
     PROFILE_ALREADY_EXIST(HttpStatus.CONFLICT, "이미 해당 프로필 정보가 등록되었습니다." ),
     INVALID_ROLE_TYPE(HttpStatus.BAD_REQUEST, "잘못된 역할입니다." ),
     INVALID_ENTRANCE_TIME(HttpStatus.BAD_REQUEST, "유효하지 않은 입학 연도입니다." ),
+    IMAGE_UPLOAD_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드 중 오류가 발생했습니다."),
+    PROFILE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "프로필 이미지를 찾을 수 없습니다."),
+    PROFILE_IMAGE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "프로필 이미지에 접근 권한이 없습니다."),
     PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "프로필이 존재하지 않습니다.");
 
     private final HttpStatus status;

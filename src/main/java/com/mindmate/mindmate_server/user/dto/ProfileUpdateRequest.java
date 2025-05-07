@@ -14,7 +14,7 @@ public class ProfileUpdateRequest {
     @Size(min = 2, max = 10, message = "닉네임은 2~10자 사이여야 합니다")
     private String nickname;
 
-    private String profileImage;
+    private Long profileImageId;
 
     @Size(max = 20, message = "학과명은 최대 20자까지 가능합니다")
     private String department;
