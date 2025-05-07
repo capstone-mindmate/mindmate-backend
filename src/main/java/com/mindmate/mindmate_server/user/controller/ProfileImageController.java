@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.user.controller;
 
+import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
 import com.mindmate.mindmate_server.user.dto.ProfileImageResponse;
 import com.mindmate.mindmate_server.user.service.ProfileImageService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,10 +27,11 @@ public class ProfileImageController {
     @PostMapping
     @Operation(summary = "프로필 이미지 업로드", description = "프로필 이미지를 업로드합니다.")
     public ResponseEntity<ProfileImageResponse> uploadProfileImage(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestParam("file") MultipartFile file) throws IOException {
+        log.info("프로필 업로드 시작@@");
 
-        ProfileImageResponse response = profileImageService.uploadProfileImage(userId, file);
+        ProfileImageResponse response = profileImageService.uploadProfileImage(userPrincipal.getUserId(), file);
         return ResponseEntity.ok(response);
     }
 

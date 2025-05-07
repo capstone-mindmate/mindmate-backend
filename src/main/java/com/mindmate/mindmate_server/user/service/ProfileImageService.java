@@ -46,7 +46,7 @@ public class ProfileImageService {
                 profileImageRepository.delete(image);
             });
 
-            FileInfo fileInfo = fileStorageService.storeFileAsWebp(file, profileImageDir);
+            FileInfo fileInfo = fileStorageService.storeFile(file, profileImageDir);
             String imageUrl = profileImageUrlPrefix + fileInfo.getStoredFileName();
 
             ProfileImage profileImage = ProfileImage.builder()
