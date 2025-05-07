@@ -117,6 +117,14 @@ public class ProfileServiceImpl implements ProfileService {
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_NOT_FOUND));
     }
 
+    @Override
+    public ProfileDetailResponse getMyProfileDetail(Long userId) {
+        User user = userService.findUserById(userId);
+        Profile profile = findProfileByUser(user);
+
+        return buildProfileDetailResponse(profile, user);
+    }
+
     private void validateNickname(String nickname) {
         if (profileRepository.existsByNickname(nickname)) {
             throw new CustomException(ProfileErrorCode.DUPLICATE_NICKNAME);

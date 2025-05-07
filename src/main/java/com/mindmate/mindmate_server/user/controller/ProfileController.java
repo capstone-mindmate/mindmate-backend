@@ -19,6 +19,13 @@ import java.util.Set;
 public class ProfileController {
     private final ProfileService profileService;
 
+    @Operation(summary = "본인 프로필 조회", description = "자신의 프로필을 조회합니다.")
+    @GetMapping
+    public ResponseEntity<ProfileDetailResponse> getMyProfile(@AuthenticationPrincipal UserPrincipal principal) {
+        ProfileDetailResponse profile = profileService.getMyProfileDetail(principal.getUserId());
+        return ResponseEntity.ok(profile);
+    }
+
     @Operation(summary = "특정 사용자 프로필 조회", description = "특정 사용자의 프로필을 조회합니다.")
     @GetMapping("/users/{userId}")
     public ResponseEntity<ProfileDetailResponse> getUserProfile(@PathVariable Long userId) {
