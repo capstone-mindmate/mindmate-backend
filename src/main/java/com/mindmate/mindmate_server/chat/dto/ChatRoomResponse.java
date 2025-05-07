@@ -41,7 +41,7 @@ public class ChatRoomResponse {
 
         User opposite = isListener ? chatRoom.getSpeaker() : chatRoom.getListener();
         String oppositeName = opposite.getProfile().getNickname();
-        String oppositeImage = opposite.getProfile().getProfileImage();
+        String oppositeImage = opposite.getProfile().getProfileImage().getImageUrl();
 
         Long unreadCount = isListener ? chatRoom.getListenerUnreadCount() : chatRoom.getSpeakerUnreadCount();
         String userRole = isListener ? "LISTENER" : "SPEAKER";

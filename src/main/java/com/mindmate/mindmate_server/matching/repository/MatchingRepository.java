@@ -45,11 +45,17 @@ public interface MatchingRepository extends JpaRepository<Matching, Long>, Match
             @Param("department") String department,
             Pageable pageable);
 
-    Page<Matching> findByAcceptedUserAndStatusOrderByMatchedAtDesc(
-            User acceptedApplicant, MatchingStatus status, Pageable pageable);
+    @Query("SELECT m FROM Matching m WHERE m.creator.id = :creatorId AND m.status = :status ORDER BY m.matchedAt DESC")
+    Page<Matching> findByCreatorIdAndStatusOrderByMatchedAtDesc(
+            @Param("creatorId") Long creatorId,
+            @Param("status") MatchingStatus status,
+            Pageable pageable);
 
-    Page<Matching> findByCreatorAndStatusOrderByMatchedAtDesc(
-            User creator, MatchingStatus status, Pageable pageable);
+    @Query("SELECT m FROM Matching m WHERE m.acceptedUser.id = :acceptedUserId AND m.status = :status ORDER BY m.matchedAt DESC")
+    Page<Matching> findByAcceptedUserIdAndStatusOrderByMatchedAtDesc(
+            @Param("acceptedUserId") Long acceptedUserId,
+            @Param("status") MatchingStatus status,
+            Pageable pageable);
 
     @Query("SELECT m.category, COUNT(m) FROM Matching m " +
             "WHERE (m.creator.id = :userId OR m.acceptedUser.id = :userId) " +

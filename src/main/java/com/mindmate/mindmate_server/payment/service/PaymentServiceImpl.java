@@ -16,13 +16,16 @@ import com.mindmate.mindmate_server.point.domain.PointReasonType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -142,14 +145,14 @@ public class PaymentServiceImpl implements PaymentService{
 
     @Override
     @Transactional(readOnly = true)
-    public List<PaymentHistoryResponse> getUserPaymentHistory(Long userId) {
+    public Page<PaymentHistoryResponse> getUserPaymentHistory(Long userId, int page, int size) {
         User user = userService.findUserById(userId);
 
-        List<PaymentOrder> orders = paymentOrderRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<PaymentOrder> orderPage = paymentOrderRepository
+                .findByUserIdWithProductOrderByCreatedAtDesc(userId, pageable);
 
-        return orders.stream()
-                .map(PaymentHistoryResponse::from)
-                .collect(Collectors.toList());
+        return orderPage.map(PaymentHistoryResponse::from);
     }
 
     @Override

@@ -6,6 +6,7 @@ import com.mindmate.mindmate_server.payment.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -75,9 +76,14 @@ public class PaymentController {
 
     @Operation(summary = "결제 내역 조회", description = "사용자의 결제 내역을 조회합니다.")
     @GetMapping("/history")
-    public ResponseEntity<List<PaymentHistoryResponse>> getPaymentHistory(
-            @AuthenticationPrincipal UserPrincipal principal) {
-        List<PaymentHistoryResponse> history = paymentService.getUserPaymentHistory(principal.getUserId());
+    public ResponseEntity<Page<PaymentHistoryResponse>> getPaymentHistory(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size) {
+
+        Page<PaymentHistoryResponse> history = paymentService.getUserPaymentHistory(
+                principal.getUserId(), page, size);
+
         return ResponseEntity.ok(history);
     }
 
