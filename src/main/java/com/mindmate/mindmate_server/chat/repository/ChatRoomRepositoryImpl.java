@@ -6,6 +6,7 @@ import com.mindmate.mindmate_server.chat.domain.QChatMessage;
 import com.mindmate.mindmate_server.chat.domain.QChatRoom;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
 import com.mindmate.mindmate_server.matching.domain.InitiatorType;
+import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import com.mindmate.mindmate_server.matching.domain.QMatching;
 import com.mindmate.mindmate_server.user.domain.QProfile;
 import com.mindmate.mindmate_server.user.domain.QUser;
@@ -149,7 +150,8 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                         .when(matching.creatorRole.eq(InitiatorType.LISTENER).and(matching.creator.id.eq(userId))
                                 .or(matching.creatorRole.eq(InitiatorType.SPEAKER).and(matching.acceptedUser.id.eq(userId))))
                         .then("LISTENER")
-                        .otherwise("SPEAKER").as("userRole")
+                        .otherwise("SPEAKER").as("userRole"),
+                matching.category.as("category")
         };
     }
 
@@ -194,6 +196,7 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                             .oppositeId(tuple.get(9, Long.class))
                             .unreadCount(tuple.get(10, Long.class))
                             .userRole(tuple.get(11, String.class))
+                            .category(tuple.get(12, MatchingCategory.class))
                             .build();
                 })
                 .collect(Collectors.toList());
