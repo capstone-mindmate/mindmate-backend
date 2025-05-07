@@ -17,4 +17,8 @@ public interface MagazineRepository extends JpaRepository<Magazine, Long>, Magaz
     List<Magazine> findTop10ByMagazineStatusOrderByLikeCountDesc(MagazineStatus status);
 
     List<Magazine> findByMagazineStatusAndCategoryOrderByLikeCountDesc(MagazineStatus status, MatchingCategory category);
+
+    Page<Magazine> findByLikesUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+
+    Page<Magazine> findByAuthorIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 }

@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.magazine.controller;
 
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
+import com.mindmate.mindmate_server.magazine.domain.MagazineStatus;
 import com.mindmate.mindmate_server.magazine.dto.*;
 import com.mindmate.mindmate_server.magazine.service.MagazineService;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
@@ -91,6 +92,7 @@ public class MagazineController {
         return ResponseEntity.ok(magazineResponses);
     }
 
+
     @Operation(
             summary = "매거진 상세 조회",
             description = "지정한 매거진(콘텐츠)의 상세 정보를 조회합니다."
@@ -155,4 +157,33 @@ public class MagazineController {
         return ResponseEntity.ok(popularMagazines);
     }
 
+    @Operation(
+            summary = "내가 작성한 매거진 목록 조회",
+            description = "사용자가 작성한 매거진 목록을 최신순으로 조회합니다."
+    )
+    @GetMapping("/my")
+    public ResponseEntity<Page<MagazineResponse>> getMyMagazines(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Page<MagazineResponse> myMagazines = magazineService.getMyMagazines(principal.getUserId(), PageRequest.of(page, size));
+
+        return ResponseEntity.ok(myMagazines);
+    }
+
+    @Operation(
+            summary = "좋아요 누른 매거진 목록 조회",
+            description = "사용자가 좋아요를 누른 매거진 목록을 최신순으로 조회합니다."
+    )
+    @GetMapping("/liked")
+    public ResponseEntity<Page<MagazineResponse>> getLikedMagazines(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Page<MagazineResponse> likedMagazines = magazineService.getLikedMagazines(principal.getUserId(), PageRequest.of(page, size));
+
+        return ResponseEntity.ok(likedMagazines);
+    }
 }

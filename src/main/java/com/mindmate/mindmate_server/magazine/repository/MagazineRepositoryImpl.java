@@ -44,6 +44,7 @@ public class MagazineRepositoryImpl implements MagazineRepositoryCustom {
         if (StringUtils.hasText(filter.getKeyword())) {
             builder.and(
                     magazine.title.containsIgnoreCase(filter.getKeyword())
+                            .or(magazine.subtitle.containsIgnoreCase(filter.getKeyword()))
                             .or(JPAExpressions
                                     .selectOne()
                                     .from(content)
@@ -54,6 +55,7 @@ public class MagazineRepositoryImpl implements MagazineRepositoryCustom {
                             )
             );
         }
+
 
         // 4. 정렬 조건 확인
         OrderSpecifier<?> orderSpecifier = getOrderSpecifier(filter.getSortBy(), magazine);

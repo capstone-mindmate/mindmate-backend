@@ -4,6 +4,7 @@ import com.mindmate.mindmate_server.magazine.domain.Magazine;
 import com.mindmate.mindmate_server.magazine.dto.*;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
@@ -33,4 +34,8 @@ public interface MagazineService {
     List<MagazineResponse> getPopularMagazines(int limit);
 
     List<MagazineResponse> getPopularMagazinesByCategory(MatchingCategory category, int limit);
+
+    Page<MagazineResponse> getMyMagazines(Long userId, Pageable pageable);
+
+    Page<MagazineResponse> getLikedMagazines(Long userId, Pageable pageable);
 }
