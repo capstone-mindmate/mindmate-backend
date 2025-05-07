@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.chat.dto;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
+import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import com.mindmate.mindmate_server.user.domain.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,6 +31,8 @@ public class ChatRoomResponse {
 
     private boolean isCreator;
     private String matchingTitle;
+
+    private MatchingCategory category;
 
 
     // todo: 매칭방 타입
@@ -63,6 +66,7 @@ public class ChatRoomResponse {
                 .userRole(userRole)
                 .isCreator(isCreator)
                 .matchingTitle(chatRoom.getMatching().getTitle())
+                .category(chatRoom.getMatching().getCategory())
                 .build();
     }
 }
