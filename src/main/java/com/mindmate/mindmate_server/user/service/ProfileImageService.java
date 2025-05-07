@@ -109,4 +109,13 @@ public class ProfileImageService {
         return profileImageRepository.findById(id)
                 .orElseThrow(()->new CustomException(ProfileErrorCode.PROFILE_IMAGE_NOT_FOUND));
     }
+
+    @Value("${profile.default.image.id}")
+    private Long defaultProfileImageId;
+
+    @Transactional(readOnly = true)
+    public ProfileImage getDefaultProfileImage() {
+        return profileImageRepository.findById(defaultProfileImageId)
+                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_IMAGE_NOT_FOUND));
+    }
 }
