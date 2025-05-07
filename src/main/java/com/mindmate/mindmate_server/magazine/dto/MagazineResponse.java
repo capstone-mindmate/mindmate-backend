@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 public class MagazineResponse {
     private Long id;
     private String title;
+    private String subtitle;
     private List<MagazineContentResponse> contents;
     private String authorName;
     private Long authorId;
@@ -36,6 +37,7 @@ public class MagazineResponse {
         return MagazineResponse.builder()
                 .id(magazine.getId())
                 .title(magazine.getTitle())
+                .subtitle(magazine.getSubtitle())
                 .contents(contentResponses)
                 .authorName(magazine.getAuthor().getProfile().getNickname())
                 .authorId(magazine.getAuthor().getId())

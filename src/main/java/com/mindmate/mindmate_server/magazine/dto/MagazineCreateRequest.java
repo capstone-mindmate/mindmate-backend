@@ -18,6 +18,9 @@ public class MagazineCreateRequest {
     @NotBlank
     private String title;
 
+    @NotBlank
+    private String subtitle;
+
     @NotNull
     private MatchingCategory category;
 

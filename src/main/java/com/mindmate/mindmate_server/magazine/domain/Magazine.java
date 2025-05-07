@@ -24,6 +24,9 @@ public class Magazine extends BaseTimeEntity {
     @Column(nullable = false)
     private String title;
 
+    @Column(nullable = false)
+    private String subtitle;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id", nullable = false)
     private User author;
@@ -45,13 +48,15 @@ public class Magazine extends BaseTimeEntity {
     private MatchingCategory category;
 
     @Builder
-    public Magazine(String title, User author) {
+    public Magazine(String title, String subtitle, User author) {
         this.title = title;
+        this.subtitle = subtitle;
         this.author = author;
     }
 
-    public void update(String title, MatchingCategory category) {
+    public void update(String title, String subtitle, MatchingCategory category) {
         this.title = title;
+        this.subtitle = subtitle;
         this.category = category;
         this.magazineStatus = MagazineStatus.PENDING;
     }
