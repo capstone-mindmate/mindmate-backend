@@ -51,6 +51,7 @@ public class EmoticonServiceImpl implements EmoticonService {
     private final PointService pointService;
     private final SlackNotifier slackNotifier;
     private final FileStorageService fileStorageService;
+    private final EmoticonInteractionService emoticonInteractionService;
 
     private final ChatRoomService chatRoomService;
     private final ChatMessageService chatMessageService;
@@ -109,6 +110,8 @@ public class EmoticonServiceImpl implements EmoticonService {
                     .map(EmoticonResponse::from)
                     .collect(Collectors.toList());
         }
+
+        emoticonInteractionService.incrementViewCount(emoticonId, userId);
 
         return EmoticonDetailResponse.builder()
                 .emoticon(EmoticonResponse.from(emoticon, isPurchased))
@@ -192,6 +195,8 @@ public class EmoticonServiceImpl implements EmoticonService {
                 .purchasePrice(purchasePrice)
                 .build();
         userEmoticonRepository.save(userEmoticon);
+
+        emoticonInteractionService.handlePurchase(emoticonId);
         return EmoticonResponse.from(emoticon);
     }
 
@@ -256,6 +261,7 @@ public class EmoticonServiceImpl implements EmoticonService {
 
             chatService.publishMessageEvent(savedMessage, recipient.getId(), isRecipientActive, "이모티콘을 전송했습니다");
 
+            emoticonInteractionService.incrementUsage(emoticon.getId());
             return EmoticonMessageResponse.builder()
                     .messageId(savedMessage.getId())
                     .roomId(chatRoom.getId())
