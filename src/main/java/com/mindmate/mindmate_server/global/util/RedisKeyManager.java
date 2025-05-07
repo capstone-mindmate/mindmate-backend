@@ -1,6 +1,10 @@
 package com.mindmate.mindmate_server.global.util;
 
 import org.springframework.stereotype.Component;
+import org.threeten.extra.YearWeek;
+
+import java.time.LocalDate;
+import java.time.Year;
 
 @Component
 public class RedisKeyManager {
@@ -61,9 +65,7 @@ public class RedisKeyManager {
     }
 
     // 사용자 매거진 조회 중복 방지
-    public String getMagazineViewedKey(Long userId, Long magazineId) {
-        return "magazine:viewed:" + userId + ":" + magazineId;
-    }
+    public String getMagazineViewedKey(Long userId, Long magazineId) { return "magazine:viewed:" + userId + ":" + magazineId; }
 
     // 사용자 매거진 체류 시간
     public String getMagazineDwellTimeKey(Long magazineId) {
@@ -77,5 +79,23 @@ public class RedisKeyManager {
 
     public String getUserTotalUnreadCountKey(Long userId) {
         return String.format("user:%d:total-unread", userId);
+    }
+
+
+    // 이모티콘 조회수
+    public String getEmoticonDailyViewKey(Long emoticonId) { return "emoticon:views:daily:" + LocalDate.now() + ":" + emoticonId; }
+
+    // 사용자 이모티콘 중복 조회 방지
+    public String getEmoticonViewCountKey(Long emoticonId, Long userId) { return "emoticon:viewed:" + userId + ":" + emoticonId; }
+
+    // 이모티콘 사용 빈도
+    public String getEmoticonUsageKey(Long emoticonId) { return "emoticon:usage" + emoticonId; }
+
+    // 이모티콘 구매 횟수
+    public String getEmoticonPurchaseKey() { return "emoticon:purchases:weekly:" + YearWeek.now(); }
+
+    // 이모티콘 종합 인기 순위
+    public String getEmoticonPopularityKey() {
+        return "emoticon:popularity:overall";
     }
 }
