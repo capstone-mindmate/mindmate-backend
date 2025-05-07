@@ -49,6 +49,8 @@ public class MagazineServiceImpl implements MagazineService {
     @Override
     @Transactional
     public MagazineResponse createMagazine(Long userId, MagazineCreateRequest request) {
+        validateMagazineContents(request.getContents());
+
         User user = userService.findUserById(userId);
 
         Magazine magazine = Magazine.builder()
@@ -69,6 +71,7 @@ public class MagazineServiceImpl implements MagazineService {
     @Override
     @Transactional
     public MagazineResponse updateMagazine(Long magazineId, MagazineUpdateRequest request, Long userId) {
+        validateMagazineContents(request.getContents());
         Magazine magazine = findMagazineById(magazineId);
         User user = userService.findUserById(userId);
 
@@ -76,7 +79,7 @@ public class MagazineServiceImpl implements MagazineService {
             throw new CustomException(MagazineErrorCode.MAGAZINE_ACCESS_DENIED);
         }
 
-        magazine.update(request.getTitle(), request.getCategory());
+        magazine.update(request.getTitle(), request.getSubtitle(), request.getCategory());
         
         // todo: 다 지우고 처리하는게 맞나??
         magazineContentRepository.deleteByMagazine(magazine);
@@ -233,5 +236,29 @@ public class MagazineServiceImpl implements MagazineService {
     @Override
     public List<MagazineResponse> getPopularMagazinesByCategory(MatchingCategory category, int limit) {
         return magazinePopularityService.getPopularMagazinesByCategory(category, limit);
+    }
+
+    @Override
+    public Page<MagazineResponse> getMyMagazines(Long userId, Pageable pageable) {
+        Page<Magazine> magazines = magazineRepository.findByAuthorIdOrderByCreatedAtDesc(userId, pageable);
+        return magazines.map(MagazineResponse::from);
+    }
+
+    @Override
+    public Page<MagazineResponse> getLikedMagazines(Long userId, Pageable pageable) {
+        Page<Magazine> likedMagazines = magazineRepository.findByLikesUserIdOrderByCreatedAtDesc(userId, pageable);
+        return likedMagazines.map(magazine -> {
+            MagazineResponse response = MagazineResponse.from(magazine);
+            return response;
+        });
+    }
+
+    private void validateMagazineContents(List<MagazineContentDTO> contents) {
+        boolean hasImage = contents.stream()
+                .anyMatch(content -> content.getType() == MagazineContentType.IMAGE);
+
+        if (!hasImage) {
+            throw new CustomException(MagazineErrorCode.MAGAZINE_IMAGE_REQUIRED);
+        }
     }
 }
