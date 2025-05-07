@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.global.util;
 
 import com.mindmate.mindmate_server.emoticon.domain.Emoticon;
 import com.mindmate.mindmate_server.magazine.domain.Magazine;
+import com.mindmate.mindmate_server.report.domain.Report;
 import com.mindmate.mindmate_server.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -94,6 +95,35 @@ public class SlackNotifier {
             log.error("Slack 알림 전송 실패: {}", e.getMessage(), e);
         }
     }
+
+    // SlackNotifier 클래스 내부
+    public void sendReportAlert(Report report) {
+        try {
+            String message = String.format(
+                    ":rotating_light: *신고 접수 알림*\n" +
+                            "> 신고자: %s (ID: %d)\n" +
+                            "> 대상자: %s (ID: %d)\n" +
+                            "> 신고 유형: %s\n" +
+                            "> 신고 사유: %s\n" +
+                            "> 추가 설명: %s\n" +
+                            "> 신고 일시: %s",
+                    report.getReporter().getProfile().getNickname(),
+                    report.getReporter().getId(),
+                    report.getReportedUser().getProfile().getNickname(),
+                    report.getReportedUser().getId(),
+                    report.getReportTarget(),
+                    report.getReportReason(),
+                    report.getAdditionalComment(),
+                    report.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+            );
+
+            sendSlackMessage(message);
+            log.info("신고 알림 전송 완료: reportId={}", report.getId());
+        } catch (Exception e) {
+            log.error("신고 알림 전송 실패: {}", e.getMessage(), e);
+        }
+    }
+
 
 
     private String formatDuration(Duration duration) {
