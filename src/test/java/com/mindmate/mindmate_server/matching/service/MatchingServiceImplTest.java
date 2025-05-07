@@ -4,12 +4,18 @@ import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MatchingErrorCode;
+import com.mindmate.mindmate_server.global.exception.PointErrorCode;
 import com.mindmate.mindmate_server.matching.domain.*;
 import com.mindmate.mindmate_server.matching.dto.*;
 import com.mindmate.mindmate_server.matching.repository.MatchingRepository;
 import com.mindmate.mindmate_server.matching.repository.WaitingUserRepository;
+import com.mindmate.mindmate_server.notification.dto.MatchingAcceptedNotificationEvent;
+import com.mindmate.mindmate_server.notification.dto.MatchingAppliedNotificationEvent;
+import com.mindmate.mindmate_server.notification.service.NotificationService;
+import com.mindmate.mindmate_server.point.domain.PointReasonType;
+import com.mindmate.mindmate_server.point.dto.PointUseRequest;
+import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.user.domain.Profile;
-import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import org.junit.jupiter.api.AfterEach;
@@ -32,9 +38,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -56,6 +61,10 @@ class MatchingServiceImplTest {
     private ChatRoomService chatRoomService;
     @Mock
     private RedisMatchingService redisMatchingService;
+    @Mock
+    private NotificationService notificationService;
+    @Mock
+    private PointService pointService;
     @Mock
     private MatchingEventProducer matchingEventProducer;
 
@@ -137,7 +146,7 @@ class MatchingServiceImplTest {
         when(chatRoom.getId()).thenReturn(1L);
         when(matching.getChatRoom()).thenReturn(chatRoom);
 
-        // 대기지
+        // 대기자
         when(waitingUser.getId()).thenReturn(1L);
         when(waitingUser.getWaitingUser()).thenReturn(applicant);
         when(waitingUser.getMessage()).thenReturn("I want to participate");
@@ -147,6 +156,7 @@ class MatchingServiceImplTest {
         when(waitingUser.getStatus()).thenReturn(WaitingStatus.PENDING);
         when(waitingUser.isOwner(eq(applicant))).thenReturn(true);
         when(waitingUser.isOwner(eq(creator))).thenReturn(false);
+        when(waitingUser.isPending()).thenReturn(true);
 
         mockedStatic = mockStatic(TransactionSynchronizationManager.class);
         mockedStatic.when(() -> TransactionSynchronizationManager.registerSynchronization(any(TransactionSynchronization.class)))
@@ -229,6 +239,34 @@ class MatchingServiceImplTest {
             verify(chatRoomService, never()).createChatRoom(any(Matching.class));
             verify(matchingRepository, never()).save(any(Matching.class));
         }
+
+        @Test
+        @DisplayName("랜덤 매칭 허용 시 레디스에 추가")
+        void addToRedisWhenRandomAllowed() {
+            // given
+            MatchingCreateRequest request = new MatchingCreateRequest(
+                    "Test Matching",
+                    "This is a test matching",
+                    MatchingCategory.CAREER,
+                    InitiatorType.SPEAKER,
+                    true,
+                    true,  // allowRandom = true
+                    false
+            );
+
+            when(matching.isAllowRandom()).thenReturn(true);
+
+            given(userService.findUserById(1L)).willReturn(creator);
+            given(redisMatchingService.getUserActiveMatchingCount(1L)).willReturn(0);
+            given(chatRoomService.createChatRoom(any(Matching.class))).willReturn(chatRoom);
+            given(matchingRepository.save(any(Matching.class))).willReturn(matching);
+
+            // when
+            matchingService.createMatching(1L, request);
+
+            // then
+            verify(redisMatchingService).addMatchingToAvailableSet(any(Matching.class));
+        }
     }
 
     @Nested
@@ -258,6 +296,7 @@ class MatchingServiceImplTest {
             verify(waitingUserRepository).findByMatchingAndWaitingUser(matching, applicant);
             verify(waitingUserRepository).save(any(WaitingUser.class));
             verify(redisMatchingService).incrementUserActiveMatchingCount(2L);
+            verify(notificationService).processNotification(any(MatchingAppliedNotificationEvent.class));
         }
 
         @Test
@@ -277,6 +316,7 @@ class MatchingServiceImplTest {
             verify(userService).findUserById(1L);
             verify(matchingRepository).findById(1L);
             verify(waitingUserRepository, never()).save(any(WaitingUser.class));
+            verify(pointService, never()).usePoints(anyLong(), any(PointUseRequest.class));
         }
 
         @Test
@@ -303,6 +343,7 @@ class MatchingServiceImplTest {
             verify(userService).findUserById(2L);
             verify(matchingRepository).findById(2L);
             verify(waitingUserRepository, never()).save(any(WaitingUser.class));
+            verify(pointService, never()).usePoints(anyLong(), any(PointUseRequest.class));
         }
 
         @Test
@@ -325,6 +366,7 @@ class MatchingServiceImplTest {
             verify(matchingRepository).findById(1L);
             verify(waitingUserRepository).findByMatchingAndWaitingUser(matching, applicant);
             verify(waitingUserRepository, never()).save(any(WaitingUser.class));
+            verify(pointService, never()).usePoints(anyLong(), any(PointUseRequest.class));
         }
     }
 
@@ -363,6 +405,8 @@ class MatchingServiceImplTest {
             verify(waitingUserRepository).findById(1L);
             verify(waitingUserRepository).findByMatchingOrderByCreatedAtDesc(matching);
             verify(matching).acceptMatching(applicant);
+            verify(waitingUser).accept();
+            verify(notificationService).processNotification(any(MatchingAcceptedNotificationEvent.class));
             verify(matchingEventProducer).publishMatchingAccepted(any(MatchingAcceptedEvent.class));
             verify(redisMatchingService).cleanupMatchingKeys(matching);
         }
@@ -421,6 +465,84 @@ class MatchingServiceImplTest {
 
             verify(matchingRepository).findById(1L);
             verify(waitingUserRepository).findById(2L);
+        }
+
+        @Test
+        @DisplayName("매칭 수락 시 스피커 역할 유저의 포인트 차감")
+        void chargePointsToSpeakerWhenAccepting() {
+            // given
+            // 생성자가 스피커인 경우
+            when(matching.getCreatorRole()).thenReturn(InitiatorType.SPEAKER);
+
+            List<WaitingUser> waitingUsers = List.of(waitingUser);
+
+            given(userService.findUserById(1L)).willReturn(creator);
+            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+            given(waitingUserRepository.findById(1L)).willReturn(Optional.of(waitingUser));
+            given(waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching))
+                    .willReturn(waitingUsers);
+            given(matchingRepository.save(matching)).willReturn(matching);
+
+            // when
+            Long matchingId = matchingService.acceptMatching(1L, 1L, 1L);
+
+            // then
+            assertThat(matchingId).isEqualTo(1L);
+
+            // 생성자가 스피커이므로 creator에게 포인트가 차감되어야 함
+            verify(pointService).usePoints(eq(1L), argThat(pointRequest ->
+                    pointRequest.getAmount() == 100 &&
+                            pointRequest.getReasonType() == PointReasonType.COUNSELING_REQUESTED));
+        }
+
+        @Test
+        @DisplayName("매칭 수락 시 대기자가 스피커인 경우 포인트 차감")
+        void chargePointsToWaitingUserWhenAcceptingWithListenerCreator() {
+            // given
+            when(matching.getCreatorRole()).thenReturn(InitiatorType.LISTENER);
+
+            List<WaitingUser> waitingUsers = List.of(waitingUser);
+
+            given(userService.findUserById(1L)).willReturn(creator);
+            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+            given(waitingUserRepository.findById(1L)).willReturn(Optional.of(waitingUser));
+            given(waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching))
+                    .willReturn(waitingUsers);
+            given(matchingRepository.save(matching)).willReturn(matching);
+
+            // when
+            Long matchingId = matchingService.acceptMatching(1L, 1L, 1L);
+
+            // then
+            assertThat(matchingId).isEqualTo(1L);
+
+            verify(pointService).usePoints(eq(2L), argThat(pointRequest ->
+                    pointRequest.getAmount() == 100 &&
+                            pointRequest.getReasonType() == PointReasonType.COUNSELING_REQUESTED));
+        }
+
+        @Test
+        @DisplayName("매칭 수락 시 스피커 포인트 부족하면 예외 발생")
+        void throwExceptionWhenInsufficientPointsForMatching() {
+            // given
+            when(matching.getCreatorRole()).thenReturn(InitiatorType.SPEAKER);
+
+            CustomException pointException = new CustomException(PointErrorCode.INSUFFICIENT_POINTS);
+
+            given(userService.findUserById(1L)).willReturn(creator);
+            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+            given(waitingUserRepository.findById(1L)).willReturn(Optional.of(waitingUser));
+            given(pointService.usePoints(eq(1L), any(PointUseRequest.class)))
+                    .willThrow(pointException);
+
+            // when & then
+            assertThatThrownBy(() -> matchingService.acceptMatching(1L, 1L, 1L))
+                    .isInstanceOf(CustomException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.INSUFFICIENT_POINTS_FOR_MATCHING);
+
+            verify(waitingUser, never()).accept();
+            verify(matching, never()).acceptMatching(any(User.class));
+            verify(matchingRepository, never()).save(any(Matching.class));
         }
     }
 
@@ -676,6 +798,7 @@ class MatchingServiceImplTest {
             when(acceptedWaitingUser.getMatching()).thenReturn(matching);
             when(acceptedWaitingUser.getStatus()).thenReturn(WaitingStatus.ACCEPTED);
             when(acceptedWaitingUser.isOwner(applicant)).thenReturn(true);
+            when(acceptedWaitingUser.isPending()).thenReturn(false);
 
             given(userService.findUserById(2L)).willReturn(applicant);
             given(waitingUserRepository.findById(2L)).willReturn(Optional.of(acceptedWaitingUser));
@@ -945,6 +1068,41 @@ class MatchingServiceImplTest {
     }
 
     @Nested
+    @DisplayName("매칭 ID로 찾기 테스트")
+    class FindMatchingByIdTest {
+
+        @Test
+        @DisplayName("매칭 ID로 찾기 성공")
+        void findMatchingByIdSuccess() {
+            // given
+            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+            // when
+            Matching result = matchingService.findMatchingById(1L);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(1L);
+
+            verify(matchingRepository).findById(1L);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 매칭 ID로 찾기 시 예외 발생")
+        void matchingNotFound() {
+            // given
+            given(matchingRepository.findById(999L)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> matchingService.findMatchingById(999L))
+                    .isInstanceOf(CustomException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.MATCHING_NOT_FOUND);
+
+            verify(matchingRepository).findById(999L);
+        }
+    }
+
+    @Nested
     @DisplayName("사용자 매칭 이력 조회 테스트")
     class GetUserMatchingHistoryTest {
 
@@ -1082,37 +1240,32 @@ class MatchingServiceImplTest {
     }
 
     @Nested
-    @DisplayName("매칭 ID로 찾기 테스트")
-    class FindMatchingByIdTest {
+    @DisplayName("카테고리별 통계 테스트")
+    class CategoryCountsTest {
 
         @Test
-        @DisplayName("매칭 ID로 찾기 성공")
-        void findMatchingByIdSuccess() {
+        @DisplayName("카테고리별 매칭 갯수 조회")
+        void getCategoryCountsByUserId() {
             // given
-            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+            List<Object[]> mockResults = Arrays.asList(
+                    new Object[]{MatchingCategory.ACADEMIC, 3L},
+                    new Object[]{MatchingCategory.CAREER, 5L}
+            );
+
+            given(matchingRepository.countMatchingsByUserAndCategory(1L)).willReturn(mockResults);
 
             // when
-            Matching result = matchingService.findMatchingById(1L);
+            Map<String, Integer> result = matchingService.getCategoryCountsByUserId(1L);
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.getId()).isEqualTo(1L);
+            assertThat(result).containsEntry("ACADEMIC", 3);
+            assertThat(result).containsEntry("CAREER", 5);
+            // 나머지 카테고리는 0으로 초기화되어 있어야 함
+            assertThat(result).containsEntry("RELATIONSHIP", 0);
+            assertThat(result).containsEntry("MENTAL_HEALTH", 0);
 
-            verify(matchingRepository).findById(1L);
-        }
-
-        @Test
-        @DisplayName("존재하지 않는 매칭 ID로 찾기 시 예외 발생")
-        void matchingNotFound() {
-            // given
-            given(matchingRepository.findById(999L)).willReturn(Optional.empty());
-
-            // when & then
-            assertThatThrownBy(() -> matchingService.findMatchingById(999L))
-                    .isInstanceOf(CustomException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.MATCHING_NOT_FOUND);
-
-            verify(matchingRepository).findById(999L);
+            verify(matchingRepository).countMatchingsByUserAndCategory(1L);
         }
     }
 }

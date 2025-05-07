@@ -1064,6 +1064,7 @@ function addMessageToDisplay(message, isNew = true) {
         console.error("Message object is null or undefined");
         return;
     }
+    console.log('message:', message);
 
     const messagesContainer = document.getElementById('messages');
     const messageElement = document.createElement('div');

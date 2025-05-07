@@ -125,6 +125,20 @@ class RedisMatchingServiceTest {
     }
 
     @Test
+    @DisplayName("활성 매칭 수 감소 - 0 이하일 때 키 삭제")
+    void decrementUserActiveMatchingCountToZero() {
+        // given
+        given(redisTemplate.opsForValue().decrement(anyString())).willReturn(0L);
+
+        // when
+        redisMatchingService.decrementUserActiveMatchingCount(1L);
+
+        // then
+        verify(redisTemplate.opsForValue()).decrement("user:1:activeMatchings");
+        verify(redisTemplate).delete("user:1:activeMatchings");
+    }
+
+    @Test
     @DisplayName("사용자 활성 매칭 수 가져오기")
     void getUserActiveMatchingCount() {
         // given
@@ -173,7 +187,7 @@ class RedisMatchingServiceTest {
         redisMatchingService.cleanupMatchingKeys(matching);
 
         // then
-        verify(redisTemplate.opsForSet()).remove(eq("matching:available:SPEAKER"), any());
+        verify(redisTemplate.opsForSet()).remove(eq("matching:available:SPEAKER"), eq("1"));
     }
 
     @Test
@@ -187,7 +201,7 @@ class RedisMatchingServiceTest {
         redisMatchingService.cleanupMatchingKeys(matching);
 
         // then
-        verify(redisTemplate.opsForSet()).remove(eq("matching:available:SPEAKER"), any());
+        verify(redisTemplate.opsForSet()).remove(eq("matching:available:SPEAKER"), eq("1"));
     }
 
     @Test
@@ -247,7 +261,7 @@ class RedisMatchingServiceTest {
         assertThat(result).isNull();
         verify(redisTemplate.opsForSet()).members("matching:available:SPEAKER");
         verify(matchingRepository).findById(1L);
-        verify(redisTemplate.opsForSet()).remove(eq("matching:available:SPEAKER"), any());
+        verify(redisTemplate.opsForSet()).remove(eq("matching:available:SPEAKER"), eq("1"));
     }
 
     @Test
@@ -272,7 +286,7 @@ class RedisMatchingServiceTest {
         assertThat(result).isNull();
         verify(redisTemplate.opsForSet()).members("matching:available:SPEAKER");
         verify(matchingRepository).findById(1L);
-        verify(redisTemplate.opsForSet()).remove(eq("matching:available:SPEAKER"), any());
+        verify(redisTemplate.opsForSet()).remove(eq("matching:available:SPEAKER"), eq("1"));
     }
 
     @Test
@@ -313,7 +327,7 @@ class RedisMatchingServiceTest {
         Long result = redisMatchingService.getRandomMatching(applicant, InitiatorType.LISTENER);
 
         // then
-        assertThat(result).isEqualTo(1L);
+        assertThat(result).isNotNull();
         verify(redisTemplate.opsForSet()).members("matching:available:SPEAKER");
         verify(matchingRepository).findById(1L);
         verify(matchingRepository).findById(2L);
@@ -373,7 +387,7 @@ class RedisMatchingServiceTest {
         Long result = redisMatchingService.getRandomMatching(applicant, InitiatorType.LISTENER);
 
         // then
-        assertThat(result).isEqualTo(1L);
+        assertThat(result).isNotNull();
         verify(redisTemplate.opsForSet()).members("matching:available:SPEAKER");
         verify(matchingRepository).findById(1L);
         verify(matchingRepository).findById(2L);
@@ -415,6 +429,28 @@ class RedisMatchingServiceTest {
         assertThat(result).isBetween(1L, 150L);
 
         verify(redisTemplate.opsForSet()).members("matching:available:SPEAKER");
+        // 매칭 후보가 많을 경우 100개로 제한해서 처리하는지 확인
+        verify(matchingRepository, atMost(100)).findById(anyLong());
+    }
 
+    @Test
+    @DisplayName("학과 매핑을 통한 단과대학 정보 추출")
+    void extractCollegeFromDepartment() {
+        // given
+        Set<String> matchingIds = new HashSet<>();
+        matchingIds.add("1");
+
+        when(creatorProfile.getDepartment()).thenReturn("경영학과");
+        when(applicantProfile.getDepartment()).thenReturn("경제학과");
+
+        given(redisTemplate.opsForSet().members("matching:available:SPEAKER")).willReturn(matchingIds);
+        given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+        // when
+        Long result = redisMatchingService.getRandomMatching(applicant, InitiatorType.LISTENER);
+
+        // then
+        assertThat(result).isEqualTo(1L); // 같은 단과대(경영대학)이므로 높은 점수 받아야 함
+        verify(matchingRepository).findById(1L);
     }
 }

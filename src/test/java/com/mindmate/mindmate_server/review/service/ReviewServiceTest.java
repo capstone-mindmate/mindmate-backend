@@ -63,6 +63,8 @@ class ReviewServiceTest {
     private NotificationService notificationService;
     @InjectMocks
     private ReviewServiceImpl reviewService;
+    @InjectMocks
+    private ReviewDataService reviewDataService;
 
     @Mock
     private User reviewer;
@@ -628,7 +630,7 @@ class ReviewServiceTest {
         when(reviewRepository.countTagsByProfileId(profileId)).thenReturn(tagCountResults);
 
         // When
-        Map<String, Integer> tagCounts = reviewService.getTagCountsByProfileId(profileId);
+        Map<String, Integer> tagCounts = reviewDataService.getTagCountsByProfileId(profileId);
 
         // Then
         assertNotNull(tagCounts);
@@ -646,7 +648,7 @@ class ReviewServiceTest {
         when(reviewRepository.countTagsByProfileId(profileId)).thenReturn(Collections.emptyList());
 
         // When
-        Map<String, Integer> tagCounts = reviewService.getTagCountsByProfileId(profileId);
+        Map<String, Integer> tagCounts = reviewDataService.getTagCountsByProfileId(profileId);
 
         // Then
         assertNotNull(tagCounts);
@@ -665,7 +667,7 @@ class ReviewServiceTest {
                 .thenReturn(Collections.singletonList(review));
 
         // When
-        List<ReviewResponse> recentReviews = reviewService.getRecentReviewsByUserId(userId, limit);
+        List<ReviewResponse> recentReviews = reviewDataService.getRecentReviewsByUserId(userId, limit);
 
         // Then
         assertNotNull(recentReviews);
@@ -686,7 +688,7 @@ class ReviewServiceTest {
                 .thenReturn(Collections.emptyList());
 
         // When
-        List<ReviewResponse> recentReviews = reviewService.getRecentReviewsByUserId(userId, limit);
+        List<ReviewResponse> recentReviews = reviewDataService.getRecentReviewsByUserId(userId, limit);
 
         // Then
         assertNotNull(recentReviews);
@@ -705,7 +707,7 @@ class ReviewServiceTest {
                 .thenReturn(Optional.of(expectedRating));
 
         // When
-        Double avgRating = reviewService.getAverageRatingByUserId(userId);
+        Double avgRating = reviewDataService.getAverageRatingByUserId(userId);
 
         // Then
         assertNotNull(avgRating);
@@ -723,7 +725,7 @@ class ReviewServiceTest {
                 .thenReturn(Optional.empty());
 
         // When
-        Double avgRating = reviewService.getAverageRatingByUserId(userId);
+        Double avgRating = reviewDataService.getAverageRatingByUserId(userId);
 
         // Then
         assertNotNull(avgRating);
