@@ -55,6 +55,7 @@ public class MagazineServiceImpl implements MagazineService {
 
         Magazine magazine = Magazine.builder()
                 .title(request.getTitle())
+                .subtitle(request.getSubtitle())
                 .author(user)
                 .build();
 
@@ -136,7 +137,6 @@ public class MagazineServiceImpl implements MagazineService {
         boolean isLiked = magazineLikeRepository.existsByMagazineAndUser(magazine, user);
 
         return MagazineDetailResponse.from(magazine, isAuthor, isLiked);
-
     }
 
     @Override
