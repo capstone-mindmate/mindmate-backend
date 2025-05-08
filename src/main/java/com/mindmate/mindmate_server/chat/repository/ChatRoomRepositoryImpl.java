@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
     private final JPAQueryFactory queryFactory;
-    
+
     // todo: admin용 채팅방 목록 조회는 없음 -> 지금 자신의 채팅방 목록 확인만 존재
 
     @Override
@@ -109,7 +109,7 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
     }
 
     private Expression<?>[] createSelectProjection(QChatRoom chatRoom, QMatching matching,
-                                                       QChatMessage lastMessage, Long userId) {
+                                                   QChatMessage lastMessage, Long userId) {
         QProfile creatorProfile = new QProfile("creatorProfile");
         QProfile acceptedUserProfile = new QProfile("acceptedUserProfile");
         QUser creator = new QUser("creator");
@@ -121,6 +121,7 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                 chatRoom.chatRoomStatus,
                 chatRoom.lastMessageTime,
                 lastMessage.content,
+                lastMessage.type,
                 matching.creator.id.eq(userId).as("isCreator"),
                 matching.title.as("matchingTitle"),
                 // 상대방 이름
@@ -131,8 +132,8 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                 // 상대방 이미지
                 new CaseBuilder()
                         .when(matching.creator.id.eq(userId))
-                        .then(acceptedUserProfile.profileImage)
-                        .otherwise(creatorProfile.profileImage).as("oppositeImage"),
+                        .then(acceptedUserProfile.profileImage.imageUrl)
+                        .otherwise(creatorProfile.profileImage.imageUrl).as("oppositeImage"),
                 new CaseBuilder()
                         .when(matching.creator.id.eq(userId))
                         .then(acceptedUser.id)
@@ -189,18 +190,16 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                             .chatRoomStatus(tuple.get(chatRoom.chatRoomStatus))
                             .lastMessageTime(tuple.get(chatRoom.lastMessageTime))
                             .lastMessage(lastMessageContent)
-                            .isCreator(Boolean.TRUE.equals(tuple.get(5, Boolean.class)))
-                            .matchingTitle(tuple.get(6, String.class))
-                            .oppositeName(tuple.get(7, String.class))
-                            .oppositeImage(tuple.get(8, String.class))
-                            .oppositeId(tuple.get(9, Long.class))
-                            .unreadCount(tuple.get(10, Long.class))
-                            .userRole(tuple.get(11, String.class))
-                            .category(tuple.get(12, MatchingCategory.class))
+                            .isCreator(Boolean.TRUE.equals(tuple.get(6, Boolean.class)))
+                            .matchingTitle(tuple.get(7, String.class))
+                            .oppositeName(tuple.get(8, String.class))
+                            .oppositeImage(tuple.get(9, String.class))
+                            .oppositeId(tuple.get(10, Long.class))
+                            .unreadCount(tuple.get(11, Long.class))
+                            .userRole(tuple.get(12, String.class))
+                            .category(tuple.get(13, MatchingCategory.class))
                             .build();
                 })
                 .collect(Collectors.toList());
     }
-
-
 }
