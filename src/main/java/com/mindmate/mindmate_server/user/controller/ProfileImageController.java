@@ -7,7 +7,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -28,7 +27,7 @@ public class ProfileImageController {
     @Operation(summary = "프로필 이미지 업로드", description = "프로필 이미지를 업로드합니다.")
     public ResponseEntity<ProfileImageResponse> uploadProfileImage(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
-            @RequestParam("file") MultipartFile file) throws IOException {
+            @RequestPart("file") MultipartFile file) throws IOException {
         log.info("프로필 업로드 시작@@");
 
         ProfileImageResponse response = profileImageService.uploadProfileImage(userPrincipal.getUserId(), file);

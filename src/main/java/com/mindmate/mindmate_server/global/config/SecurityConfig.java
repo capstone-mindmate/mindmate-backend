@@ -68,8 +68,9 @@ public class SecurityConfig {
                         .accessDeniedHandler(customAccessDeniedHandler())) // 권한 부족시
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/emoticons/**",
-                                "/images/**",
+                                "/emoticonImages/**",
+                                "/magazineImages/**",
+                                "/profileImages/**",
                                 "/ws/**",
                                 "/auth/register",
                                 "/auth/login",
