@@ -186,6 +186,7 @@
         <div class="section">
             <h2>매거진 생성</h2>
             <input type="text" id="magazine-title" placeholder="제목">
+            <input type="text" id="magazine-subtitle" placeholder="부제목">
             <select id="magazine-category">
                 <option value="DATING">데이팅</option>
                 <option value="RELATIONSHIP">관계</option>
@@ -425,7 +426,7 @@
         const contentItem = {
             type: 'EMOTICON',
             emoticonId: emoticon.id,
-            emoticonUrl: emoticon.imageUrl,
+            emoticonUrl: `${baseUrl}${emoticon.imageUrl}`,
             order: contents.length
         };
         
@@ -497,7 +498,7 @@
         const contentItem = {
             type: 'IMAGE',
             imageId: image.id,
-            imageUrl: image.imageUrl,
+            imageUrl: `${baseUrl}${image.imageUrl}`,
             order: contents.length
         };
         
@@ -512,7 +513,7 @@
         
         uploadedImages.forEach(image => {
             const img = document.createElement('img');
-            img.src = image.imageUrl;
+            img.src = `http://localhost:8080${image.imageUrl}`;
             img.alt = 'Uploaded image';
             imagePreview.appendChild(img);
         });
@@ -531,6 +532,7 @@
             } else if (content.type === 'IMAGE') {
                 const img = document.createElement('img');
                 img.src = content.imageUrl;
+<!--                img.src = `http://localhost:8080${content.imageUrl}`;-->
                 contentItem.appendChild(img);
             } else if (content.type === 'EMOTICON') {
                 const img = document.createElement('img');
@@ -598,6 +600,7 @@
         if (!checkAuthStatus()) return;
         
         const title = document.getElementById('magazine-title').value.trim();
+        const subtitle = document.getElementById('magazine-subtitle').value.trim();
         const category = document.getElementById('magazine-category').value;
         
         if (!title) {
@@ -614,6 +617,7 @@
         
         const magazineData = {
             title,
+            subtitle,
             category,
             contents: contents.map(content => {
                 if (content.type === 'TEXT') {
@@ -655,6 +659,7 @@
                 
                 // 폼 초기화
                 document.getElementById('magazine-title').value = '';
+                document.getElementById('magazine-subtitle').value = '';
                 document.getElementById('content-text').value = '';
                 contents = [];
                 uploadedImages = [];
@@ -682,6 +687,7 @@
         if (!checkAuthStatus() || !currentMagazineId) return;
         
         const title = document.getElementById('magazine-title').value.trim();
+        const subtitle = document.getElementById('magazine-subtitle').value.trim();
         const category = document.getElementById('magazine-category').value;
         
         if (!title) {
@@ -698,6 +704,7 @@
         
         const magazineData = {
             title,
+            subtitle,
             category,
             contents: contents.map(content => {
                 if (content.type === 'TEXT') {
@@ -764,6 +771,7 @@
     // 폼 초기화
     function resetForm() {
         document.getElementById('magazine-title').value = '';
+        document.getElementById('magazine-subtitle').value = '';
         document.getElementById('content-text').value = '';
         contents = [];
         uploadedImages = [];
@@ -896,6 +904,9 @@
             const title = document.createElement('h3');
             title.textContent = magazine.title;
             
+            const subtitle = document.createElement('h4');
+            subtitle.textContent = magazine.subtitle;
+            
             const info = document.createElement('p');
             info.textContent = `작성자: ${magazine.authorName} | 카테고리: ${magazine.category} | 좋아요: ${magazine.likeCount}`;
             
@@ -906,6 +917,7 @@
             });
             
             magazineItem.appendChild(title);
+            magazineItem.appendChild(subtitle);
             magazineItem.appendChild(info);
             magazineItem.appendChild(viewBtn);
             magazineList.appendChild(magazineItem);
@@ -971,6 +983,9 @@
         const title = document.createElement('h2');
         title.textContent = magazine.title;
         
+        const subtitle = document.createElement('h3');
+        subtitle.textContent = magazine.subtitle;
+        
         const info = document.createElement('p');
         info.textContent = `작성자: ${magazine.authorName} | 카테고리: ${magazine.category} | 좋아요: ${magazine.likeCount}`;
         
@@ -991,7 +1006,6 @@
                 const img = document.createElement('img');
                 img.src = content.emoticonUrl;
                 img.src = `http://localhost:8080${content.emoticonUrl}`;
-
                 
                 contentItem.appendChild(img);
             }
@@ -1030,6 +1044,7 @@
         }
         
         magazineDetail.appendChild(title);
+        magazineDetail.appendChild(subtitle);
         magazineDetail.appendChild(info);
         magazineDetail.appendChild(contentContainer);
         magazineDetail.appendChild(actionButtons);
@@ -1039,6 +1054,7 @@
     function editMagazine(magazine) {
         // 폼에 데이터 채우기
         document.getElementById('magazine-title').value = magazine.title;
+        document.getElementById('magazine-subtitle').value = magazine.subtitle;
         document.getElementById('magazine-category').value = magazine.category;
         
         // 컨텐츠 설정
@@ -1053,7 +1069,7 @@
                 return {
                     type: content.type,
                     imageId: content.imageId,
-                    imageUrl: content.imageUrl,
+                    imageUrl: `${baseUrl}${content.imageUrl}`,
                     order: content.order
                 };
             } else if (content.type === 'EMOTICON') {

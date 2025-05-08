@@ -4,7 +4,6 @@ import org.springframework.stereotype.Component;
 import org.threeten.extra.YearWeek;
 
 import java.time.LocalDate;
-import java.time.Year;
 
 @Component
 public class RedisKeyManager {
