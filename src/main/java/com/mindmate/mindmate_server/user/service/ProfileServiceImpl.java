@@ -6,7 +6,6 @@ import com.mindmate.mindmate_server.matching.service.MatchingService;
 import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.review.dto.ReviewResponse;
 import com.mindmate.mindmate_server.review.service.ReviewDataService;
-import com.mindmate.mindmate_server.review.service.ReviewService;
 import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.ProfileImage;
 import com.mindmate.mindmate_server.user.domain.RoleType;
@@ -15,6 +14,7 @@ import com.mindmate.mindmate_server.user.dto.*;
 import com.mindmate.mindmate_server.user.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -150,7 +150,13 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     private Profile buildProfileFromRequest(User user, ProfileCreateRequest request) {
-        ProfileImage image = profileImageService.findProfileImageById(request.getProfileImageId());
+        ProfileImage image = null;
+
+        if (request.getProfileImageId() != null) {
+            image = profileImageService.findProfileImageById(request.getProfileImageId());
+        } else {
+            image = profileImageService.getDefaultProfileImage();
+        }
 
         return Profile.builder()
                 .user(user)

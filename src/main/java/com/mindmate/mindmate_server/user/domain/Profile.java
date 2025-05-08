@@ -26,7 +26,7 @@ public class Profile extends BaseTimeEntity {
     private User user;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "profile_image_id", unique = true)
+    @JoinColumn(name = "profile_image_id")
     private ProfileImage profileImage;
 
     @Column(unique = true, nullable = false)
