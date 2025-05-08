@@ -27,10 +27,10 @@ public class ProfileImageService {
     private final ProfileImageRepository profileImageRepository;
     private final UserService userService;
 
-    @Value("${profile.image.dir}")
+    @Value("${profile.dir}")
     private String profileImageDir;
 
-    @Value("${profile.image.url.prefix}")
+    @Value("${profile.url.prefix}")
     private String profileImageUrlPrefix;
 
     @Transactional
