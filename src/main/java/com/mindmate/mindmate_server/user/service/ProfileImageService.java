@@ -110,7 +110,7 @@ public class ProfileImageService {
                 .orElseThrow(()->new CustomException(ProfileErrorCode.PROFILE_IMAGE_NOT_FOUND));
     }
 
-    @Value("${profile.default.image.id}")
+    @Value("${profile.default.id}")
     private Long defaultProfileImageId;
 
     @Transactional(readOnly = true)
