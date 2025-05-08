@@ -33,6 +33,9 @@ public class ProfileImageService {
     @Value("${profile.url.prefix}")
     private String profileImageUrlPrefix;
 
+    @Value("${profile.default.filename}")
+    private String defaultProfileImageFilename;
+
     @Transactional
     public ProfileImageResponse uploadProfileImage(Long userId, MultipartFile file) throws IOException {
 
@@ -110,12 +113,40 @@ public class ProfileImageService {
                 .orElseThrow(()->new CustomException(ProfileErrorCode.PROFILE_IMAGE_NOT_FOUND));
     }
 
-    @Value("${profile.default.id}")
-    private Long defaultProfileImageId;
 
     @Transactional(readOnly = true)
     public ProfileImage getDefaultProfileImage() {
-        return profileImageRepository.findById(defaultProfileImageId)
+        return profileImageRepository.findByOriginalName(defaultProfileImageFilename)
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_IMAGE_NOT_FOUND));
+    }
+
+
+    public ProfileImageResponse registerDefaultProfileImage() {
+        try {
+            String storedFilePath = profileImageDir + defaultProfileImageFilename;
+
+            File file = new File(storedFilePath);
+            if (!file.exists()) {
+                throw new CustomException(ProfileErrorCode.PROFILE_IMAGE_NOT_FOUND);
+            }
+
+            String imageUrl = profileImageUrlPrefix + defaultProfileImageFilename;
+            long fileSize = file.length();
+
+            ProfileImage profileImage = ProfileImage.builder()
+                    .originalName(defaultProfileImageFilename)
+                    .storedName(defaultProfileImageFilename)
+                    .imageUrl(imageUrl)
+                    .contentType("image/png")
+                    .fileSize(fileSize)
+                    .build();
+
+            ProfileImage savedImage = profileImageRepository.save(profileImage);
+            log.info("기본 프로필 이미지가 DB에 등록되었습니다. ID: {}", savedImage.getId());
+
+            return ProfileImageResponse.from(savedImage);
+        } catch (Exception e) {
+            throw new CustomException(ProfileErrorCode.IMAGE_UPLOAD_ERROR);
+        }
     }
 }

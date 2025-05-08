@@ -78,7 +78,8 @@ public class SecurityConfig {
                                 "/auth/email/resend",
                                 "/swagger-ui/**",
                                 "/swagger-resources/**",
-                                "/v3/api-docs/**"
+                                "/v3/api-docs/**",
+                                "/profiles/image/default/register"
                         ).permitAll() // 향후 수정 (api 접근, role 별 접근 등)
                         .requestMatchers("/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
                         .requestMatchers("/profile/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
