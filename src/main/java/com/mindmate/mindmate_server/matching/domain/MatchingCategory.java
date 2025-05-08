@@ -9,10 +9,7 @@ public enum MatchingCategory {
 
     ACADEMIC("학업"),
     CAREER("진로"),
-    RELATIONSHIP("대인관계"),
-    MENTAL_HEALTH("건강"),
-    CAMPUS_LIFE("학교생활"),
-    PERSONAL_GROWTH("자기계발"),
+    RELATIONSHIP("인간관계"),
     FINANCIAL("경제"),
     EMPLOYMENT("취업"),
     OTHER("기타");
