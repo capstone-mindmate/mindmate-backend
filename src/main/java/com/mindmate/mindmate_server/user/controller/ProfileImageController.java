@@ -57,4 +57,12 @@ public class ProfileImageController {
             return ResponseEntity.ok(null);
         }
     }
+
+    @PostMapping("/default/register")
+    @Operation(summary = "기본 프로필 이미지 등록", description = "서버에 저장된 기본 이미지를 DB에 등록합니다.")
+    public ResponseEntity<ProfileImageResponse> registerDefaultProfileImage() {
+        ProfileImageResponse response = profileImageService.registerDefaultProfileImage();
+        return ResponseEntity.ok(response);
+    }
+
 }
