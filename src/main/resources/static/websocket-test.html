@@ -168,6 +168,19 @@
         #emoticonBtn:hover {
             background-color: #e9ecef;
         }
+        .unread-badge {
+            display: inline-block;
+            background-color: #dc3545;
+            color: white;
+            border-radius: 50%;
+            min-width: 20px;
+            height: 20px;
+            text-align: center;
+            line-height: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
     </style>
 </head>
 <body>
@@ -314,9 +327,10 @@
                 }
                 
                 // 알림 및 미읽음 메시지 카운트 구독
-                subscriptions['notification'] = stompClient.subscribe('/user/queue/notification', handleNotification);
-                subscriptions['unread'] = stompClient.subscribe('/user/queue/unread', updateUnreadCount);
-                subscriptions['totalUnread'] = stompClient.subscribe('/user/queue/total-unread', updateTotalUnreadCount);
+                  stompClient.subscribe('/user/queue/unread', function(message) {
+                    updateUnreadCount(JSON.parse(message.body));
+                  });
+                  subscriptions['totalUnread'] = stompClient.subscribe('/user/queue/total-unread', updateTotalUnreadCount);
                 
                 updatePresence('ONLINE');
                 startHeartbeat();
@@ -648,32 +662,43 @@
         .catch(error => logMessage('메시지 조회 오류: ' + error.message, "error"));
     }
 
-    function fetchChatRooms() {
-        const token = document.getElementById('token').value;
-        if (!token) {
-            logMessage("토큰을 입력해주세요", "error");
-            return;
-        }
-        
-        logMessage("채팅방 목록을 조회합니다...", "info");
-        
-        fetch(`${baseUrl}/chat/rooms?page=0&size=10`, {
-            method: 'GET',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('채팅방 목록 조회 실패: ' + response.status);
-            return response.json();
-        })
-        .then(data => {
-            logMessage(`채팅방 목록 조회 성공: ${data.content.length}개의 채팅방`, "success");
-            displayChatRooms(data);
-        })
-        .catch(error => logMessage('채팅방 목록 조회 오류: ' + error.message, "error"));
+// 채팅방 목록 조회 함수 개선
+function fetchChatRooms() {
+    const token = document.getElementById('token').value;
+    if (!token) {
+        logMessage("토큰을 입력해주세요", "error");
+        return;
     }
+    
+    logMessage("채팅방 목록을 조회합니다...", "info");
+    
+    fetch(`${baseUrl}/chat/rooms?page=0&size=10`, {
+        method: 'GET',
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('채팅방 목록 조회 실패: ' + response.status);
+        return response.json();
+    })
+    .then(data => {
+        logMessage(`채팅방 목록 조회 성공: ${data.content.length}개의 채팅방`, "success");
+        
+        // 콘솔에 응답 구조 확인
+        console.log("채팅방 목록 응답:", data);
+        
+        // 응답 구조에 맞게 표시 함수 호출
+        displayChatRooms(data);
+        
+        // 채팅방 목록 저장 (추후 업데이트용)
+        chatRooms = data.content;
+    })
+    .catch(error => logMessage('채팅방 목록 조회 오류: ' + error.message, "error"));
+}
+
+
 function handleIncomingMessage(message) {
     try {
         const data = JSON.parse(message.body);
@@ -836,29 +861,37 @@ function handleNotification(message) {
     }
 
 // 미읽음 카운트 업데이트 핸들러
-function updateUnreadCount(message) {
-    const unreadData = JSON.parse(message.body);
-    const roomId = unreadData.roomId;
-    const count = unreadData.unreadCount;
+function updateUnreadCount(data) {
+  const roomId = data.roomId;
+  const unreadCount = data.unreadCount;
+  
+  // 채팅방 목록에서 해당 채팅방 찾기
+  const roomElement = document.querySelector(`li[data-room-id="${roomId}"]`);
+  if (roomElement) {
+    const unreadBadge = roomElement.querySelector('.unread-badge');
     
-    if (roomId === currentRoomId) {
-        document.getElementById('unreadCount').textContent = count;
+    if (unreadCount > 0) {
+      // 읽지 않은 메시지가 있으면 배지 표시
+      if (unreadBadge) {
+        unreadBadge.textContent = unreadCount;
+        unreadBadge.style.display = 'inline-block';
+      } else {
+        // 배지가 없으면 새로 생성
+        const statusElement = roomElement.querySelector('.room-details');
+        const newBadge = document.createElement('span');
+        newBadge.className = 'unread-badge';
+        newBadge.textContent = unreadCount;
+        statusElement.appendChild(newBadge);
+      }
+    } else {
+      // 읽지 않은 메시지가 없으면 배지 숨김
+      if (unreadBadge) {
+        unreadBadge.style.display = 'none';
+      }
     }
-    
-    logMessage(`채팅방 ${roomId}의 읽지 않은 메시지: ${count}개`, "info");
+  }
 }
-    
-    function updateUnreadCount(message) {
-        const unreadData = JSON.parse(message.body);
-        const roomId = unreadData.roomId;
-        const count = unreadData.unreadCount;
-        
-        if (roomId === currentRoomId) {
-            document.getElementById('unreadCount').textContent = count;
-        }
-        
-        logMessage(`채팅방 ${roomId}의 읽지 않은 메시지: ${count}개`, "info");
-    }
+
     
 // 읽음 상태 이벤트 핸들러
 function handleReadStatus(message) {
@@ -1300,24 +1333,42 @@ function addMessageToDisplay(message, isNew = true) {
         document.getElementById('currentRoomDisplay').textContent = currentRoomId || '없음';
     }
     
-    function displayChatRooms(data) {
-        const rooms = data.content || [];
-        let html = '<h3>채팅방 목록</h3><ul>';
-        
-        rooms.forEach(room => {
-            html += `<li>
-                <strong>${room.roomName || '채팅방 ' + room.id}</strong>
-                (ID: ${room.id}, 상태: ${room.status})
-                <button onclick="enterRoom(${room.id})">입장</button>
-            </li>`;
-        });
-        
-        html += '</ul>';
-        
-        const logDiv = document.getElementById('log');
-        logDiv.innerHTML += html;
-        logDiv.scrollTop = logDiv.scrollHeight;
-    }
+function displayChatRooms(data) {
+    const rooms = data.content || [];
+    const baseUrl = 'http://localhost:8080'; // 기본 URL 설정
+    let html = '<h3>채팅방 목록</h3><ul>';
+    
+    rooms.forEach(room => {
+        const imageUrl = room.oppositeImage.startsWith('http')
+            ? room.oppositeImage
+            : `${baseUrl}${room.oppositeImage}`;
+            
+        html += `<li data-room-id="${room.roomId}">
+            <strong>${room.matchingTitle || '채팅방 ' + room.roomId}</strong>
+            <div class="room-details">
+                <span class="status">${room.chatRoomStatus}</span>
+                <span class="category">${room.category}</span>
+                ${room.unreadCount > 0 ? `<span class="unread-badge">${room.unreadCount}</span>` : ''}
+            </div>
+            <div class="opposite-user">
+                <img src="${imageUrl}" alt="${room.oppositeName}" class="avatar">
+                <span>${room.oppositeName}</span> (${room.userRole})
+            </div>
+            <div class="last-message">
+                <span class="time">${new Date(room.lastMessageTime).toLocaleString()}</span>
+                <span class="message">${room.lastMessage}</span>
+            </div>
+            <button onclick="enterRoom(${room.roomId})">입장</button>
+        </li>`;
+    });
+    
+    html += '</ul>';
+    
+    const logDiv = document.getElementById('log');
+    logDiv.innerHTML += html;
+    logDiv.scrollTop = logDiv.scrollHeight;
+}
+
     
     function enterRoom(roomId) {
         document.getElementById('roomId').value = roomId;

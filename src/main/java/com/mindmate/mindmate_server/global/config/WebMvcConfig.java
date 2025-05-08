@@ -13,15 +13,20 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Value("${emoticon.dir}")
     private String emoticonDir;
 
+
+    @Value("${profile.dir}")
+    private String profileDir;
+
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/images/**")
+        registry.addResourceHandler("/magazineImages/**")
                 .addResourceLocations("file:" + imageDir);
 
-
-//        registry.addResourceHandler("/emoticons/**")
-//                .addResourceLocations("file://" + emoticonDir);
-        registry.addResourceHandler("/emoticons/**")
+        registry.addResourceHandler("/emoticonImages/**")
                 .addResourceLocations("file:" + emoticonDir);
+
+        registry.addResourceHandler("/profileImages/**")
+                .addResourceLocations("file:" + profileDir + "/");
+
     }
 }
