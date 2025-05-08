@@ -5,6 +5,7 @@ import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ReportErrorCode;
 import com.mindmate.mindmate_server.global.exception.UserErrorCode;
 import com.mindmate.mindmate_server.global.util.SlackNotifier;
+import com.mindmate.mindmate_server.magazine.service.MagazineService;
 import com.mindmate.mindmate_server.matching.service.MatchingService;
 import com.mindmate.mindmate_server.report.domain.Report;
 import com.mindmate.mindmate_server.report.domain.ReportTarget;
@@ -31,6 +32,7 @@ public class ReportServiceImpl implements ReportService {
     private final ChatRoomService chatRoomService;
     private final ReviewService reviewService;
     private final AdminUserSuspensionService suspensionService;
+    private final MagazineService magazineService;
 
     private final SlackNotifier slackNotifier;
     private final ReportRepository reportRepository;
@@ -107,6 +109,9 @@ public class ReportServiceImpl implements ReportService {
                 break;
             case REVIEW:
                 reviewService.findReviewById(targetId);
+                break;
+            case MAGAZINE:
+                magazineService.findMagazineById(targetId);
                 break;
         }
     }

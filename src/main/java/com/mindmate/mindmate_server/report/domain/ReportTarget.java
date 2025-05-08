@@ -9,6 +9,6 @@ public enum ReportTarget {
     MATCHING,
     CHATROOM,
     PROFILE,
-    // MEGAZINE
+     MAGAZINE,
     REVIEW
 }
