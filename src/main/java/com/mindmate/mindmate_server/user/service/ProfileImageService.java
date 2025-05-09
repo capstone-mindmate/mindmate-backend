@@ -116,7 +116,7 @@ public class ProfileImageService {
 
     @Transactional(readOnly = true)
     public ProfileImage getDefaultProfileImage() {
-        return profileImageRepository.findByOriginalName(defaultProfileImageFilename)
+        return profileImageRepository.findByOriginalNameAndUserIsNull(defaultProfileImageFilename)
                 .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_IMAGE_NOT_FOUND));
     }
 
