@@ -1,16 +1,13 @@
 package com.mindmate.mindmate_server.user.domain;
 
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
-import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Entity
 @Table(name = "profiles")
@@ -25,7 +22,7 @@ public class Profile extends BaseTimeEntity {
     @JoinColumn(name = "user_id", unique = true)
     private User user;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "profile_image_id")
     private ProfileImage profileImage;
 
