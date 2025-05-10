@@ -313,12 +313,15 @@ public class MatchingServiceImpl implements MatchingService {
     }
 
     @Override
-    public Page<MatchingResponse> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant) {
-
-//        User user = userService.findUserById(userId);
-        Page<Matching> matchings = getUserMatchings(userId, asParticipant, pageable);
-
+    public Page<MatchingResponse> getAllCreatedMatchings(Long userId, Pageable pageable) {
+        Page<Matching> matchings = matchingRepository.findByCreatorIdOrderByCreatedAtDesc(userId, pageable);
         return matchings.map(MatchingResponse::of);
+    }
+
+    @Override
+    public Page<MatchingResponse> getAllAppliedMatchings(Long userId, Pageable pageable) {
+        Page<WaitingUser> waitingUsers = waitingUserRepository.findByWaitingUserIdOrderByCreatedAtDesc(userId, pageable);
+        return waitingUsers.map(waitingUser -> MatchingResponse.of(waitingUser.getMatching()));
     }
 
     @Override @Transactional
@@ -444,17 +447,6 @@ public class MatchingServiceImpl implements MatchingService {
                 .map(WaitingUser::getId)
                 .collect(Collectors.toList());
     }
-
-    private Page<Matching> getUserMatchings(Long userId, boolean asParticipant, Pageable pageable) {
-        if (asParticipant) {
-            return matchingRepository.findByAcceptedUserIdAndStatusOrderByMatchedAtDesc(
-                    userId, MatchingStatus.MATCHED, pageable);
-        } else {
-            return matchingRepository.findByCreatorIdAndStatusOrderByMatchedAtDesc(
-                    userId, MatchingStatus.MATCHED, pageable);
-        }
-    }
-
 
     private Matching validateMatchingOwnership(Long userId, Long matchingId, boolean checkOpen) {
         User user = userService.findUserById(userId);

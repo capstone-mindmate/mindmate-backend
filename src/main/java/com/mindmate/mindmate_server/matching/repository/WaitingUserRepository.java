@@ -26,4 +26,7 @@ public interface WaitingUserRepository extends JpaRepository<WaitingUser, Long> 
             "WHERE ma.matching = :matching " +
             "ORDER BY ma.createdAt DESC")
     Page<WaitingUser> findByMatchingWithWaitingUserProfile(@Param("matching") Matching matching, Pageable pageable);
+
+    @Query("SELECT w FROM WaitingUser w WHERE w.waitingUser.id = :userId ORDER BY w.createdAt DESC")
+    Page<WaitingUser> findByWaitingUserIdOrderByCreatedAtDesc(@Param("userId") Long userId, Pageable pageable);
 }

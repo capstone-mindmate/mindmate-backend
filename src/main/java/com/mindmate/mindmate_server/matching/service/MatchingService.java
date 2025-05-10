@@ -33,7 +33,9 @@ public interface MatchingService {
 
     Page<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId, Pageable pageable);
 
-    Page<MatchingResponse> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant);
+    Page<MatchingResponse> getAllCreatedMatchings(Long userId, Pageable pageable);
+
+    Page<MatchingResponse> getAllAppliedMatchings(Long userId, Pageable pageable);
 
     void cancelMatching(Long userId, Long matchingId);
 
