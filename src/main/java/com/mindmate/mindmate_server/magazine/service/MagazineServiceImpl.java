@@ -122,7 +122,8 @@ public class MagazineServiceImpl implements MagazineService {
 
     @Override
     public MagazineDetailResponse getMagazine(Long magazineId, Long userId) {
-        Magazine magazine = findMagazineById(magazineId);
+        Magazine magazine = magazineRepository.findWIthAllDetailsById(magazineId)
+                .orElseThrow(() -> new CustomException(MagazineErrorCode.MAGAZINE_NOT_FOUND));
         User user = userService.findUserById(userId);
 
         // PUBLISHED 아닌 매거진 작성자만 확인 가능

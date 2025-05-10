@@ -16,9 +16,13 @@ public class MagazineDetailResponse {
     private Long id;
     private String title;
     private String subtitle;
+
     private List<MagazineContentResponse> contents;
     private String authorName;
     private Long authorId;
+    private String authorImageUrl;
+    private String authorDepartment;
+
     private int likeCount;
     private MagazineStatus status;
     private MatchingCategory category;
@@ -40,6 +44,8 @@ public class MagazineDetailResponse {
                 .contents(contentResponses)
                 .authorName(magazine.getAuthor().getProfile().getNickname())
                 .authorId(magazine.getAuthor().getId())
+                .authorImageUrl(magazine.getAuthor().getProfile().getProfileImage().getImageUrl())
+                .authorDepartment(magazine.getAuthor().getProfile().getDepartment())
                 .likeCount(magazine.getLikeCount())
                 .status(magazine.getMagazineStatus())
                 .category(magazine.getCategory())

@@ -1,13 +1,11 @@
 package com.mindmate.mindmate_server.magazine.controller;
 
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
-import com.mindmate.mindmate_server.magazine.domain.MagazineStatus;
 import com.mindmate.mindmate_server.magazine.dto.*;
 import com.mindmate.mindmate_server.magazine.service.MagazineService;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,7 +23,7 @@ import java.util.List;
 )
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/magazine")
+@RequestMapping("/magazines")
 public class MagazineController {
     private final MagazineService magazineService;
 

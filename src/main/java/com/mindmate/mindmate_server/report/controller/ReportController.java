@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 )
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/report")
+@RequestMapping("/reports")
 public class ReportController {
     private final ReportService reportService;
 

@@ -4,6 +4,7 @@ import com.mindmate.mindmate_server.global.dto.FileInfo;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
 import com.mindmate.mindmate_server.global.service.FileStorageService;
+import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.ProfileImage;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.dto.ProfileImageResponse;
@@ -103,8 +104,14 @@ public class ProfileImageService {
 
     @Transactional(readOnly = true)
     public ProfileImage findProfileImageByUserId(Long userId) {
-        return profileImageRepository.findByUserId(userId)
-                .orElseThrow(() -> new CustomException(ProfileErrorCode.PROFILE_IMAGE_NOT_FOUND));
+        User user = userService.findUserById(userId);
+        Profile profile = user.getProfile();
+
+        if (profile == null || profile.getProfileImage() == null) {
+            throw new CustomException(ProfileErrorCode.PROFILE_IMAGE_NOT_FOUND);
+        }
+
+        return profile.getProfileImage();
     }
 
     @Transactional(readOnly = true)
@@ -123,6 +130,12 @@ public class ProfileImageService {
 
     public ProfileImageResponse registerDefaultProfileImage() {
         try {
+            Optional<ProfileImage> existingDefaultImage = profileImageRepository.findByOriginalNameAndUserIsNull(defaultProfileImageFilename);
+
+            if (existingDefaultImage.isPresent()) {
+                return ProfileImageResponse.from(existingDefaultImage.get());
+            }
+
             String storedFilePath = profileImageDir + defaultProfileImageFilename;
 
             File file = new File(storedFilePath);
@@ -142,8 +155,6 @@ public class ProfileImageService {
                     .build();
 
             ProfileImage savedImage = profileImageRepository.save(profileImage);
-            log.info("기본 프로필 이미지가 DB에 등록되었습니다. ID: {}", savedImage.getId());
-
             return ProfileImageResponse.from(savedImage);
         } catch (Exception e) {
             throw new CustomException(ProfileErrorCode.IMAGE_UPLOAD_ERROR);
