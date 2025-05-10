@@ -27,6 +27,11 @@ public interface WaitingUserRepository extends JpaRepository<WaitingUser, Long> 
             "ORDER BY ma.createdAt DESC")
     Page<WaitingUser> findByMatchingWithWaitingUserProfile(@Param("matching") Matching matching, Pageable pageable);
 
-    @Query("SELECT w FROM WaitingUser w WHERE w.waitingUser.id = :userId ORDER BY w.createdAt DESC")
-    Page<WaitingUser> findByWaitingUserIdOrderByCreatedAtDesc(@Param("userId") Long userId, Pageable pageable);
+    @Query("SELECT w FROM WaitingUser w JOIN w.matching m " +
+            "WHERE w.waitingUser.id = :userId AND m.status = :status " +
+            "ORDER BY w.createdAt DESC")
+    Page<WaitingUser> findByWaitingUserIdAndMatchingStatusOrderByCreatedAtDesc(
+            @Param("userId") Long userId,
+            @Param("status") MatchingStatus status,
+            Pageable pageable);
 }

@@ -308,19 +308,23 @@ public class MatchingServiceImpl implements MatchingService {
     @Override
     public Page<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId, Pageable pageable) {
         Matching matching = validateMatchingOwnership(userId, matchingId, false);
+        if(matching.getStatus()!=MatchingStatus.OPEN){
+            throw new CustomException(MatchingErrorCode.INVALID_MATCHING_STATUS);
+        }
         Page<WaitingUser> waitingUsers = waitingUserRepository.findByMatchingWithWaitingUserProfile(matching, pageable);
         return waitingUsers.map(WaitingUserResponse::of);
     }
 
     @Override
-    public Page<MatchingResponse> getAllCreatedMatchings(Long userId, Pageable pageable) {
-        Page<Matching> matchings = matchingRepository.findByCreatorIdOrderByCreatedAtDesc(userId, pageable);
+    public Page<MatchingResponse> getCreatedMatchings(Long userId, Pageable pageable) {
+        Page<Matching> matchings = matchingRepository.findByCreatorIdAndStatusOrderByCreatedAtDesc(userId, MatchingStatus.OPEN, pageable);
         return matchings.map(MatchingResponse::of);
     }
 
     @Override
-    public Page<MatchingResponse> getAllAppliedMatchings(Long userId, Pageable pageable) {
-        Page<WaitingUser> waitingUsers = waitingUserRepository.findByWaitingUserIdOrderByCreatedAtDesc(userId, pageable);
+    public Page<MatchingResponse> getAppliedMatchings(Long userId,  Pageable pageable) {
+        Page<WaitingUser> waitingUsers = waitingUserRepository.findByWaitingUserIdAndMatchingStatusOrderByCreatedAtDesc(
+                userId, MatchingStatus.OPEN, pageable);
         return waitingUsers.map(waitingUser -> MatchingResponse.of(waitingUser.getMatching()));
     }
 

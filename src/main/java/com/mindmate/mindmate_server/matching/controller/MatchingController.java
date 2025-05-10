@@ -99,7 +99,7 @@ public class MatchingController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Parameter(description = "페이지네이션 정보")
             @PageableDefault(size = 10, sort = "matchedAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<MatchingResponse> matchingHistory = matchingService.getAllCreatedMatchings(userPrincipal.getUserId(), pageable);
+        Page<MatchingResponse> matchingHistory = matchingService.getCreatedMatchings(userPrincipal.getUserId() ,pageable);
         return ResponseEntity.ok(matchingHistory);
     }
 
@@ -109,11 +109,11 @@ public class MatchingController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Parameter(description = "페이지네이션 정보")
             @PageableDefault(size = 10, sort = "matchedAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<MatchingResponse> matchingHistory = matchingService.getAllAppliedMatchings(userPrincipal.getUserId(), pageable);
+        Page<MatchingResponse> matchingHistory = matchingService.getAppliedMatchings(userPrincipal.getUserId(), pageable);
         return ResponseEntity.ok(matchingHistory);
     }
 
-    @Operation(summary = "매칭 신청", description = "특정 매칭에 참여 신청을 합니다. 포인트가 차감됩니다.")
+    @Operation(summary = "매칭 신청", description = "특정 매칭에 참여 신청을 합니다.")
     @PostMapping("/{matchingId}/applications")
     public ResponseEntity<Long> applyForMatching(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
