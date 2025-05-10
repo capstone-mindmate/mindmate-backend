@@ -47,11 +47,11 @@ public class ProfileImageController {
     @GetMapping("/current")
     @Operation(summary = "현재 프로필 이미지 조회", description = "현재 사용자의 프로필 이미지 정보를 조회")
     public ResponseEntity<ProfileImageResponse> getCurrentProfileImage(
-            @AuthenticationPrincipal Long userId) {
+            @AuthenticationPrincipal UserPrincipal userPrincipal ) {
 
         try {
             ProfileImageResponse response = ProfileImageResponse.from(
-                    profileImageService.findProfileImageByUserId(userId));
+                    profileImageService.findProfileImageByUserId(userPrincipal.getUserId()));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.ok(null);

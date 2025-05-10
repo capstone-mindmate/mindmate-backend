@@ -55,3 +55,8 @@ uploads/images/*.webp
 src/main/java/com/mindmate/mindmate_server/global/config/DataInitializer.java
 
 src/main/resources/static/toss-test.html
+src/main/resources/static/fcm-test.html
+src/main/resources/static/firebase-messaging-sw.js
+src/main/resources/static/payment-success.html
+src/main/resources/static/payment-fail.html
+

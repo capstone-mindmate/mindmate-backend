@@ -3,6 +3,7 @@ package com.mindmate.mindmate_server.matching.service;
 import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import com.mindmate.mindmate_server.matching.domain.Matching;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
+import com.mindmate.mindmate_server.matching.domain.MatchingStatus;
 import com.mindmate.mindmate_server.matching.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -33,7 +34,9 @@ public interface MatchingService {
 
     Page<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId, Pageable pageable);
 
-    Page<MatchingResponse> getUserMatchingHistory(Long userId, Pageable pageable, boolean asParticipant);
+    Page<MatchingResponse> getCreatedMatchings(Long userId, Pageable pageable);
+
+    Page<MatchingResponse> getAppliedMatchings(Long userId, Pageable pageable);
 
     void cancelMatching(Long userId, Long matchingId);
 

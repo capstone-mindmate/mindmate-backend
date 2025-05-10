@@ -99,21 +99,21 @@ public class MatchingController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Parameter(description = "페이지네이션 정보")
             @PageableDefault(size = 10, sort = "matchedAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<MatchingResponse> matchingHistory = matchingService.getUserMatchingHistory(userPrincipal.getUserId(), pageable, false);
+        Page<MatchingResponse> matchingHistory = matchingService.getCreatedMatchings(userPrincipal.getUserId() ,pageable);
         return ResponseEntity.ok(matchingHistory);
     }
 
-    @Operation(summary = "내가 참여한 매칭 내역 조회", description = "사용자가 참여한 매칭 내역을 조회합니다.")
-    @GetMapping("/participant")
-    public ResponseEntity<Page<MatchingResponse>> getParticipatedMatchingHistory(
+    @Operation(summary = "내가 신청한 매칭 내역 조회", description = "사용자가 신청한 매칭 내역을 조회합니다.")
+    @GetMapping("/applications")
+    public ResponseEntity<Page<MatchingResponse>> getAppliedMatchingHistory(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Parameter(description = "페이지네이션 정보")
             @PageableDefault(size = 10, sort = "matchedAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<MatchingResponse> matchingHistory = matchingService.getUserMatchingHistory(userPrincipal.getUserId(), pageable, true);
+        Page<MatchingResponse> matchingHistory = matchingService.getAppliedMatchings(userPrincipal.getUserId(), pageable);
         return ResponseEntity.ok(matchingHistory);
     }
 
-    @Operation(summary = "매칭 신청", description = "특정 매칭에 참여 신청을 합니다. 포인트가 차감됩니다.")
+    @Operation(summary = "매칭 신청", description = "특정 매칭에 참여 신청을 합니다.")
     @PostMapping("/{matchingId}/applications")
     public ResponseEntity<Long> applyForMatching(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
