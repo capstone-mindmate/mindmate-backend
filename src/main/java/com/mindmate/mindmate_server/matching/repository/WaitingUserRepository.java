@@ -20,6 +20,9 @@ public interface WaitingUserRepository extends JpaRepository<WaitingUser, Long> 
     List<WaitingUser> findByMatchingOrderByCreatedAtDesc(Matching matching);
     Optional<WaitingUser> findByMatchingAndWaitingUser(Matching matching, User waitingUser);
 
+    @Query("SELECT DISTINCT w.matching.id FROM WaitingUser w WHERE w.waitingUser.id = :userId")
+    List<Long> findMatchingIdsByWaitingUserId(@Param("userId") Long userId);
+
     @Query("SELECT ma FROM WaitingUser ma " +
             "JOIN FETCH ma.waitingUser u " +
             "JOIN FETCH u.profile p " +

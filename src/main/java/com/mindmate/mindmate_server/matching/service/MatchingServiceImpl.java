@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -255,33 +256,28 @@ public class MatchingServiceImpl implements MatchingService {
     @Override
     public Page<MatchingResponse> getMatchings(Long userId, Pageable pageable, MatchingCategory category,
                                                String department, InitiatorType requiredRole) {
-        Page<Matching> matchings;
-        MatchingStatus requireStatus = MatchingStatus.OPEN;
+        List<Long> appliedMatchingIds = waitingUserRepository.findMatchingIdsByWaitingUserId(userId);
 
+        if (appliedMatchingIds.isEmpty()) {
+            appliedMatchingIds = Collections.singletonList(-1L);
+        }
+
+        InitiatorType targetCreatorRole = null;
         if (requiredRole != null) {
-            InitiatorType targetCreatorRole = requiredRole == InitiatorType.SPEAKER
+            targetCreatorRole = requiredRole == InitiatorType.SPEAKER
                     ? InitiatorType.LISTENER
                     : InitiatorType.SPEAKER;
+        }
 
-            matchings = matchingRepository.findByStatusAndCreatorRoleAndCreatorIdNotOrderByCreatedAtDesc(
-                    requireStatus, targetCreatorRole, userId, pageable);
-        }
-        else if (category != null && department != null) {
-            matchings = matchingRepository.findByStatusAndCategoryAndDepartmentAndCreatorIdNot(
-                    requireStatus, category, department, userId, pageable);
-        }
-        else if (category != null) {
-            matchings = matchingRepository.findByStatusAndCategoryAndCreatorIdNotOrderByCreatedAtDesc(
-                    requireStatus, category, userId, pageable);
-        }
-        else if (department != null) {
-            matchings = matchingRepository.findOpenMatchingsByDepartmentAndCreatorIdNot(
-                    requireStatus, department, userId, pageable);
-        }
-        else {
-            matchings = matchingRepository.findByStatusAndCreatorIdNotOrderByCreatedAtDesc(
-                    requireStatus, userId, pageable);
-        }
+        Page<Matching> matchings = matchingRepository.getMatchingsWithFilters(
+                MatchingStatus.OPEN,
+                category,
+                department,
+                targetCreatorRole,
+                userId,
+                appliedMatchingIds,
+                pageable
+        );
 
         return matchings.map(MatchingResponse::of);
     }
@@ -294,6 +290,20 @@ public class MatchingServiceImpl implements MatchingService {
 
     @Override
     public Page<MatchingResponse> searchMatchings(Long userId, Pageable pageable, MatchingSearchRequest request) {
+
+        List<Long> appliedMatchingIds = waitingUserRepository.findMatchingIdsByWaitingUserId(userId);
+
+        if (appliedMatchingIds.isEmpty()) {
+            appliedMatchingIds = Collections.singletonList(-1L);
+        }
+
+        InitiatorType targetCreatorRole = null;
+        if (request.getRequiredRole() != null) {
+            targetCreatorRole = request.getRequiredRole() == InitiatorType.SPEAKER
+                    ? InitiatorType.LISTENER
+                    : InitiatorType.SPEAKER;
+        }
+
         Page<Matching> matchings = matchingRepository.searchMatchingsWithFilters(
                 MatchingStatus.OPEN,
                 request.getKeyword(),
@@ -303,6 +313,7 @@ public class MatchingServiceImpl implements MatchingService {
                         ? (request.getRequiredRole() == InitiatorType.SPEAKER ? InitiatorType.LISTENER : InitiatorType.SPEAKER)
                         : null,
                 userId,
+                appliedMatchingIds,
                 pageable
         );
 
