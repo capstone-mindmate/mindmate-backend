@@ -1,10 +1,9 @@
 package com.mindmate.mindmate_server.point.controller;
 
 import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
-import com.mindmate.mindmate_server.point.dto.PointAddRequest;
+import com.mindmate.mindmate_server.point.dto.PointRequest;
 import com.mindmate.mindmate_server.point.dto.PointSummaryResponse;
 import com.mindmate.mindmate_server.point.dto.PointTransactionResponse;
-import com.mindmate.mindmate_server.point.dto.PointUseRequest;
 import com.mindmate.mindmate_server.point.service.PointService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,7 +41,7 @@ public class PointController {
     @PostMapping("/earnings")
     public ResponseEntity<PointTransactionResponse> earnPoints(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestBody PointAddRequest request) {
+            @RequestBody PointRequest request) {
         return ResponseEntity.ok(pointService.addPoints(principal.getUserId(), request));
     }
 
@@ -50,7 +49,7 @@ public class PointController {
     @PostMapping("/expenses")
     public ResponseEntity<PointTransactionResponse> spendPoints(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestBody PointUseRequest request) {
+            @RequestBody PointRequest request) {
         return ResponseEntity.ok(pointService.usePoints(principal.getUserId(), request));
     }
 

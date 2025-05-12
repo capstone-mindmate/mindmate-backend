@@ -19,7 +19,6 @@ public class PointTransaction extends BaseTimeEntity {
     private User user;
 
     @Version
-    @Column(nullable = false)
     private Long version;
 
     @Enumerated(EnumType.STRING)
@@ -39,11 +38,10 @@ public class PointTransaction extends BaseTimeEntity {
     private Integer balance;
 
     @Builder
-    public PointTransaction(User user, Long version, TransactionType transactionType,
+    public PointTransaction(User user, TransactionType transactionType,
                             Integer amount, PointReasonType reasonType, Long entityId,
                             Integer balance) {
         this.user = user;
-        this.version = version;
         this.transactionType = transactionType;
         this.amount = amount;
         this.reasonType = reasonType;
