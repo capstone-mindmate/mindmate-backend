@@ -28,7 +28,11 @@ public class PointServiceImpl implements PointService {
     private final UserService userService;
 
     @Override
-    public PointTransactionResponse addPoints(Long userId, PointAddRequest request) {
+    public PointTransactionResponse addPoints(Long userId, PointRequest request) {
+        if(request.getTransactionType() != TransactionType.EARN) {
+            throw new CustomException(PointErrorCode.INVALID_TRANSACTION_TYPE);
+        }
+
         validateAmount(request.getAmount());
         return PointTransactionResponse.from(
                 executeWithRetry(() -> createTransaction(userId, TransactionType.EARN, request))
@@ -36,7 +40,11 @@ public class PointServiceImpl implements PointService {
     }
 
     @Override
-    public PointTransactionResponse usePoints(Long userId, PointUseRequest request) {
+    public PointTransactionResponse usePoints(Long userId, PointRequest request) {
+        if(request.getTransactionType() != TransactionType.SPEND) {
+            throw new CustomException(PointErrorCode.INVALID_TRANSACTION_TYPE);
+        }
+
         validateAmount(request.getAmount());
         ensureSufficientBalance(userId, request.getAmount());
         return PointTransactionResponse.from(

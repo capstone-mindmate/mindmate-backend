@@ -20,7 +20,8 @@ import com.mindmate.mindmate_server.global.exception.EmoticonErrorCode;
 import com.mindmate.mindmate_server.global.service.FileStorageService;
 import com.mindmate.mindmate_server.global.util.SlackNotifier;
 import com.mindmate.mindmate_server.point.domain.PointReasonType;
-import com.mindmate.mindmate_server.point.dto.PointUseRequest;
+import com.mindmate.mindmate_server.point.domain.TransactionType;
+import com.mindmate.mindmate_server.point.dto.PointRequest;
 import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
@@ -181,7 +182,8 @@ public class EmoticonServiceImpl implements EmoticonService {
             if (pointService.getCurrentBalance(userId) < purchasePrice) {
                 throw new CustomException(EmoticonErrorCode.INSUFFICIENT_POINTS);
             }
-            PointUseRequest request = PointUseRequest.builder()
+            PointRequest request = PointRequest.builder()
+                    .transactionType(TransactionType.SPEND)
                     .amount(emoticon.getPrice())
                     .reasonType(PointReasonType.EMOTICON_PURCHASED)
                     .entityId(emoticonId)

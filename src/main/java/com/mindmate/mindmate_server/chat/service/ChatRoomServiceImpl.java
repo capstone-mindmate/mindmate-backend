@@ -9,6 +9,7 @@ import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.matching.domain.Matching;
+import com.mindmate.mindmate_server.matching.service.RedisMatchingService;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
@@ -19,6 +20,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,6 +39,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     private final ChatMessageService chatMessageService;
     private final UserService userService;
     private final NotificationService notificationService;
+    private final RedisMatchingService redisMatchingService;
 
     private final KafkaTemplate<String ,ChatRoomCloseEvent> kafkaTemplate;
 
@@ -189,7 +193,15 @@ public class ChatRoomServiceImpl implements ChatRoomService {
                 .matchingId(chatRoom.getMatching().getId())
                 .build();
 
-        publishChatRoomCloseEvent(event);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                publishChatRoomCloseEvent(event);
+
+                redisMatchingService.decrementUserActiveMatchingCount(speaker.getId());
+                redisMatchingService.decrementUserActiveMatchingCount(listener.getId());
+            }
+        });
     }
 
     @Override

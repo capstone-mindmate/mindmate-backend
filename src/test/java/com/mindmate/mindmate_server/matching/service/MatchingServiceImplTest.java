@@ -13,7 +13,6 @@ import com.mindmate.mindmate_server.notification.dto.MatchingAcceptedNotificatio
 import com.mindmate.mindmate_server.notification.dto.MatchingAppliedNotificationEvent;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.point.domain.PointReasonType;
-import com.mindmate.mindmate_server.point.dto.PointUseRequest;
 import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.User;
@@ -39,7 +38,6 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

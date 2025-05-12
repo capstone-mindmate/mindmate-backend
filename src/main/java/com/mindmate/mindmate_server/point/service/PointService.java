@@ -12,9 +12,9 @@ import java.time.LocalDateTime;
 
 public interface PointService {
 
-    PointTransactionResponse addPoints(Long userId, PointAddRequest request);
+    PointTransactionResponse addPoints(Long userId, PointRequest request);
 
-    PointTransactionResponse usePoints(Long userId, PointUseRequest request);
+    PointTransactionResponse usePoints(Long userId, PointRequest request);
 
     int getCurrentBalance(Long userId);
 

@@ -98,7 +98,7 @@ public class MatchingController {
     public ResponseEntity<Page<MatchingResponse>> getCreatedMatchingHistory(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Parameter(description = "페이지네이션 정보")
-            @PageableDefault(size = 10, sort = "matchedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<MatchingResponse> matchingHistory = matchingService.getCreatedMatchings(userPrincipal.getUserId() ,pageable);
         return ResponseEntity.ok(matchingHistory);
     }
@@ -108,7 +108,7 @@ public class MatchingController {
     public ResponseEntity<Page<MatchingResponse>> getAppliedMatchingHistory(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Parameter(description = "페이지네이션 정보")
-            @PageableDefault(size = 10, sort = "matchedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<MatchingResponse> matchingHistory = matchingService.getAppliedMatchings(userPrincipal.getUserId(), pageable);
         return ResponseEntity.ok(matchingHistory);
     }

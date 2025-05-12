@@ -13,7 +13,8 @@ import com.mindmate.mindmate_server.notification.dto.MatchingAcceptedNotificatio
 import com.mindmate.mindmate_server.notification.dto.MatchingAppliedNotificationEvent;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.point.domain.PointReasonType;
-import com.mindmate.mindmate_server.point.dto.PointUseRequest;
+import com.mindmate.mindmate_server.point.domain.TransactionType;
+import com.mindmate.mindmate_server.point.dto.PointRequest;
 import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
@@ -124,7 +125,8 @@ public class MatchingServiceImpl implements MatchingService {
         }
 
         try {
-            pointService.usePoints(speakerUser.getId(), PointUseRequest.builder()
+            pointService.usePoints(speakerUser.getId(), PointRequest.builder()
+                    .transactionType(TransactionType.SPEND)
                     .amount(100)
                     .reasonType(PointReasonType.COUNSELING_REQUESTED)
                     .entityId(matchingId)

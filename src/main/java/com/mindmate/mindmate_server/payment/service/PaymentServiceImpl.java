@@ -9,7 +9,8 @@ import com.mindmate.mindmate_server.payment.domain.PaymentStatus;
 import com.mindmate.mindmate_server.payment.dto.*;
 import com.mindmate.mindmate_server.payment.repository.PaymentOrderRepository;
 import com.mindmate.mindmate_server.payment.repository.PaymentProductRepository;
-import com.mindmate.mindmate_server.point.dto.PointAddRequest;
+import com.mindmate.mindmate_server.point.domain.TransactionType;
+import com.mindmate.mindmate_server.point.dto.PointRequest;
 import com.mindmate.mindmate_server.point.dto.PointTransactionResponse;
 import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.point.domain.PointReasonType;
@@ -112,13 +113,14 @@ public class PaymentServiceImpl implements PaymentService{
             order.completePayment(request.getPaymentKey());
             paymentOrderRepository.save(order);
 
-            PointAddRequest pointRequest = PointAddRequest.builder()
+            PointRequest pointRequest = PointRequest.builder()
+                    .transactionType(TransactionType.EARN)
                     .amount(order.getProduct().getPoints())
                     .reasonType(PointReasonType.PURCHASE)
                     .entityId(order.getId())
                     .build();
 
-            PointTransactionResponse pointResponse = pointService.addPoints(order.getUser().getId(), pointRequest);
+            pointService.addPoints(order.getUser().getId(), pointRequest);
 
             return PaymentConfirmResponse.builder()
                     .orderId(order.getOrderId())
