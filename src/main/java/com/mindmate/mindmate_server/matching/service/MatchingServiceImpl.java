@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.matching.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
+import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MatchingErrorCode;
@@ -27,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -164,6 +166,7 @@ public class MatchingServiceImpl implements MatchingService {
             }
         });
 
+        matching.getChatRoom().updateChatRoomStatus(ChatRoomStatus.ACTIVE);
         return matching.getId();
     }
 
@@ -253,34 +256,30 @@ public class MatchingServiceImpl implements MatchingService {
     }
 
     @Override
-    public Page<MatchingResponse> getMatchings(Pageable pageable, MatchingCategory category,
+    public Page<MatchingResponse> getMatchings(Long userId, Pageable pageable, MatchingCategory category,
                                                String department, InitiatorType requiredRole) {
-        Page<Matching> matchings;
-        MatchingStatus requireStatus = MatchingStatus.OPEN;
+        List<Long> appliedMatchingIds = waitingUserRepository.findMatchingIdsByWaitingUserId(userId);
 
+        if (appliedMatchingIds.isEmpty()) {
+            appliedMatchingIds = Collections.singletonList(-1L);
+        }
+
+        InitiatorType targetCreatorRole = null;
         if (requiredRole != null) {
-            InitiatorType targetCreatorRole = requiredRole == InitiatorType.SPEAKER
+            targetCreatorRole = requiredRole == InitiatorType.SPEAKER
                     ? InitiatorType.LISTENER
                     : InitiatorType.SPEAKER;
+        }
 
-            matchings = matchingRepository.findByStatusAndCreatorRoleOrderByCreatedAtDesc(
-                    requireStatus, targetCreatorRole, pageable);
-        }
-        else if (category != null && department != null) {
-            matchings = matchingRepository.findByStatusAndCategoryAndDepartment(
-                    requireStatus, category, department, pageable);
-        }
-        else if (category != null) {
-            matchings = matchingRepository.findByStatusAndCategoryOrderByCreatedAtDesc(
-                    requireStatus, category, pageable);
-        }
-        else if (department != null) {
-            matchings = matchingRepository.findOpenMatchingsByDepartment(
-                    requireStatus, department, pageable);
-        }
-        else {
-            matchings = matchingRepository.findByStatusOrderByCreatedAtDesc(requireStatus, pageable);
-        }
+        Page<Matching> matchings = matchingRepository.getMatchingsWithFilters(
+                MatchingStatus.OPEN,
+                category,
+                department,
+                targetCreatorRole,
+                userId,
+                appliedMatchingIds,
+                pageable
+        );
 
         return matchings.map(MatchingResponse::of);
     }
@@ -292,7 +291,21 @@ public class MatchingServiceImpl implements MatchingService {
     }
 
     @Override
-    public Page<MatchingResponse> searchMatchings(Pageable pageable, MatchingSearchRequest request) {
+    public Page<MatchingResponse> searchMatchings(Long userId, Pageable pageable, MatchingSearchRequest request) {
+
+        List<Long> appliedMatchingIds = waitingUserRepository.findMatchingIdsByWaitingUserId(userId);
+
+        if (appliedMatchingIds.isEmpty()) {
+            appliedMatchingIds = Collections.singletonList(-1L);
+        }
+
+        InitiatorType targetCreatorRole = null;
+        if (request.getRequiredRole() != null) {
+            targetCreatorRole = request.getRequiredRole() == InitiatorType.SPEAKER
+                    ? InitiatorType.LISTENER
+                    : InitiatorType.SPEAKER;
+        }
+
         Page<Matching> matchings = matchingRepository.searchMatchingsWithFilters(
                 MatchingStatus.OPEN,
                 request.getKeyword(),
@@ -301,6 +314,8 @@ public class MatchingServiceImpl implements MatchingService {
                 request.getRequiredRole() != null
                         ? (request.getRequiredRole() == InitiatorType.SPEAKER ? InitiatorType.LISTENER : InitiatorType.SPEAKER)
                         : null,
+                userId,
+                appliedMatchingIds,
                 pageable
         );
 
@@ -324,10 +339,12 @@ public class MatchingServiceImpl implements MatchingService {
     }
 
     @Override
-    public Page<MatchingResponse> getAppliedMatchings(Long userId,  Pageable pageable) {
+    public Page<AppliedMatchingResponse> getAppliedMatchings(Long userId,  Pageable pageable) {
         Page<WaitingUser> waitingUsers = waitingUserRepository.findByWaitingUserIdAndMatchingStatusOrderByCreatedAtDesc(
                 userId, MatchingStatus.OPEN, pageable);
-        return waitingUsers.map(waitingUser -> MatchingResponse.of(waitingUser.getMatching()));
+
+        return waitingUsers.map(waitingUser ->
+                AppliedMatchingResponse.of(waitingUser.getMatching(), waitingUser));
     }
 
     @Override @Transactional

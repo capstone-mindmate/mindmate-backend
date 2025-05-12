@@ -25,18 +25,18 @@ public interface MatchingService {
 
     void cancelWaiting(Long userId, Long waitingUserId);
 
-    Page<MatchingResponse> getMatchings(Pageable pageable, MatchingCategory category,
+    Page<MatchingResponse> getMatchings(Long userId, Pageable pageable, MatchingCategory category,
                                                         String department, InitiatorType requiredRole);
 
     MatchingDetailResponse getMatchingDetail(Long matchingId);
 
-    Page<MatchingResponse> searchMatchings(Pageable pageable, MatchingSearchRequest request);
+    Page<MatchingResponse> searchMatchings(Long UserId, Pageable pageable, MatchingSearchRequest request);
 
     Page<WaitingUserResponse> getWaitingUsers(Long userId, Long matchingId, Pageable pageable);
 
     Page<MatchingResponse> getCreatedMatchings(Long userId, Pageable pageable);
 
-    Page<MatchingResponse> getAppliedMatchings(Long userId, Pageable pageable);
+    Page<AppliedMatchingResponse> getAppliedMatchings(Long userId, Pageable pageable);
 
     void cancelMatching(Long userId, Long matchingId);
 

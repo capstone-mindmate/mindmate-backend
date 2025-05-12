@@ -17,34 +17,6 @@ import java.util.List;
 @Repository
 public interface MatchingRepository extends JpaRepository<Matching, Long>, MatchingRepositoryCustom {
 
-    @Query(value = "SELECT m FROM Matching m WHERE m.status = :status",
-            countQuery = "SELECT COUNT(m) FROM Matching m WHERE m.status = :status")
-    Page<Matching> findByStatusOrderByCreatedAtDesc(MatchingStatus status, Pageable pageable);
-
-    Page<Matching> findByStatusAndCreatorRoleOrderByCreatedAtDesc(
-            MatchingStatus status, InitiatorType creatorRole, Pageable pageable);
-
-    @Query("SELECT m FROM Matching m WHERE m.status = :status AND m.creator.profile.department = :department ORDER BY m.createdAt DESC")
-    Page<Matching> findOpenMatchingsByDepartment(
-            @Param("status") MatchingStatus status,
-            @Param("department") String department,
-            Pageable pageable);
-
-    @Query("SELECT m FROM Matching m WHERE m.status = :status AND m.category = :category ORDER BY m.createdAt DESC")
-    Page<Matching> findByStatusAndCategoryOrderByCreatedAtDesc(
-            @Param("status") MatchingStatus status,
-            @Param("category") MatchingCategory category,
-            Pageable pageable);
-
-    @Query("SELECT m FROM Matching m JOIN m.creator u JOIN u.profile p " +
-            "WHERE m.status = :status AND m.category = :category " +
-            "AND p.department = :department ORDER BY m.createdAt DESC")
-    Page<Matching> findByStatusAndCategoryAndDepartment(
-            @Param("status") MatchingStatus status,
-            @Param("category") MatchingCategory category,
-            @Param("department") String department,
-            Pageable pageable);
-
     Page<Matching> findByCreatorIdAndStatusOrderByCreatedAtDesc(Long creatorId, MatchingStatus status, Pageable pageable);
 
     @Query("SELECT m.category, COUNT(m) FROM Matching m " +
@@ -53,4 +25,39 @@ public interface MatchingRepository extends JpaRepository<Matching, Long>, Match
             "GROUP BY m.category")
     List<Object[]> countMatchingsByUserAndCategory(@Param("userId") Long userId);
 
+    Page<Matching> findByStatusAndCreatorIdNotAndIdNotInOrderByCreatedAtDesc(
+            MatchingStatus status, Long creatorId, List<Long> excludeIds, Pageable pageable);
+
+    Page<Matching> findByStatusAndCreatorRoleAndCreatorIdNotAndIdNotInOrderByCreatedAtDesc(
+            MatchingStatus status, InitiatorType creatorRole, Long creatorId, List<Long> excludeIds, Pageable pageable);
+
+    @Query("SELECT m FROM Matching m WHERE m.status = :status AND m.creator.profile.department = :department " +
+            "AND m.creator.id != :creatorId AND m.id NOT IN :excludeIds ORDER BY m.createdAt DESC")
+    Page<Matching> findOpenMatchingsByDepartmentAndCreatorIdNotAndIdNotIn(
+            @Param("status") MatchingStatus status,
+            @Param("department") String department,
+            @Param("creatorId") Long creatorId,
+            @Param("excludeIds") List<Long> excludeIds,
+            Pageable pageable);
+
+    @Query("SELECT m FROM Matching m WHERE m.status = :status AND m.category = :category " +
+            "AND m.creator.id != :creatorId AND m.id NOT IN :excludeIds ORDER BY m.createdAt DESC")
+    Page<Matching> findByStatusAndCategoryAndCreatorIdNotAndIdNotInOrderByCreatedAtDesc(
+            @Param("status") MatchingStatus status,
+            @Param("category") MatchingCategory category,
+            @Param("creatorId") Long creatorId,
+            @Param("excludeIds") List<Long> excludeIds,
+            Pageable pageable);
+
+    @Query("SELECT m FROM Matching m JOIN m.creator u JOIN u.profile p " +
+            "WHERE m.status = :status AND m.category = :category " +
+            "AND p.department = :department AND m.creator.id != :creatorId " +
+            "AND m.id NOT IN :excludeIds ORDER BY m.createdAt DESC")
+    Page<Matching> findByStatusAndCategoryAndDepartmentAndCreatorIdNotAndIdNotIn(
+            @Param("status") MatchingStatus status,
+            @Param("category") MatchingCategory category,
+            @Param("department") String department,
+            @Param("creatorId") Long creatorId,
+            @Param("excludeIds") List<Long> excludeIds,
+            Pageable pageable);
 }

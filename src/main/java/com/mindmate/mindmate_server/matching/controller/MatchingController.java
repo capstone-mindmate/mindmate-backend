@@ -41,19 +41,23 @@ public class MatchingController {
     @Operation(summary = "매칭 목록 조회", description = "필터링 옵션을 적용하여 매칭 목록을 조회합니다.")
     @GetMapping
     public ResponseEntity<Page<MatchingResponse>> getMatchings(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Parameter(description = "페이지네이션 정보")
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             @RequestParam(required = false) MatchingCategory category,
             @RequestParam(required = false) String department,
             @Parameter(description = "요청하는 역할 필터 (화자/청자)")
             @RequestParam(required = false) InitiatorType requiredRole) {
-        Page<MatchingResponse> matchings = matchingService.getMatchings(pageable, category, department, requiredRole);
+        Page<MatchingResponse> matchings = matchingService.getMatchings(
+                userPrincipal.getUserId(), pageable, category, department, requiredRole);
         return ResponseEntity.ok(matchings);
     }
+
 
     @Operation(summary = "매칭 검색", description = "키워드, 카테고리, 학과, 역할 등으로 매칭을 검색합니다.")
     @GetMapping("/search")
     public ResponseEntity<Page<MatchingResponse>> searchMatchings(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Parameter(description = "페이지네이션 정보")
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             @RequestParam(required = false) String keyword,
@@ -61,7 +65,8 @@ public class MatchingController {
             @RequestParam(required = false) String department,
             @RequestParam(required = false) InitiatorType requiredRole) {
         MatchingSearchRequest request = new MatchingSearchRequest(keyword, category, department, requiredRole);
-        Page<MatchingResponse> matchings = matchingService.searchMatchings(pageable, request);
+        Page<MatchingResponse> matchings = matchingService.searchMatchings(
+                userPrincipal.getUserId(), pageable, request);
         return ResponseEntity.ok(matchings);
     }
 
@@ -105,11 +110,11 @@ public class MatchingController {
 
     @Operation(summary = "내가 신청한 매칭 내역 조회", description = "사용자가 신청한 매칭 내역을 조회합니다.")
     @GetMapping("/applications")
-    public ResponseEntity<Page<MatchingResponse>> getAppliedMatchingHistory(
+    public ResponseEntity<Page<AppliedMatchingResponse>> getAppliedMatchingHistory(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Parameter(description = "페이지네이션 정보")
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<MatchingResponse> matchingHistory = matchingService.getAppliedMatchings(userPrincipal.getUserId(), pageable);
+        Page<AppliedMatchingResponse> matchingHistory = matchingService.getAppliedMatchings(userPrincipal.getUserId(), pageable);
         return ResponseEntity.ok(matchingHistory);
     }
 
