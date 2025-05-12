@@ -27,15 +27,79 @@ public class MatchingRepositoryImpl implements MatchingRepositoryCustom {
     }
 
     @Override
+    public Page<Matching> getMatchingsWithFilters(MatchingStatus status, MatchingCategory category,
+                                                  String department, InitiatorType creatorRole,
+                                                  Long excludeUserId, List<Long> excludeMatchingIds,
+                                                  Pageable pageable) {
+        QMatching matching = QMatching.matching;
+        QUser creator = QUser.user;
+        QProfile profile = QProfile.profile;
+
+        BooleanBuilder builder = new BooleanBuilder();
+
+        builder.and(matching.status.eq(status));
+
+        if (excludeUserId != null) {
+            builder.and(matching.creator.id.ne(excludeUserId));
+        }
+
+        if (excludeMatchingIds != null && !excludeMatchingIds.isEmpty()) {
+            builder.and(matching.id.notIn(excludeMatchingIds));
+        }
+
+        if (category != null) {
+            builder.and(matching.category.eq(category));
+        }
+
+        if (department != null) {
+            builder.and(matching.showDepartment.isTrue())
+                    .and(creator.profile.department.eq(department));
+        }
+
+        if (creatorRole != null) {
+            builder.and(matching.creatorRole.eq(creatorRole));
+        }
+
+        JPAQuery<Long> countQuery = queryFactory
+                .select(matching.count())
+                .from(matching)
+                .leftJoin(matching.creator, creator)
+                .leftJoin(creator.profile, profile)
+                .where(builder);
+
+        long total = countQuery.fetchOne();
+
+        List<Matching> content = queryFactory
+                .selectFrom(matching)
+                .leftJoin(matching.creator, creator).fetchJoin()
+                .leftJoin(creator.profile, profile).fetchJoin()
+                .where(builder)
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .orderBy(getOrderSpecifier(pageable, matching))
+                .fetch();
+
+        return new PageImpl<>(content, pageable, total);
+    }
+
+    @Override
     public Page<Matching> searchMatchingsWithFilters(MatchingStatus status, String keyword,
                                                      MatchingCategory category, String department,
-                                                     InitiatorType creatorRole, Pageable pageable) {
+                                                     InitiatorType creatorRole, Long excludeUserId, List<Long> excludeMatchingIds, Pageable pageable) {
         QMatching matching = QMatching.matching;
         QUser creator = QUser.user;
         QProfile profile = QProfile.profile;
 
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(matching.status.eq(status));
+
+        if (excludeUserId != null) {
+            builder.and(matching.creator.id.ne(excludeUserId));
+        }
+
+        if (excludeMatchingIds != null && !excludeMatchingIds.isEmpty()) {
+            builder.and(matching.id.notIn(excludeMatchingIds));
+        }
 
         if (keyword != null && !keyword.trim().isEmpty()) {
             String keywordLower = keyword.toLowerCase();
