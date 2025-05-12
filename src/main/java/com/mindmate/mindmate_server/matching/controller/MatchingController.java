@@ -110,11 +110,11 @@ public class MatchingController {
 
     @Operation(summary = "내가 신청한 매칭 내역 조회", description = "사용자가 신청한 매칭 내역을 조회합니다.")
     @GetMapping("/applications")
-    public ResponseEntity<Page<MatchingResponse>> getAppliedMatchingHistory(
+    public ResponseEntity<Page<AppliedMatchingResponse>> getAppliedMatchingHistory(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Parameter(description = "페이지네이션 정보")
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<MatchingResponse> matchingHistory = matchingService.getAppliedMatchings(userPrincipal.getUserId(), pageable);
+        Page<AppliedMatchingResponse> matchingHistory = matchingService.getAppliedMatchings(userPrincipal.getUserId(), pageable);
         return ResponseEntity.ok(matchingHistory);
     }
 

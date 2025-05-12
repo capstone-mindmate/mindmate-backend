@@ -326,10 +326,12 @@ public class MatchingServiceImpl implements MatchingService {
     }
 
     @Override
-    public Page<MatchingResponse> getAppliedMatchings(Long userId,  Pageable pageable) {
+    public Page<AppliedMatchingResponse> getAppliedMatchings(Long userId,  Pageable pageable) {
         Page<WaitingUser> waitingUsers = waitingUserRepository.findByWaitingUserIdAndMatchingStatusOrderByCreatedAtDesc(
                 userId, MatchingStatus.OPEN, pageable);
-        return waitingUsers.map(waitingUser -> MatchingResponse.of(waitingUser.getMatching()));
+
+        return waitingUsers.map(waitingUser ->
+                AppliedMatchingResponse.of(waitingUser.getMatching(), waitingUser));
     }
 
     @Override @Transactional
