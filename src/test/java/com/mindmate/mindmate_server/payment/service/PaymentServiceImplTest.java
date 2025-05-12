@@ -12,7 +12,6 @@ import com.mindmate.mindmate_server.payment.repository.PaymentOrderRepository;
 import com.mindmate.mindmate_server.payment.repository.PaymentProductRepository;
 import com.mindmate.mindmate_server.point.domain.PointReasonType;
 import com.mindmate.mindmate_server.point.domain.TransactionType;
-import com.mindmate.mindmate_server.point.dto.PointAddRequest;
 import com.mindmate.mindmate_server.point.dto.PointTransactionResponse;
 import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.user.domain.User;
