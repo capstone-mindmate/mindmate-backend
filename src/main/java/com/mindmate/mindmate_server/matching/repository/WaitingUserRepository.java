@@ -35,5 +35,4 @@ public interface WaitingUserRepository extends JpaRepository<WaitingUser, Long> 
             @Param("status") MatchingStatus status,
             Pageable pageable);
 
-
 }
