@@ -10,5 +10,5 @@ import org.springframework.data.domain.Pageable;
 public interface MatchingRepositoryCustom {
     Page<Matching> searchMatchingsWithFilters(MatchingStatus status, String keyword,
                                               MatchingCategory category, String department,
-                                              InitiatorType creatorRole, Pageable pageable);
+                                              InitiatorType creatorRole, Long excludeUserId, Pageable pageable);
 }

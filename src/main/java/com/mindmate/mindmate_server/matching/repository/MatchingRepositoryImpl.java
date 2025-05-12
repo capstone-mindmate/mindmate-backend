@@ -29,13 +29,17 @@ public class MatchingRepositoryImpl implements MatchingRepositoryCustom {
     @Override
     public Page<Matching> searchMatchingsWithFilters(MatchingStatus status, String keyword,
                                                      MatchingCategory category, String department,
-                                                     InitiatorType creatorRole, Pageable pageable) {
+                                                     InitiatorType creatorRole, Long excludeUserId, Pageable pageable) {
         QMatching matching = QMatching.matching;
         QUser creator = QUser.user;
         QProfile profile = QProfile.profile;
 
         BooleanBuilder builder = new BooleanBuilder();
         builder.and(matching.status.eq(status));
+
+        if (excludeUserId != null) {
+            builder.and(matching.creator.id.ne(excludeUserId));
+        }
 
         if (keyword != null && !keyword.trim().isEmpty()) {
             String keywordLower = keyword.toLowerCase();
