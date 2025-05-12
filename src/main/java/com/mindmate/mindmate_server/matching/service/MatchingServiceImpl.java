@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.matching.service;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
+import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
 import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MatchingErrorCode;
@@ -162,6 +163,7 @@ public class MatchingServiceImpl implements MatchingService {
             }
         });
 
+        matching.getChatRoom().updateChatRoomStatus(ChatRoomStatus.ACTIVE);
         return matching.getId();
     }
 
