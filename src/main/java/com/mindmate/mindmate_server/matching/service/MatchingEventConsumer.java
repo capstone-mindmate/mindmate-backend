@@ -6,6 +6,7 @@ import com.mindmate.mindmate_server.matching.repository.WaitingUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +19,7 @@ public class MatchingEventConsumer {
 
     @KafkaListener(topics = "matching-accepted", groupId = "matching-group")
     @Transactional
-    public void handleMatchingAccepted(MatchingAcceptedEvent event){
+    public void handleMatchingAccepted(MatchingAcceptedEvent event, Acknowledgment ack){
         event.getPendingWaitingUserIds().forEach(waitingUserId -> {
             try {
                 WaitingUser waitingUser = waitingUserRepository.findById(waitingUserId)
@@ -33,8 +34,10 @@ public class MatchingEventConsumer {
 
                     log.info("거절 완료: waitingUserId={}", waitingUserId);
                 }
+                ack.acknowledge();
             } catch (Exception e) {
                 log.error("거절 실패: waitingUserId={}", waitingUserId, e);
+                ack.acknowledge();
             }
         });
     }

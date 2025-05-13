@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -30,10 +31,11 @@ public class FilteringEventConsumer {
             groupId = "filtering-event-group",
             containerFactory = "chatMessageListenerContainerFactory"
     )
-    public void processFilteringEvent(ConsumerRecord<String, ChatMessageEvent> record) {
+    public void processFilteringEvent(ConsumerRecord<String, ChatMessageEvent> record, Acknowledgment ack) {
         ChatMessageEvent event = record.value();
 
         if (!event.isFiltered() || event.getSenderId() == null) {
+            ack.acknowledge();
             return;
         }
 
@@ -61,8 +63,10 @@ public class FilteringEventConsumer {
                 log.info("User {} reached filtering threshold in room {}. Applied suspension.",
                         event.getSenderId(), event.getRoomId());
             }
+            ack.acknowledge();
         } catch (Exception e) {
             log.error("Error processing filtering event: {}", e.getMessage(), e);
+            ack.acknowledge();
         }
     }
 

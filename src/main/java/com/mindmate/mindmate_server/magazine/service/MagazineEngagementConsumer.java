@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
@@ -22,7 +23,7 @@ public class MagazineEngagementConsumer {
             topics = "magazine-engagement-topic",
             containerFactory = "magazineEngagementListenerContainerFactory"
     )
-    public void processEngagement(MagazineEngagementEvent event) {
+    public void processEngagement(MagazineEngagementEvent event, Acknowledgment ack) {
         try {
             long normalizedTime = (event.getTimestamp().toEpochMilli() / 1800000) * 1800000;
             String eventId = event.getUserId() + ":" + event.getMagazineId() + ":" + normalizedTime;
@@ -43,6 +44,7 @@ public class MagazineEngagementConsumer {
             );
 
             log.info("매거진 참여 이벤트 처리 완료: magazineId={}", event.getMagazineId());
+            ack.acknowledge();
         } catch (Exception e) {
             log.error("매거진 참여 이벤트 처리 중 오류 발생", e);
         }

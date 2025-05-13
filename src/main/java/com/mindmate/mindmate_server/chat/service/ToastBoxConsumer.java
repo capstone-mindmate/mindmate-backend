@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -26,10 +27,11 @@ public class ToastBoxConsumer {
             groupId = "toast-box-group",
             containerFactory = "chatMessageListenerContainerFactory"
     )
-    public void processToastBox(ConsumerRecord<String, ChatMessageEvent> record) {
+    public void processToastBox(ConsumerRecord<String, ChatMessageEvent> record, Acknowledgment ack) {
         ChatMessageEvent event = record.value();
 
         if (event.isFiltered() || event.getMessageId() == null || event.getType() == MessageType.EMOTICON) {
+            ack.acknowledge();
             return;
         }
 
@@ -58,8 +60,10 @@ public class ToastBoxConsumer {
                             event.getRoomId(), keyword.getKeyword());
                 }
             }
+            ack.acknowledge();
         } catch (Exception e) {
             log.error("토스트 박스 처리 중 오류: {}", e.getMessage(), e);
+            ack.acknowledge();
         }
     }
 }

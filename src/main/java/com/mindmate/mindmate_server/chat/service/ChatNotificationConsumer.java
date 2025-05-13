@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -24,15 +25,17 @@ public class ChatNotificationConsumer {
             groupId = "notification-group",
             containerFactory = "chatMessageListenerContainerFactory"
     )
-    public void sendNotification(ConsumerRecord<String, ChatMessageEvent> record) {
+    public void sendNotification(ConsumerRecord<String, ChatMessageEvent> record, Acknowledgment ack) {
         ChatMessageEvent event = record.value();
 
         // 필터링된 메시지 처리 x
         if (event.isFiltered() || event.getMessageId() == null) {
+            ack.acknowledge();
             return;
         }
 
         if (event.isRecipientActive()) {
+            ack.acknowledge();
             return;
         }
 
@@ -63,8 +66,12 @@ public class ChatNotificationConsumer {
 
             notificationService.processNotification(notificationEvent);
             log.info("Notification sent to recipient {} for message {}", recipient.getId(), event.getMessageId());
+            ack.acknowledge();
         } catch (Exception e) {
             log.error("Error sending notification", e);
+
+            // todo: 이거를 예외처리에서 바로 하는게 맞는가?
+            ack.acknowledge();
         }
     }
 }

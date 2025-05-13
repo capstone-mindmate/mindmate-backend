@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +33,7 @@ public class ResponseTimeCalculationConsumer {
             containerFactory = "chatRoomCloseListenerContainerFactory"
     )
     @Transactional
-    public void calculateResponseTime(ConsumerRecord<String, ChatRoomCloseEvent> record) {
+    public void calculateResponseTime(ConsumerRecord<String, ChatRoomCloseEvent> record, Acknowledgment ack) {
         ChatRoomCloseEvent event = record.value();
 
         try {
@@ -86,6 +87,7 @@ public class ResponseTimeCalculationConsumer {
             updateUserResponseTimes(event.getListenerId(), userResponseTimes.get(event.getListenerId()));
             profileService.incrementCounselingCount(event.getSpeakerId());
             profileService.incrementCounselingCount(event.getListenerId());
+            ack.acknowledge();
         } catch (Exception e) {
             log.error("Error calculating response times: {}", e.getMessage(), e);
         }

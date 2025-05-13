@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,10 +27,11 @@ public class UnreadCountConsumer {
             containerFactory = "chatMessageListenerContainerFactory"
     )
     @Transactional
-    public void updateUnreadCount(ConsumerRecord<String, ChatMessageEvent> record) {
+    public void updateUnreadCount(ConsumerRecord<String, ChatMessageEvent> record, Acknowledgment ack) {
         ChatMessageEvent event = record.value();
 
         if (event.isFiltered() || event.getMessageId() == null) {
+            ack.acknowledge();
             return;
         }
 
@@ -59,8 +61,10 @@ public class UnreadCountConsumer {
                 chatRoomService.save(chatRoom);
                 log.info("Incremented unread count for recipient {} in room {}", recipient.getId(), event.getRoomId());
             }
+            ack.acknowledge();
         } catch (Exception e) {
             log.error("Error processing message event", e);
+            ack.acknowledge();
         }
     }
 }
