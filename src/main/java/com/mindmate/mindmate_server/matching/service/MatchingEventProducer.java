@@ -1,19 +1,18 @@
 package com.mindmate.mindmate_server.matching.service;
 
+import com.mindmate.mindmate_server.global.service.ResilientEventPublisher;
 import com.mindmate.mindmate_server.matching.dto.MatchingAcceptedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class MatchingEventProducer {
-
-    private final KafkaTemplate<String, MatchingAcceptedEvent> kafkaTemplate;
+    private final ResilientEventPublisher eventPublisher;
 
     public void publishMatchingAccepted(MatchingAcceptedEvent event){
-        kafkaTemplate.send("matching-accepted", event.getMatchingId().toString(), event);
+        eventPublisher.publishEvent("matching-accepted", event.getMatchingId().toString(), event);
     }
 }
