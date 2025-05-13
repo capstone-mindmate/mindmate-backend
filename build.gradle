@@ -82,6 +82,11 @@ dependencies {
 	implementation "com.sksamuel.scrimage:scrimage-webp:4.0.32"
 
 	implementation 'org.threeten:threeten-extra:1.7.2'
+
+	// Resilience4j 의존성
+	implementation 'io.github.resilience4j:resilience4j-spring-boot2:1.7.0'
+	implementation 'io.github.resilience4j:resilience4j-circuitbreaker:1.7.0'
+	implementation 'io.github.resilience4j:resilience4j-timelimiter:1.7.0'
 }
 
 // JaCoCo 설정 추가
