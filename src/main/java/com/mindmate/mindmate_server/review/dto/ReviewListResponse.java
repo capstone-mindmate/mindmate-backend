@@ -16,7 +16,7 @@ public class ReviewListResponse {
     private int rating;
     private String comment;
     private List<String> tags;
-    private LocalDateTime createdAt;
+    private String createdAt;
 
     public static ReviewListResponse from(Review review) {
         return ReviewListResponse.builder()
@@ -27,7 +27,7 @@ public class ReviewListResponse {
                 .tags(review.getReviewTags().stream()
                         .map(tag -> tag.getTagContent().getContent())
                         .collect(Collectors.toList()))
-                .createdAt(review.getCreatedAt())
+                .createdAt(review.getCreatedAt().toString())
                 .build();
     }
 }
