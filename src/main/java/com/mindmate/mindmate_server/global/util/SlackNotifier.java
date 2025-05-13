@@ -124,6 +124,23 @@ public class SlackNotifier {
         }
     }
 
+    public void sendKafkaDLQAlert(String alertType, String message) {
+        try {
+            String formattedMessage = String.format(
+                    ":warning: *Kafka DLQ Alert - %s*\n" +
+                            "> %s\n" +
+                            "DLQ 토픽을 확인하고 조치를 취해주세요!",
+                    alertType, message
+            );
+
+            sendSlackMessage(formattedMessage);
+            log.info("Kafka DLQ 알림 전송 완료: alertType={}", alertType);
+        } catch (Exception e) {
+            log.error("Slack 알림 전송 실패: {}", e.getMessage(), e);
+        }
+    }
+
+
 
 
     private String formatDuration(Duration duration) {
