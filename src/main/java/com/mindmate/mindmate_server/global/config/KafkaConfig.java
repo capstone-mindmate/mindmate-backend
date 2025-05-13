@@ -5,9 +5,13 @@ import com.mindmate.mindmate_server.chat.dto.ChatRoomCloseEvent;
 import com.mindmate.mindmate_server.magazine.dto.MagazineEngagementEvent;
 import com.mindmate.mindmate_server.matching.dto.MatchingAcceptedEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.KafkaAdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -18,11 +22,17 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.*;
+import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
+import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableKafka
@@ -30,6 +40,18 @@ import java.util.Map;
 public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
+
+    @Bean
+    public KafkaAdmin kafkaAdmin() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        return new KafkaAdmin(configs);
+    }
+
+    @Bean
+    public KafkaAdminClient kafkaAdminClient() {
+        return (KafkaAdminClient) AdminClient.create(kafkaAdmin().getConfigurationProperties());
+    }
 
     /**
      * 공통 Producer 설정
@@ -52,6 +74,8 @@ public class KafkaConfig {
         config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 
+        // 자동 커밋 비활성화
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         return config;
     }
 
@@ -94,6 +118,9 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, T> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory(groupId, valueType));
         factory.setConcurrency(3);
+
+        // 수동 커밋 모드 설정
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         return factory;
     }
 
@@ -118,6 +145,44 @@ public class KafkaConfig {
         );
     }
 
+    /**
+     * 모든 DLQ 토픽 자동 생성
+     */
+    @Bean
+    public List<NewTopic> createDlqTopics() {
+        List<String> sourceTopics = List.of(
+                "chat-message-topic",
+                "chat-room-close-topic",
+                "magazine-engagement-topic",
+                "matching-accepted"
+        );
+
+        return sourceTopics.stream()
+                .map(topic -> TopicBuilder.name(topic + "-dlq")
+                        .partitions(3)
+                        .replicas(1)
+                        .configs(getDefaultTopicConfigs())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 통합 DLQ 설정
+     */
+    private <T> DefaultErrorHandler createDefaultErrorHandler(KafkaTemplate<String, T> kafkaTemplate) {
+        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate,
+                (record, ex) -> {
+                    String dlqTopic = record.topic() + "-dlq";
+                    log.error("메시지 처리 실패, DLQ로 이동: 토픽={}, 예외={}", dlqTopic, ex.getMessage());
+                    return new TopicPartition(dlqTopic, record.partition());
+                });
+
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3));
+        errorHandler.setCommitRecovered(true); // DLQ로 이동 후 오프셋 커밋
+
+        return errorHandler;
+    }
+
 
     /**
      * ChatMessageEvent 처리
@@ -128,8 +193,13 @@ public class KafkaConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, ChatMessageEvent> chatMessageListenerContainerFactory() {
-        return listenerContainerFactory("chat-group", ChatMessageEvent.class);
+    public ConcurrentKafkaListenerContainerFactory<String, ChatMessageEvent> chatMessageListenerContainerFactory(
+            KafkaTemplate<String, ChatMessageEvent> kafkaTemplate) {
+        ConcurrentKafkaListenerContainerFactory<String, ChatMessageEvent> factory =
+                listenerContainerFactory("chat-group", ChatMessageEvent.class);
+        factory.setCommonErrorHandler(createDefaultErrorHandler(kafkaTemplate));
+
+        return factory;
     }
 
 
@@ -142,8 +212,13 @@ public class KafkaConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, ChatRoomCloseEvent> chatRoomCloseListenerContainerFactory() {
-        return listenerContainerFactory("chat-room-close-group", ChatRoomCloseEvent.class);
+    public ConcurrentKafkaListenerContainerFactory<String, ChatRoomCloseEvent> chatRoomCloseListenerContainerFactory(
+            KafkaTemplate<String, ChatRoomCloseEvent> kafkaTemplate) {
+        ConcurrentKafkaListenerContainerFactory<String, ChatRoomCloseEvent> factory =
+                listenerContainerFactory("chat-room-close-group", ChatRoomCloseEvent.class);
+        factory.setCommonErrorHandler(createDefaultErrorHandler(kafkaTemplate));
+
+        return factory;
     }
 
 
@@ -155,8 +230,13 @@ public class KafkaConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, MatchingAcceptedEvent> kafkaListenerContainerFactory() {
-        return listenerContainerFactory("matching-group", MatchingAcceptedEvent.class);
+    public ConcurrentKafkaListenerContainerFactory<String, MatchingAcceptedEvent> kafkaListenerContainerFactory(
+            KafkaTemplate<String, MatchingAcceptedEvent> kafkaTemplate) {
+        ConcurrentKafkaListenerContainerFactory<String, MatchingAcceptedEvent> factory =
+                listenerContainerFactory("matching-group", MatchingAcceptedEvent.class);
+        factory.setCommonErrorHandler(createDefaultErrorHandler(kafkaTemplate));
+
+        return factory;
     }
 
     /**
@@ -168,8 +248,13 @@ public class KafkaConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, MagazineEngagementEvent> magazineEngagementListenerContainerFactory() {
-        return listenerContainerFactory("magazine-engagement-group", MagazineEngagementEvent.class);
+    public ConcurrentKafkaListenerContainerFactory<String, MagazineEngagementEvent> magazineEngagementListenerContainerFactory(
+            KafkaTemplate<String, MagazineEngagementEvent> kafkaTemplate) {
+        ConcurrentKafkaListenerContainerFactory<String, MagazineEngagementEvent> factory =
+                listenerContainerFactory("magazine-engagement-group", MagazineEngagementEvent.class);
+        factory.setCommonErrorHandler(createDefaultErrorHandler(kafkaTemplate));
+
+        return factory;
     }
 
 
