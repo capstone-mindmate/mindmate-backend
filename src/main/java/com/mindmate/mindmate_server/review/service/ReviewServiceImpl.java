@@ -251,7 +251,8 @@ public class ReviewServiceImpl implements ReviewService{
             Map<String, Integer> tagCounts = new HashMap<>();
 
             for (Object[] result : tagCountResults) {
-                String tagContent = (String) result[0];
+                Tag tag = (Tag) result[0];
+                String tagContent = tag.getContent();
                 Integer count = ((Long) result[1]).intValue();
                 tagCounts.put(tagContent, count);
             }

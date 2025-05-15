@@ -11,7 +11,6 @@ import com.mindmate.mindmate_server.payment.repository.PaymentOrderRepository;
 import com.mindmate.mindmate_server.payment.repository.PaymentProductRepository;
 import com.mindmate.mindmate_server.point.domain.TransactionType;
 import com.mindmate.mindmate_server.point.dto.PointRequest;
-import com.mindmate.mindmate_server.point.dto.PointTransactionResponse;
 import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.point.domain.PointReasonType;
 import com.mindmate.mindmate_server.user.domain.User;
@@ -27,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -173,5 +173,94 @@ public class PaymentServiceImpl implements PaymentService{
         }
 
         return PaymentDetailResponse.from(order, receiptUrl);
+    }
+
+    @Override
+    public List<PaymentProductResponse> getAllProducts(Boolean active) {
+        List<PaymentProduct> products;
+        if (active != null) {
+            products = active ? paymentProductRepository.findByActiveTrue() :
+                    paymentProductRepository.findByActiveFalse();
+        } else {
+            products = paymentProductRepository.findAll();
+        }
+        return products.stream()
+                .map(PaymentProductResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public PaymentProductResponse createProduct(PaymentProductRequest request) {
+        validateProductRequest(request);
+
+        PaymentProduct product = PaymentProduct.builder()
+                .points(request.getPoints())
+                .amount(request.getAmount())
+                .isPromotion(request.getIsPromotion())
+                .promotionPeriod(request.getPromotionPeriod())
+                .build();
+
+        if (request.getActive() != null) {
+            product.setActive(request.getActive());
+        }
+
+        PaymentProduct savedProduct = paymentProductRepository.save(product);
+        return PaymentProductResponse.from(savedProduct);
+    }
+
+    @Override
+    @Transactional
+    public PaymentProductResponse updateProduct(Long productId, PaymentProductRequest request) {
+        PaymentProduct product = paymentProductRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(PaymentErrorCode.PRODUCT_NOT_FOUND));
+
+        validateProductRequest(request);
+
+        product.update(
+                request.getPoints(),
+                request.getAmount(),
+                request.getIsPromotion(),
+                request.getPromotionPeriod(),
+                request.getActive()
+        );
+
+        PaymentProduct updatedProduct = paymentProductRepository.save(product);
+        return PaymentProductResponse.from(updatedProduct);
+    }
+
+    @Override
+    @Transactional
+    public PaymentProductResponse toggleProductStatus(Long productId) {
+        PaymentProduct product = paymentProductRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(PaymentErrorCode.PRODUCT_NOT_FOUND));
+
+        product.toggleActive();
+
+        PaymentProduct updatedProduct = paymentProductRepository.save(product);
+        return PaymentProductResponse.from(updatedProduct);
+    }
+
+    @Override
+    @Transactional
+    public void deleteProduct(Long productId) {
+        PaymentProduct product = paymentProductRepository.findById(productId)
+                .orElseThrow(() -> new CustomException(PaymentErrorCode.PRODUCT_NOT_FOUND));
+        paymentProductRepository.delete(product);
+    }
+
+    private void validateProductRequest(PaymentProductRequest request) {
+        if (request.getPoints() == null || request.getPoints() <= 0) {
+            throw new CustomException(PaymentErrorCode.INVALID_PRODUCT_POINTS);
+        }
+
+        if (request.getAmount() == null || request.getAmount() <= 0) {
+            throw new CustomException(PaymentErrorCode.INVALID_PRODUCT_AMOUNT);
+        }
+
+        if (Boolean.TRUE.equals(request.getIsPromotion()) &&
+                (request.getPromotionPeriod() == null || request.getPromotionPeriod().isEmpty())) {
+            throw new CustomException(PaymentErrorCode.INVALID_PROMOTION_PERIOD);
+        }
     }
 }

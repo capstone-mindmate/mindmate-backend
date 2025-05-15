@@ -20,4 +20,11 @@ public interface PaymentService {
     Page<PaymentHistoryResponse> getUserPaymentHistory(Long userId, int page, int size);
 
     PaymentDetailResponse getPaymentDetail(Long userId, String orderId);
+
+    List<PaymentProductResponse> getAllProducts(Boolean active);
+
+    PaymentProductResponse createProduct(PaymentProductRequest request);
+    PaymentProductResponse updateProduct(Long productId, PaymentProductRequest request);
+    PaymentProductResponse toggleProductStatus(Long productId);
+    void deleteProduct(Long productId);
 }
