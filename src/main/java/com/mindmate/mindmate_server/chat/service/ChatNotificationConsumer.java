@@ -10,7 +10,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -20,6 +22,13 @@ public class ChatNotificationConsumer {
     private final NotificationService notificationService;
     private final UserService userService;
 
+//    @KafkaStandardRetry
+    @RetryableTopic(
+            attempts = "3",
+            backoff = @Backoff(delay = 1000),
+            dltTopicSuffix = "-notification-group-dlt",
+            retryTopicSuffix = "-notification-group-retry"
+    )
     @KafkaListener(
             topics = "chat-message-topic",
             groupId = "notification-group",
@@ -69,9 +78,7 @@ public class ChatNotificationConsumer {
             ack.acknowledge();
         } catch (Exception e) {
             log.error("Error sending notification", e);
-
-            // todo: 이거를 예외처리에서 바로 하는게 맞는가?
-            ack.acknowledge();
+            throw e;
         }
     }
 }

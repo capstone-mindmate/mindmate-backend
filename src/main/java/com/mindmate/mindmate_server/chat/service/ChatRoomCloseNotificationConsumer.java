@@ -8,7 +8,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,6 +19,13 @@ import org.springframework.stereotype.Service;
 public class ChatRoomCloseNotificationConsumer {
     private final NotificationService notificationService;
 
+//    @KafkaStandardRetry
+    @RetryableTopic(
+            attempts = "3",
+            backoff = @Backoff(delay = 1000),
+            dltTopicSuffix = "-chat-notification-group-dlt",
+            retryTopicSuffix = "-chat-notification-group-retry"
+    )
     @KafkaListener(
             topics = "chat-room-close-topic",
             groupId = "close-notification-group",
@@ -43,6 +52,7 @@ public class ChatRoomCloseNotificationConsumer {
             ack.acknowledge();
         } catch (Exception e) {
             log.error("Error sending close notifications: {}", e.getMessage(), e);
+            throw e;
         }
     }
 }

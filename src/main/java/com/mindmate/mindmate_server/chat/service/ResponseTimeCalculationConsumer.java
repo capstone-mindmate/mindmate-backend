@@ -3,13 +3,16 @@ package com.mindmate.mindmate_server.chat.service;
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomCloseEvent;
 import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
+import com.mindmate.mindmate_server.global.util.KafkaStandardRetry;
 import com.mindmate.mindmate_server.user.service.ProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +30,13 @@ public class ResponseTimeCalculationConsumer {
 
     private final ChatMessageRepository chatMessageRepository;
 
+//    @KafkaStandardRetry
+    @RetryableTopic(
+            attempts = "3",
+            backoff = @Backoff(delay = 1000),
+            dltTopicSuffix = "-response-time-calculation-group-dlt",
+            retryTopicSuffix = "-response-time-calculation-group-retry"
+    )
     @KafkaListener(
             topics = "chat-room-close-topic",
             groupId = "response-time-calculation-group",
@@ -90,6 +100,7 @@ public class ResponseTimeCalculationConsumer {
             ack.acknowledge();
         } catch (Exception e) {
             log.error("Error calculating response times: {}", e.getMessage(), e);
+            throw e;
         }
 
 
