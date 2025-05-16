@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.chat.service;
 
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
+import com.mindmate.mindmate_server.global.util.KafkaStandardRetry;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.user.service.AdminUserSuspensionService;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +9,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -25,15 +29,23 @@ public class FilteringEventConsumer {
     private static final int CHAT_FILTERING_SUSPENSION_TIME = 2; // 정지 시간
     private static final int CHAT_FILTERING_EXPIRY_HOURS = 24; // 해당 레디스 값 유효 시간
 
+//    @KafkaStandardRetry
+    @RetryableTopic(
+            attempts = "3",
+            backoff = @Backoff(delay = 1000),
+            dltTopicSuffix = "-filtering-event-group-dlt",
+            retryTopicSuffix = "-filtering-event-group-retry"
+    )
     @KafkaListener(
             topics = "chat-message-topic",
             groupId = "filtering-event-group",
             containerFactory = "chatMessageListenerContainerFactory"
     )
-    public void processFilteringEvent(ConsumerRecord<String, ChatMessageEvent> record) {
+    public void processFilteringEvent(ConsumerRecord<String, ChatMessageEvent> record, Acknowledgment ack) {
         ChatMessageEvent event = record.value();
 
         if (!event.isFiltered() || event.getSenderId() == null) {
+            ack.acknowledge();
             return;
         }
 
@@ -61,8 +73,10 @@ public class FilteringEventConsumer {
                 log.info("User {} reached filtering threshold in room {}. Applied suspension.",
                         event.getSenderId(), event.getRoomId());
             }
+            ack.acknowledge();
         } catch (Exception e) {
             log.error("Error processing filtering event: {}", e.getMessage(), e);
+            throw e;
         }
     }
 

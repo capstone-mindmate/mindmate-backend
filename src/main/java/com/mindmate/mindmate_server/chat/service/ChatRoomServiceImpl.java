@@ -8,6 +8,7 @@ import com.mindmate.mindmate_server.chat.dto.*;
 import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
+import com.mindmate.mindmate_server.global.service.ResilientEventPublisher;
 import com.mindmate.mindmate_server.matching.domain.Matching;
 import com.mindmate.mindmate_server.matching.service.RedisMatchingService;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
@@ -17,7 +18,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -41,7 +41,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     private final NotificationService notificationService;
     private final RedisMatchingService redisMatchingService;
 
-    private final KafkaTemplate<String ,ChatRoomCloseEvent> kafkaTemplate;
+    private final ResilientEventPublisher eventPublisher;
 
     @Override
     public ChatRoom findChatRoomById(Long roomId) {
@@ -196,7 +196,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                publishChatRoomCloseEvent(event);
+                eventPublisher.publishEvent("chat-room-close-topic", event.getChatRoomId().toString(), event);
 
                 redisMatchingService.decrementUserActiveMatchingCount(speaker.getId());
                 redisMatchingService.decrementUserActiveMatchingCount(listener.getId());
@@ -251,10 +251,6 @@ public class ChatRoomServiceImpl implements ChatRoomService {
                 return chatMessageService.findRecentMessages(roomId, size);
             }
         }
-    }
-
-    private void publishChatRoomCloseEvent(ChatRoomCloseEvent event) {
-        kafkaTemplate.send("chat-room-close-topic", event.getChatRoomId().toString(), event);
     }
 
 }

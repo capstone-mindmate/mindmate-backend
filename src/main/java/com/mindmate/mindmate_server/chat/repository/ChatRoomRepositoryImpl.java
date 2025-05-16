@@ -20,6 +20,7 @@ import com.querydsl.jpa.JPQLQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +31,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
+    @Value("${profile.dir}")
+    private String profileImageDir;
+
+    @Value("${profile.url.prefix}")
+    private String profileImageUrlPrefix;
+
+    @Value("${profile.default.filename}")
+    private String defaultProfileImageFilename;
+
     private final JPAQueryFactory queryFactory;
 
     // todo: admin용 채팅방 목록 조회는 없음 -> 지금 자신의 채팅방 목록 확인만 존재
@@ -124,6 +134,8 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
         QUser creator = new QUser("creator");
         QUser acceptedUser = new QUser("acceptedUser");
 
+        String imageUrl = profileImageUrlPrefix + defaultProfileImageFilename;
+
         return new Expression<?>[]{
                 chatRoom.id,
                 chatRoom.matching.id,
@@ -145,7 +157,7 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                         .when(matching.creator.id.eq(userId).and(matching.acceptedUser.isNotNull()))
                         .then(acceptedUserProfileImage.imageUrl)
                         .when(matching.creator.id.eq(userId).and(matching.acceptedUser.isNull()))
-                        .then("default_image_url")
+                        .then(imageUrl)
                         .otherwise(creatorProfileImage.imageUrl).as("oppositeImage"),
                 // 상대방 ID - 타입 모호성 해결
                 new CaseBuilder()

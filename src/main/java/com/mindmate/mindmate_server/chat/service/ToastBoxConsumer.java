@@ -9,6 +9,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,15 +24,23 @@ public class ToastBoxConsumer {
     private final ChatEventPublisher eventPublisher;
 
     // todo: 지금 근데 이게 따로 메시지의 형태로 저장되는 게 아님 -> 실시간 채팅 중에만 확인 가능
+//    @KafkaStandardRetry
+    @RetryableTopic(
+            attempts = "3",
+            backoff = @Backoff(delay = 1000),
+            dltTopicSuffix = "-toast-box-group-dlt",
+            retryTopicSuffix = "-toast-box-group-retry"
+    )
     @KafkaListener(
             topics = "chat-message-topic",
             groupId = "toast-box-group",
             containerFactory = "chatMessageListenerContainerFactory"
     )
-    public void processToastBox(ConsumerRecord<String, ChatMessageEvent> record) {
+    public void processToastBox(ConsumerRecord<String, ChatMessageEvent> record, Acknowledgment ack) {
         ChatMessageEvent event = record.value();
 
         if (event.isFiltered() || event.getMessageId() == null || event.getType() == MessageType.EMOTICON) {
+            ack.acknowledge();
             return;
         }
 
@@ -58,8 +69,10 @@ public class ToastBoxConsumer {
                             event.getRoomId(), keyword.getKeyword());
                 }
             }
+            ack.acknowledge();
         } catch (Exception e) {
             log.error("토스트 박스 처리 중 오류: {}", e.getMessage(), e);
+            throw e;
         }
     }
 }

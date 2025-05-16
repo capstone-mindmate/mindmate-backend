@@ -1,13 +1,10 @@
 package com.mindmate.mindmate_server.matching.service;
 
 import com.mindmate.mindmate_server.matching.domain.Matching;
-import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
-import com.mindmate.mindmate_server.matching.domain.MatchingStatus;
 import com.mindmate.mindmate_server.matching.domain.WaitingStatus;
 import com.mindmate.mindmate_server.matching.domain.WaitingUser;
 import com.mindmate.mindmate_server.matching.dto.MatchingAcceptedEvent;
 import com.mindmate.mindmate_server.matching.repository.WaitingUserRepository;
-import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,13 +15,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.kafka.support.Acknowledgment;
 
 import java.util.Arrays;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,6 +33,8 @@ class MatchingEventConsumerTest {
     private WaitingUserRepository waitingUserRepository;
     @Mock
     private RedisMatchingService redisMatchingService;
+    @Mock
+    private Acknowledgment acknowledgment;
     @InjectMocks
     private MatchingEventConsumer matchingEventConsumer;
 
@@ -86,7 +86,7 @@ class MatchingEventConsumerTest {
         when(waitingUserRepository.findById(2L)).thenReturn(Optional.of(waitingUser2));
 
         // when
-        matchingEventConsumer.handleMatchingAccepted(event);
+        matchingEventConsumer.handleMatchingAccepted(event, acknowledgment);
 
         // then
         verify(waitingUserRepository, times(2)).findById(anyLong());
@@ -112,7 +112,7 @@ class MatchingEventConsumerTest {
         when(waitingUserRepository.findById(999L)).thenReturn(Optional.empty());
 
         // when
-        matchingEventConsumer.handleMatchingAccepted(event);
+        matchingEventConsumer.handleMatchingAccepted(event, acknowledgment);
 
         // then
         verify(waitingUserRepository).findById(999L);
@@ -132,7 +132,7 @@ class MatchingEventConsumerTest {
                 .build();
 
         // when
-        matchingEventConsumer.handleMatchingAccepted(event);
+        matchingEventConsumer.handleMatchingAccepted(event, acknowledgment);
 
         // then
         verify(waitingUserRepository, never()).findById(anyLong());
@@ -155,8 +155,8 @@ class MatchingEventConsumerTest {
         when(waitingUserRepository.findById(2L)).thenThrow(new RuntimeException("Database error"));
 
         // when
-        matchingEventConsumer.handleMatchingAccepted(event);
-
+        assertThrows(RuntimeException.class, () ->
+                matchingEventConsumer.handleMatchingAccepted(event, acknowledgment));
         // then
         verify(waitingUserRepository, times(2)).findById(anyLong());
         verify(waitingUser1).reject();

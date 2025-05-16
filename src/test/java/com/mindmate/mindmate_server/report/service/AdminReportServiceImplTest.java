@@ -255,8 +255,8 @@ class AdminReportServiceImplTest {
             when(reportedUser.getReportCount()).thenReturn(3);
             when(reporterProfile.getNickname()).thenReturn("Reporter");
             when(reportedUserProfile.getNickname()).thenReturn("ReportedUser");
-            when(reporterProfile.getProfileImage()).thenReturn("reporter.jpg");
-            when(reportedUserProfile.getProfileImage()).thenReturn("reported.jpg");
+//            when(reporterProfile.getProfileImage()).thenReturn("reporter.jpg");
+//            when(reportedUserProfile.getProfileImage()).thenReturn("reported.jpg");
         }
 
         Report build() {

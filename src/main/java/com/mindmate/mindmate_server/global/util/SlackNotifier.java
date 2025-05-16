@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -23,7 +24,12 @@ public class SlackNotifier {
     @Value("${slack.webhook.url}")
     private String webhookUrl;
 
+    @Value("${application.admin.dashboard.url:http://localhost:8080/admin}")
+    private String adminDashboardUrl;
+
+
     private final RestTemplate restTemplate;
+    private final KafkaTopicUtils topicUtils;
 
     public void sendSuspensionAlert(User user, String reason, Duration duration) {
         try {
@@ -124,7 +130,97 @@ public class SlackNotifier {
         }
     }
 
+    /**
+     * DLT 알림 전송
+     */
+    public void sendKafkaDltAlert(String alertType, String dltTopic, long messageCount, String lastMessageTime, List<String> sampleErrors) {
+        try {
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append(":rotating_light: *Kafka DLT 알림 - ").append(alertType).append("*\n\n");
 
+            messageBuilder.append(":information_source: *기본 정보*\n");
+            messageBuilder.append("> • DLT 토픽: `").append(dltTopic).append("`\n");
+            messageBuilder.append("> • 메시지 수: ").append(messageCount).append("개\n");
+            messageBuilder.append("> • 마지막 메시지: ").append(lastMessageTime).append("\n\n");
+
+            if (sampleErrors != null && !sampleErrors.isEmpty()) {
+                messageBuilder.append(":bug: *오류 샘플*\n");
+                int count = 0;
+                for (String error : sampleErrors) {
+                    if (count++ >= 3) break;
+                    messageBuilder.append("> • ").append(error).append("\n");
+                }
+                messageBuilder.append("\n");
+            }
+
+            String originalTopic = topicUtils.extractOriginalTopic(dltTopic);
+            String consumerGroup = topicUtils.extractConsumerGroup(dltTopic);
+
+            messageBuilder.append(":link: *관리 링크*\n");
+            String viewUrl = adminDashboardUrl + "/kafka/dlt/" + dltTopic;
+            String reprocessUrl = viewUrl + "/reprocess";
+
+            messageBuilder.append("> • <").append(viewUrl).append("|DLT 메시지 확인>\n");
+            messageBuilder.append("> • <").append(reprocessUrl).append("|메시지 재처리>\n\n");
+
+            // 추가 정보
+            messageBuilder.append(":memo: *참고 사항*\n");
+            messageBuilder.append("> 장애 발생 시간: ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))).append("\n");
+            messageBuilder.append("> 원본 토픽: `").append(originalTopic).append("`\n");
+
+            if (consumerGroup != null) {
+                messageBuilder.append("> 컨슈머 그룹: `").append(consumerGroup).append("`\n");
+            }
+
+            sendSlackMessage(messageBuilder.toString());
+            log.info("Kafka DLT 알림 전송 완료: topic={}, count={}", dltTopic, messageCount);
+        } catch (Exception e) {
+            log.error("Slack 알림 전송 실패: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 카프카 브로커 장애 알림
+     */
+    public void sendKafkaBrokerAlert(String brokerDetails, String errorMessage) {
+        try {
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append(":fire: *Kafka 브로커 장애 알림*\n\n");
+            messageBuilder.append("> 브로커: ").append(brokerDetails).append("\n");
+            messageBuilder.append("> 오류: ").append(errorMessage).append("\n");
+            messageBuilder.append("> 발생 시간: ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))).append("\n\n");
+
+            messageBuilder.append(":link: *관리 링크*\n");
+            messageBuilder.append("> • <").append(adminDashboardUrl).append("/kafka/health|브로커 상태 확인>\n");
+
+            sendSlackMessage(messageBuilder.toString());
+            log.info("Kafka 브로커 장애 알림 전송 완료");
+        } catch (Exception e) {
+            log.error("Slack 알림 전송 실패: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 컨슈머 그룹 장애 알림
+     */
+    public void sendConsumerGroupAlert(String groupId, String topic, String errorDetails) {
+        try {
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append(":warning: *Kafka 컨슈머 그룹 장애 알림*\n\n");
+            messageBuilder.append("> 컨슈머 그룹: `").append(groupId).append("`\n");
+            messageBuilder.append("> 토픽: `").append(topic).append("`\n");
+            messageBuilder.append("> 오류 내용: ").append(errorDetails).append("\n");
+            messageBuilder.append("> 발생 시간: ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))).append("\n\n");
+
+            messageBuilder.append(":link: *관리 링크*\n");
+            messageBuilder.append("> • <").append(adminDashboardUrl).append("/kafka/consumer-groups|컨슈머 그룹 상태 확인>\n");
+
+            sendSlackMessage(messageBuilder.toString());
+            log.info("Kafka 컨슈머 그룹 장애 알림 전송 완료: groupId={}", groupId);
+        } catch (Exception e) {
+            log.error("Slack 알림 전송 실패: {}", e.getMessage(), e);
+        }
+    }
 
     private String formatDuration(Duration duration) {
         if (duration.toDays() > 0) {

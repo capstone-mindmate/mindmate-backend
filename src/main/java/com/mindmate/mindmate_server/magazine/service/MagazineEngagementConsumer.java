@@ -1,11 +1,15 @@
 package com.mindmate.mindmate_server.magazine.service;
 
+import com.mindmate.mindmate_server.global.util.KafkaStandardRetry;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.magazine.dto.MagazineEngagementEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
@@ -18,11 +22,19 @@ public class MagazineEngagementConsumer {
     private final StringRedisTemplate redisTemplate;
     private final RedisKeyManager redisKeyManager;
 
+//    @KafkaStandardRetry
+    @RetryableTopic(
+            attempts = "3",
+            backoff = @Backoff(delay = 1000),
+            dltTopicSuffix = "-magazine-engagement-group-dlt",
+            retryTopicSuffix = "-magazine-engagement-group-retry"
+    )
     @KafkaListener(
             topics = "magazine-engagement-topic",
+            groupId = "magazine-engagement-group",
             containerFactory = "magazineEngagementListenerContainerFactory"
     )
-    public void processEngagement(MagazineEngagementEvent event) {
+    public void processEngagement(MagazineEngagementEvent event, Acknowledgment ack) {
         try {
             long normalizedTime = (event.getTimestamp().toEpochMilli() / 1800000) * 1800000;
             String eventId = event.getUserId() + ":" + event.getMagazineId() + ":" + normalizedTime;
@@ -43,6 +55,7 @@ public class MagazineEngagementConsumer {
             );
 
             log.info("매거진 참여 이벤트 처리 완료: magazineId={}", event.getMagazineId());
+            ack.acknowledge();
         } catch (Exception e) {
             log.error("매거진 참여 이벤트 처리 중 오류 발생", e);
         }
