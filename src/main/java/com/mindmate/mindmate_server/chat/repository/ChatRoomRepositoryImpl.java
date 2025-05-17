@@ -80,9 +80,11 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                 .from(lastMessage)
                 .where(lastMessage.chatRoom.eq(chatRoom));
 
-        // 기본 조건: 사용자가 참여한 채팅방
-        BooleanExpression baseCondition = matching.creator.id.eq(userId)
-                .or(matching.acceptedUser.id.eq(userId));
+        // 기본 조건: 사용자가 참여한 채팅방 + 삭제 여부 확인
+        BooleanExpression baseCondition = (matching.creator.id.eq(userId)
+                .and(chatRoom.deletedByListener.eq(false).or(chatRoom.deletedBySpeaker.eq(false).and(matching.creatorRole.eq(InitiatorType.SPEAKER)))))
+                .or(matching.acceptedUser.id.eq(userId)
+                        .and(chatRoom.deletedBySpeaker.eq(false).or(chatRoom.deletedByListener.eq(false).and(matching.creatorRole.eq(InitiatorType.LISTENER)))));
 
         // 추가 조건 적용
         if (roleCondition != null) {
