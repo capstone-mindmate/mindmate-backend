@@ -5,13 +5,13 @@ import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageRequest;
 import com.mindmate.mindmate_server.chat.dto.ChatMessageResponse;
+import com.mindmate.mindmate_server.global.service.ResilientEventPublisher;
 import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -25,9 +25,9 @@ import java.util.concurrent.TimeUnit;
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
-    private final KafkaTemplate<String, ChatMessageEvent> kafkaTemplate;
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedisKeyManager redisKeyManager;
+    private final ResilientEventPublisher eventPublisher;
 
     private final ChatRoomService chatRoomService;
     private final UserService userService;
@@ -109,18 +109,13 @@ public class ChatServiceImpl implements ChatService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    sendKafkaMessage(event);
+                    eventPublisher.publishEvent("chat-message-topic", event.getRoomId().toString(), event);
                 }
             });
         } else {
             // 트랜잭션이 활성화되지 않은 경우(테스트 등) 직접 전송
-            sendKafkaMessage(event);
+            eventPublisher.publishEvent("chat-message-topic", event.getRoomId().toString(), event);
         }
-    }
-
-    // 테스트를 위해 추출한 메서드
-    protected void sendKafkaMessage(ChatMessageEvent event) {
-        kafkaTemplate.send("chat-message-topic", event.getRoomId().toString(), event);
     }
 
     private ChatMessageResponse handleFilteredMessage(ChatRoom chatRoom, User sender, ChatMessageRequest request) {
@@ -137,7 +132,7 @@ public class ChatServiceImpl implements ChatService {
                 .filtered(true)
                 .build();
 
-        sendKafkaMessage(event);
+        eventPublisher.publishEvent("chat-message-topic", event.getRoomId().toString(), event);
 
         return ChatMessageResponse.filteredResponse(
                 chatRoom.getId(),

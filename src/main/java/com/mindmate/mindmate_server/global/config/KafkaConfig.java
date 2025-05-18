@@ -2,9 +2,16 @@ package com.mindmate.mindmate_server.global.config;
 
 import com.mindmate.mindmate_server.chat.dto.ChatMessageEvent;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomCloseEvent;
+import com.mindmate.mindmate_server.global.service.DltReprocessingService;
+import com.mindmate.mindmate_server.global.util.GlobalDltHandler;
+import com.mindmate.mindmate_server.global.util.KafkaTopicUtils;
+import com.mindmate.mindmate_server.global.util.SlackNotifier;
 import com.mindmate.mindmate_server.magazine.dto.MagazineEngagementEvent;
 import com.mindmate.mindmate_server.matching.dto.MatchingAcceptedEvent;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -18,6 +25,13 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.*;
+import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.retrytopic.DltStrategy;
+import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
+import org.springframework.kafka.retrytopic.RetryTopicConfigurationBuilder;
+import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
+import org.springframework.kafka.support.EndpointHandlerMethod;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
@@ -26,10 +40,24 @@ import java.util.Map;
 
 @Configuration
 @EnableKafka
+@RequiredArgsConstructor
 @Slf4j
 public class KafkaConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
+
+    @Bean
+    public KafkaAdmin kafkaAdmin() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        return new KafkaAdmin(configs);
+    }
+
+    @Bean
+    public AdminClient adminClient(KafkaAdmin kafkaAdmin) {
+        return AdminClient.create(kafkaAdmin.getConfigurationProperties());
+    }
+
 
     /**
      * 공통 Producer 설정
@@ -39,6 +67,7 @@ public class KafkaConfig {
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        config.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, false);
 
         return config;
     }
@@ -51,6 +80,8 @@ public class KafkaConfig {
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
 
         return config;
     }
@@ -76,14 +107,33 @@ public class KafkaConfig {
      */
     private <T> ConsumerFactory<String, T> consumerFactory(String groupId, Class<T> valueType) {
         Map<String, Object> props = getConsumerConfigs(groupId);
+        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class.getName());
 
         JsonDeserializer<T> deserializer = new JsonDeserializer<>(valueType);
         deserializer.addTrustedPackages("*");
+        deserializer.setUseTypeHeaders(false);
+        deserializer.setRemoveTypeHeaders(false);
 
         return new DefaultKafkaConsumerFactory<>(
                 props,
                 new StringDeserializer(),
-                deserializer
+                new ErrorHandlingDeserializer<>(deserializer)
+        );
+    }
+
+    @Bean
+    public ConsumerFactory<String, Object> objectConsumerFactory() {
+        Map<String, Object> props = getConsumerConfigs("admin-group");
+        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class.getName());
+
+        JsonDeserializer<Object> deserializer = new JsonDeserializer<>(Object.class);
+        deserializer.addTrustedPackages("*");
+        deserializer.setUseTypeHeaders(false);
+
+        return new DefaultKafkaConsumerFactory<>(
+                props,
+                new StringDeserializer(),
+                new ErrorHandlingDeserializer<>(deserializer)
         );
     }
 
@@ -94,6 +144,9 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, T> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory(groupId, valueType));
         factory.setConcurrency(3);
+
+        // 수동 커밋 모드 설정
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         return factory;
     }
 
@@ -118,6 +171,29 @@ public class KafkaConfig {
         );
     }
 
+    @Bean
+    public GlobalDltHandler globalDltHandler(KafkaTopicUtils kafkaTopicUtils, SlackNotifier slackNotifier, DltReprocessingService reprocessingService) {
+        return new GlobalDltHandler(kafkaTopicUtils, slackNotifier, reprocessingService);
+    }
+
+    /**
+     * Global 재시도 토픽 설정
+     */
+    @Bean
+    public RetryTopicConfiguration retryTopicConfiguration(KafkaTemplate<String, Object> template, GlobalDltHandler globalDltHandler) {
+        return RetryTopicConfigurationBuilder
+                .newInstance()
+                .maxAttempts(3)
+                .fixedBackOff(1000)
+                .includeTopic("chat-message-topic")
+                .includeTopic("chat-room-close-topic")
+                .includeTopic("matching-accepted")
+                .includeTopic("magazine-engagement-topic")
+                .setTopicSuffixingStrategy(TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE)
+                .dltProcessingFailureStrategy(DltStrategy.FAIL_ON_ERROR)
+                .dltHandlerMethod(new EndpointHandlerMethod(globalDltHandler, "handleDltMessage"))
+                .create(template);
+    }
 
     /**
      * ChatMessageEvent 처리
@@ -147,7 +223,6 @@ public class KafkaConfig {
     }
 
 
-    
     // MatchingAcceptedEvent 처리
     @Bean
     public ConsumerFactory<String, MatchingAcceptedEvent> matchingConsumerFactory() {
@@ -195,5 +270,4 @@ public class KafkaConfig {
     public NewTopic magazineEngagementTopic() {
         return createTopic("magazine-engagement-topic", 3, (short) 1, getDefaultTopicConfigs());
     }
-
 }
