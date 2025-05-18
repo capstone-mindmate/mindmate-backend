@@ -1,5 +1,6 @@
 # mindmate-backend
 
+
 ## Websocket 채팅 관련 진행
 - Jira 정리
   - https://capstone-ajou-yaho.atlassian.net/browse/MM-200
