@@ -1,16 +1,10 @@
 package com.mindmate.mindmate_server.auth.controller;
 
-import com.mindmate.mindmate_server.auth.dto.LoginRequest;
-import com.mindmate.mindmate_server.auth.dto.LoginResponse;
-import com.mindmate.mindmate_server.auth.dto.SignUpRequest;
 import com.mindmate.mindmate_server.auth.dto.TokenResponse;
 import com.mindmate.mindmate_server.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,43 +15,12 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final AuthService authService;
 
-    @Operation(
-            summary = "회원가입",
-            description = "새로운 사용자를 등록하고 인증 메일을 발송합니다."
-    )
-    @PostMapping("/register")
-    public ResponseEntity<Void> registerUser(@Valid @RequestBody SignUpRequest request) {
-        authService.registerUser(request);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
-    }
-
-    @Operation(
-            summary = "인증 메일 재발송",
-            description = "이메일 인증 메일을 재발송합니다."
-    )
-    @PostMapping("/email/resend")
-    public ResponseEntity<Void> resendVerificationEmail(@RequestParam String email) {
-        authService.resendVerificationEmail(email);
-        return ResponseEntity.ok().build();
-    }
-
-    @Operation(
-            summary = "이메일 인증",
-            description = "이메일 인증 토큰을 검증합니다."
-    )
-    @GetMapping("/email/verify")
-    public ResponseEntity<TokenResponse> verifyEmail(@RequestParam String token) {
-        TokenResponse response = authService.verifyEmail(token);
-        return ResponseEntity.ok(response);
-    }
-
-    @Operation(
-            summary = "로그인",
-            description = "이메일과 비밀번호로 로그인합니다."
-    )
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        LoginResponse response = authService.login(request);
+    @GetMapping("/oauth2/redirect")
+    public ResponseEntity<TokenResponse> handleOAuth2Redirect(@RequestParam String token, @RequestParam String refreshToken) {
+        TokenResponse response = TokenResponse.builder()
+                .accessToken(token)
+                .refreshToken(refreshToken)
+                .build();
         return ResponseEntity.ok(response);
     }
 
