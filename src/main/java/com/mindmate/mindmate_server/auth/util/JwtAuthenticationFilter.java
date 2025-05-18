@@ -49,12 +49,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (tokenProvider.validateToken(jwt)) {
                 Long userId = tokenProvider.getUserIdFromToken(jwt);
                 User user = userService.findUserById(userId);
+                String email = user.getEmail();
 
                 List<GrantedAuthority> authorities = Collections.singletonList(
                         new SimpleGrantedAuthority(user.getCurrentRole().getKey())
                 );
 
-                UserPrincipal userPrincipal = new UserPrincipal(user.getId());
+                UserPrincipal userPrincipal = new UserPrincipal(userId, email, authorities);
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(userPrincipal, null, authorities);
