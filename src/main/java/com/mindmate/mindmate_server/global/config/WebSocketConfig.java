@@ -16,10 +16,15 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
+
+import java.util.Collections;
+import java.util.List;
 
 @Configuration
 @Slf4j
@@ -103,10 +108,18 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     if (token != null && token.startsWith("Bearer ")) {
                         try {
                             String jwtToken = token.substring(7);
-                            Long userId = jwtTokenProvider.getUserIdFromToken(jwtToken);
+                            if (jwtTokenProvider.validateToken(jwtToken)) {
+                                Long userId = jwtTokenProvider.getUserIdFromToken(jwtToken);
+                                String username = jwtTokenProvider.getUsernameFromToken(jwtToken);
+                                String role = jwtTokenProvider.getClaimFromToken(jwtToken, "role");
 
-                            accessor.setUser(new UserPrincipal(userId));
-                            log.info("WebSocket Authentication successful for user: {}", userId);
+                                List<GrantedAuthority> authorities = Collections.singletonList(
+                                        new SimpleGrantedAuthority(role));
+
+                                UserPrincipal userPrincipal = new UserPrincipal(userId, username, authorities);
+                                accessor.setUser(userPrincipal);
+                                log.info("WebSocket Authentication successful for user: {}", userId);
+                            }
                         } catch (Exception e) {
                             log.error("WebSocket Authentication failed: {}", e.getMessage());
                             throw new MessageDeliveryException("Authentication failed");
