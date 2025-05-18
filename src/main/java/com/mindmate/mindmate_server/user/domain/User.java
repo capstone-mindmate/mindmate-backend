@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.user.domain;
 
+import com.mindmate.mindmate_server.auth.domain.AuthProvider;
 import com.mindmate.mindmate_server.chat.domain.ChatMessage;
 import com.mindmate.mindmate_server.chat.domain.CustomForm;
 import com.mindmate.mindmate_server.chat.domain.MessageReaction;
@@ -16,7 +17,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Entity
 @Slf4j
@@ -32,25 +32,20 @@ public class User extends BaseTimeEntity {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false)
-    private String password;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "VARCHAR(20)")
     private RoleType currentRole;
 
+    @Column(name = "provider")
+    @Enumerated(EnumType.STRING)
+    private AuthProvider provider;
 
-    @Column(name = "verification_token")
-    private String verificationToken;
+    @Column(name = "provider_id")
+    private String providerId;
 
-    @Column(name = "verification_token_expiry")
-    private LocalDateTime verificationTokenExpiry;
-
-    private boolean isEmailVerified = false;
-    private boolean agreedToTerms = false;
-
+    @Column
     private LocalDateTime lastLoginAt;
-    private LocalDateTime deletedAt;
+
 
     @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL)
     private List<ChatMessage> sentMessages = new ArrayList<>();
@@ -90,10 +85,10 @@ public class User extends BaseTimeEntity {
     private LocalDateTime suspensionEndTime;
 
     @Builder
-    public User(String email, String password, boolean agreedToTerms, RoleType role) {
+    public User(String email, AuthProvider provider, String providerId, RoleType role) {
         this.email = email;
-        this.password = password;
-        this.agreedToTerms = agreedToTerms;
+        this.provider = provider;
+        this.providerId = providerId;
         this.currentRole = role;
     }
 
@@ -101,28 +96,10 @@ public class User extends BaseTimeEntity {
         this.lastLoginAt = LocalDateTime.now();
     }
 
-    public void verifyEmail() {
-        this.isEmailVerified = true;
-    }
-
-    public void checkAgreement() {
-        this.agreedToTerms = true;
-    }
-
     public void updateRole(RoleType type) {
         log.info("Updating role from {} to {}", this.currentRole, type);
         this.currentRole = type;
     }
-
-    public void generateVerificationToken() {
-        this.verificationToken = UUID.randomUUID().toString();
-        this.verificationTokenExpiry = LocalDateTime.now().plusHours(24);
-    }
-
-    public boolean isTokenExpired() {
-        return this.getVerificationTokenExpiry().isBefore(LocalDateTime.now());
-    }
-
 
     // 매칭 관련 메서드 추가
     public boolean addCancelCount() {
