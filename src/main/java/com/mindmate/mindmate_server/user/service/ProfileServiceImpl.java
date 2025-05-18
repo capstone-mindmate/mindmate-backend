@@ -165,6 +165,7 @@ public class ProfileServiceImpl implements ProfileService {
                 .department(request.getDepartment())
                 .entranceTime(request.getEntranceTime())
                 .graduation(request.isGraduation())
+                .agreedToTerms(request.isAgreeToTerm())
                 .build();
     }
 
