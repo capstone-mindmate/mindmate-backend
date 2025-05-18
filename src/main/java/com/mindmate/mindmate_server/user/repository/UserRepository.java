@@ -16,11 +16,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
 
-    Optional<User> findByVerificationToken(String token);
-
     List<User> findByCurrentRoleAndSuspensionEndTimeBefore(RoleType roleType, LocalDateTime time);
-
-//    boolean existsByNickname(String nickname);
 
     @Query("SELECT u.id FROM User u")
     List<Long> findAllUserIds();
