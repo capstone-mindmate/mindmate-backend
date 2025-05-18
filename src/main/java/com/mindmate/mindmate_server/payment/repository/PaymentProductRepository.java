@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface PaymentProductRepository extends JpaRepository<PaymentProduct, Long> {
     List<PaymentProduct> findByActiveTrue();
+
+    List<PaymentProduct> findByActiveFalse();
 }

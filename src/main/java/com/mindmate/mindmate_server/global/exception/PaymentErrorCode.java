@@ -15,7 +15,10 @@ public enum PaymentErrorCode implements ErrorCode {
     UNMATCHED_AMOUNT(HttpStatus.BAD_REQUEST, "결제 금액이 일치하지 않습니다."),
     ALREADY_PROCESSED_ORDER(HttpStatus.BAD_REQUEST, "이미 완료된 내역입니다."),
     INACTIVE_PRODUCT(HttpStatus.BAD_REQUEST, "활성화되지 않은 상품입니다."),
-    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "조회 권한이 없습니다.");
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "조회 권한이 없습니다."),
+    INVALID_PRODUCT_POINTS(HttpStatus.BAD_REQUEST, "포인트 금액이 유효하지 않습니다."),
+    INVALID_PRODUCT_AMOUNT(HttpStatus.BAD_REQUEST, "상품 가격이 유효하지 않습니다."),
+    INVALID_PROMOTION_PERIOD(HttpStatus.BAD_REQUEST, "프로모션 기간 정보가 유효하지 않습니다.");
 
 
     private final HttpStatus status;
