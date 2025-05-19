@@ -494,15 +494,6 @@ public class MatchingServiceImpl implements MatchingService {
         }
     }
 
-    private void rejectAllPendingWaitingUsers(Matching matching) {
-        waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching).stream()
-                .filter(app -> app.getStatus() == WaitingStatus.PENDING)
-                .forEach(app -> {
-                    app.reject();
-                    redisMatchingService.decrementUserActiveMatchingCount(app.getWaitingUser().getId());
-                });
-    }
-
     private WaitingUser validateWaitingUser(Long waitingId, Long matchingId) {
         WaitingUser waitingUser = waitingUserRepository.findById(waitingId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.WAITING_NOT_FOUND));
@@ -512,22 +503,6 @@ public class MatchingServiceImpl implements MatchingService {
         }
 
         return waitingUser;
-    }
-
-    private void publishAcceptEventAfterCommit(Matching matching, WaitingUser waitingUser, List<Long> others) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                matchingEventProducer.publishMatchingAccepted(
-                        MatchingAcceptedEvent.builder()
-                                .matchingId(matching.getId())
-                                .creatorId(matching.getCreator().getId())
-                                .acceptedUserId(waitingUser.getWaitingUser().getId())
-                                .pendingWaitingUserIds(others)
-                                .build()
-                );
-            }
-        });
     }
 
 
