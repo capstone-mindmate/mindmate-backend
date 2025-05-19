@@ -49,7 +49,7 @@ public class Matching extends BaseTimeEntity {
     private User acceptedUser;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "chat_room_id")
+//    @JoinColumn(name = "chat_room_id")
     private ChatRoom chatRoom;
 
     private LocalDateTime matchedAt;

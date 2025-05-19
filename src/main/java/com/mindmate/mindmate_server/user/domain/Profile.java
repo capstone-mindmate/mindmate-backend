@@ -23,7 +23,9 @@ public class Profile extends BaseTimeEntity {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "profile_image_id")
+    @JoinColumn(name = "profile_image_id", nullable = true,
+            foreignKey = @ForeignKey(
+                    foreignKeyDefinition = "FOREIGN KEY (profile_image_id) REFERENCES profile_images(id) ON DELETE SET NULL"))
     private ProfileImage profileImage;
 
     @Column(unique = true, nullable = false)
