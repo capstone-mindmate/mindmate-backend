@@ -35,7 +35,6 @@ public class ChatRoomResponse {
     private MatchingCategory category;
 
 
-    // todo: 매칭방 타입
     public static ChatRoomResponse from(ChatRoom chatRoom, User user) {
         boolean isListener = chatRoom.isListener(user);
 

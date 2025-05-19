@@ -40,4 +40,21 @@ public class PaymentProduct extends BaseTimeEntity {
         this.isPromotion = isPromotion != null ? isPromotion : false;
         this.promotionPeriod = promotionPeriod;
     }
+
+    public void update(Integer points, Integer amount, Boolean isPromotion,
+                       String promotionPeriod, Boolean active) {
+        if (points != null) this.points = points;
+        if (amount != null) this.amount = amount;
+        if (isPromotion != null) this.isPromotion = isPromotion;
+        if (promotionPeriod != null) this.promotionPeriod = promotionPeriod;
+        if (active != null) this.active = active;
+    }
+
+    public void toggleActive() {
+        this.active = !this.active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
+    }
 }

@@ -10,6 +10,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -19,20 +22,29 @@ public class ChatNotificationConsumer {
     private final NotificationService notificationService;
     private final UserService userService;
 
+//    @KafkaStandardRetry
+    @RetryableTopic(
+            attempts = "3",
+            backoff = @Backoff(delay = 1000),
+            dltTopicSuffix = "-notification-group-dlt",
+            retryTopicSuffix = "-notification-group-retry"
+    )
     @KafkaListener(
             topics = "chat-message-topic",
             groupId = "notification-group",
             containerFactory = "chatMessageListenerContainerFactory"
     )
-    public void sendNotification(ConsumerRecord<String, ChatMessageEvent> record) {
+    public void sendNotification(ConsumerRecord<String, ChatMessageEvent> record, Acknowledgment ack) {
         ChatMessageEvent event = record.value();
 
         // 필터링된 메시지 처리 x
         if (event.isFiltered() || event.getMessageId() == null) {
+            ack.acknowledge();
             return;
         }
 
         if (event.isRecipientActive()) {
+            ack.acknowledge();
             return;
         }
 
@@ -63,8 +75,10 @@ public class ChatNotificationConsumer {
 
             notificationService.processNotification(notificationEvent);
             log.info("Notification sent to recipient {} for message {}", recipient.getId(), event.getMessageId());
+            ack.acknowledge();
         } catch (Exception e) {
             log.error("Error sending notification", e);
+            throw e;
         }
     }
 }
