@@ -486,7 +486,7 @@ public class MatchingServiceImpl implements MatchingService {
 
     private void validateWaitingCancellation(User user, WaitingUser waitingUser) {
         if (!waitingUser.isOwner(user)) {
-            throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
+            throw new CustomException(MatchingErrorCode.NOT_WAITING_OWNER);
         }
 
         if (waitingUser.getStatus() != WaitingStatus.PENDING) {
