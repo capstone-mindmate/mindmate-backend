@@ -10,11 +10,13 @@ import lombok.Getter;
 public class AppliedMatchingResponse {
     private MatchingResponse matching;
     private String applicationMessage;
+    private Long waitingUserId;
 
     public static AppliedMatchingResponse of(Matching matching, WaitingUser waitingUser) {
         return AppliedMatchingResponse.builder()
                 .matching(MatchingResponse.of(matching))
                 .applicationMessage(waitingUser.getMessage())
+                .waitingUserId(waitingUser.getId())
                 .build();
     }
 }
