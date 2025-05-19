@@ -204,11 +204,11 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
 
                     if (lastMessageType != null) {
                         if (lastMessageType == MessageType.TEXT) {
-                            lastMessageContent = "새 메시지가 있습니다";
+                            lastMessageContent = "💬 " + "암호화된 메시지";
                         } else if (lastMessageType == MessageType.CUSTOM_FORM) {
-                            lastMessageContent = "커스텀 폼이 도착했습니다";
+                            lastMessageContent = "📝 " + "커스텀 폼";
                         } else if (lastMessageType == MessageType.EMOTICON) {
-                            lastMessageContent = "이모티콘이 도착했습니다";
+                            lastMessageContent = "😊 " + "이모티콘";
                         }
                     }
 

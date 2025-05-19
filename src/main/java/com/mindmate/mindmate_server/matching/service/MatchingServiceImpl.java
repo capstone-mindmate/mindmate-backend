@@ -488,21 +488,12 @@ public class MatchingServiceImpl implements MatchingService {
 
     private void validateWaitingCancellation(User user, WaitingUser waitingUser) {
         if (!waitingUser.isOwner(user)) {
-            throw new CustomException(MatchingErrorCode.NOT_MATCHING_OWNER);
+            throw new CustomException(MatchingErrorCode.NOT_WAITING_OWNER);
         }
 
         if (waitingUser.getStatus() != WaitingStatus.PENDING) {
             throw new CustomException(MatchingErrorCode.CANNOT_CANCEL_PROCESSED_WAITING);
         }
-    }
-
-    private void rejectAllPendingWaitingUsers(Matching matching) {
-        waitingUserRepository.findByMatchingOrderByCreatedAtDesc(matching).stream()
-                .filter(app -> app.getStatus() == WaitingStatus.PENDING)
-                .forEach(app -> {
-                    app.reject();
-                    redisMatchingService.decrementUserActiveMatchingCount(app.getWaitingUser().getId());
-                });
     }
 
     private WaitingUser validateWaitingUser(Long waitingId, Long matchingId) {
@@ -514,22 +505,6 @@ public class MatchingServiceImpl implements MatchingService {
         }
 
         return waitingUser;
-    }
-
-    private void publishAcceptEventAfterCommit(Matching matching, WaitingUser waitingUser, List<Long> others) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                matchingEventProducer.publishMatchingAccepted(
-                        MatchingAcceptedEvent.builder()
-                                .matchingId(matching.getId())
-                                .creatorId(matching.getCreator().getId())
-                                .acceptedUserId(waitingUser.getWaitingUser().getId())
-                                .pendingWaitingUserIds(others)
-                                .build()
-                );
-            }
-        });
     }
 
 

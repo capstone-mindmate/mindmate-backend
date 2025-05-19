@@ -24,40 +24,4 @@ public interface MatchingRepository extends JpaRepository<Matching, Long>, Match
             "AND m.status = 'MATCHED' " +
             "GROUP BY m.category")
     List<Object[]> countMatchingsByUserAndCategory(@Param("userId") Long userId);
-
-    Page<Matching> findByStatusAndCreatorIdNotAndIdNotInOrderByCreatedAtDesc(
-            MatchingStatus status, Long creatorId, List<Long> excludeIds, Pageable pageable);
-
-    Page<Matching> findByStatusAndCreatorRoleAndCreatorIdNotAndIdNotInOrderByCreatedAtDesc(
-            MatchingStatus status, InitiatorType creatorRole, Long creatorId, List<Long> excludeIds, Pageable pageable);
-
-    @Query("SELECT m FROM Matching m WHERE m.status = :status AND m.creator.profile.department = :department " +
-            "AND m.creator.id != :creatorId AND m.id NOT IN :excludeIds ORDER BY m.createdAt DESC")
-    Page<Matching> findOpenMatchingsByDepartmentAndCreatorIdNotAndIdNotIn(
-            @Param("status") MatchingStatus status,
-            @Param("department") String department,
-            @Param("creatorId") Long creatorId,
-            @Param("excludeIds") List<Long> excludeIds,
-            Pageable pageable);
-
-    @Query("SELECT m FROM Matching m WHERE m.status = :status AND m.category = :category " +
-            "AND m.creator.id != :creatorId AND m.id NOT IN :excludeIds ORDER BY m.createdAt DESC")
-    Page<Matching> findByStatusAndCategoryAndCreatorIdNotAndIdNotInOrderByCreatedAtDesc(
-            @Param("status") MatchingStatus status,
-            @Param("category") MatchingCategory category,
-            @Param("creatorId") Long creatorId,
-            @Param("excludeIds") List<Long> excludeIds,
-            Pageable pageable);
-
-    @Query("SELECT m FROM Matching m JOIN m.creator u JOIN u.profile p " +
-            "WHERE m.status = :status AND m.category = :category " +
-            "AND p.department = :department AND m.creator.id != :creatorId " +
-            "AND m.id NOT IN :excludeIds ORDER BY m.createdAt DESC")
-    Page<Matching> findByStatusAndCategoryAndDepartmentAndCreatorIdNotAndIdNotIn(
-            @Param("status") MatchingStatus status,
-            @Param("category") MatchingCategory category,
-            @Param("department") String department,
-            @Param("creatorId") Long creatorId,
-            @Param("excludeIds") List<Long> excludeIds,
-            Pageable pageable);
 }

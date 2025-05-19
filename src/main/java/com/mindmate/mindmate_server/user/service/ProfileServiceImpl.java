@@ -3,6 +3,9 @@ package com.mindmate.mindmate_server.user.service;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
 import com.mindmate.mindmate_server.matching.service.MatchingService;
+import com.mindmate.mindmate_server.point.domain.PointReasonType;
+import com.mindmate.mindmate_server.point.domain.TransactionType;
+import com.mindmate.mindmate_server.point.dto.PointRequest;
 import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.review.dto.ReviewResponse;
 import com.mindmate.mindmate_server.review.service.ReviewDataService;
@@ -75,6 +78,15 @@ public class ProfileServiceImpl implements ProfileService {
 
         profileRepository.save(profile);
         user.updateRole(RoleType.ROLE_PROFILE);
+
+        PointRequest pointRequest = PointRequest.builder()
+                .transactionType(TransactionType.EARN)
+                .amount(1000)
+                .reasonType(PointReasonType.PROFILE_CREATED)
+                .entityId(profile.getId())
+                .build();
+
+        pointService.addPoints(userId, pointRequest);
 
         return ProfileResponse.of(profile.getId(), profile.getNickname(), "프로필이 생성되었습니다.");
     }

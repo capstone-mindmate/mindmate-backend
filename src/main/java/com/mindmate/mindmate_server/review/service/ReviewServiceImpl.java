@@ -8,7 +8,6 @@ import com.mindmate.mindmate_server.notification.dto.ReviewCreatedNotificationEv
 import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.review.domain.Review;
 import com.mindmate.mindmate_server.review.domain.Tag;
-import com.mindmate.mindmate_server.review.domain.TagType;
 import com.mindmate.mindmate_server.review.dto.*;
 import com.mindmate.mindmate_server.review.repository.ReviewRedisRepository;
 import com.mindmate.mindmate_server.review.repository.ReviewRepository;
@@ -55,14 +54,13 @@ public class ReviewServiceImpl implements ReviewService{
         validateChatRoomStatus(chatRoom);
 
         User reviewedUser = getReviewedUser(chatRoom, reviewer);
-        TagType tagType = getTagType(chatRoom, reviewer);
 
         checkValidateReview(chatRoom, reviewer, reviewedUser);
 
         Profile reviewedProfile = getReviewedProfile(reviewedUser);
         Review review = buildAndSaveReview(chatRoom, reviewer, reviewedProfile, request);
 
-        addReviewTags(review, request.getTags(), tagType, reviewedProfile.getId());
+        addReviewTags(review, request.getTags(), reviewedProfile.getId());
         updateProfileMetrics(userId, request.getRating());
         reviewRedisRepository.deleteAllProfileCaches(reviewedProfile.getId());
 
@@ -71,17 +69,13 @@ public class ReviewServiceImpl implements ReviewService{
         return ReviewResponse.from(review);
     }
 
-    private void addReviewTags(Review review, List<String> tags, TagType tagType, Long profileId) {
+    private void addReviewTags(Review review, List<String> tags,  Long profileId) {
         if (tags != null && !tags.isEmpty()) {
             for (String tagContent : tags) {
                 try {
                     Tag tag = Tag.fromContent(tagContent);
 
-                    if (tag.getType() != tagType) {
-                        throw new CustomException(ReviewErrorCode.INVALID_REVIEW_TAGS);
-                    }
                     review.addTag(tag);
-
                     reviewRedisRepository.incrementTagCount(profileId, tagContent);
                 } catch (IllegalArgumentException e) {
                     throw new CustomException(ReviewErrorCode.INVALID_REVIEW_TAGS);
@@ -111,16 +105,6 @@ public class ReviewServiceImpl implements ReviewService{
         if (reviewRepository.existsByChatRoomAndReviewer(chatRoom, reviewer)) {
             throw new CustomException(ReviewErrorCode.REVIEW_ALREADY_EXISTS);
         }
-    }
-
-    private TagType getTagType(ChatRoom chatRoom, User reviewer) {
-
-        if (chatRoom.isSpeaker(reviewer)) {
-            return TagType.LISTENER;
-        } else {
-            return TagType.SPEAKER;
-        }
-
     }
 
     private User getReviewedUser(ChatRoom chatRoom, User reviewer) {
