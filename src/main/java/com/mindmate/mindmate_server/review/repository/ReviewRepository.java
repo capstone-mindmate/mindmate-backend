@@ -29,18 +29,32 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewRep
 
     boolean existsByChatRoomAndReviewer(ChatRoom chatRoom, User reviewer);
 
-    @Query(value = "SELECT r FROM Review r JOIN FETCH r.reviewTags WHERE r.reviewedProfile = :profile ORDER BY r.createdAt DESC",
+    @Query(value = "SELECT r FROM Review r " +
+            "JOIN FETCH r.reviewTags " +
+            "JOIN FETCH r.reviewer rev " +
+            "JOIN FETCH rev.profile p " +
+            "JOIN FETCH p.profileImage " +
+            "WHERE r.reviewedProfile = :profile ORDER BY r.createdAt DESC",
             countQuery = "SELECT COUNT(r) FROM Review r WHERE r.reviewedProfile = :profile")
     Page<Review> findByReviewedProfileOrderByCreatedAtDesc(@Param("profile") Profile profile, Pageable pageable);
 
-    @Query(value = "SELECT r FROM Review r JOIN FETCH r.reviewTags WHERE r.reviewedProfile = :profile ORDER BY r.rating DESC",
+    @Query(value = "SELECT r FROM Review r " +
+            "JOIN FETCH r.reviewTags " +
+            "JOIN FETCH r.reviewer rev " +
+            "JOIN FETCH rev.profile p " +
+            "JOIN FETCH p.profileImage " +
+            "WHERE r.reviewedProfile = :profile ORDER BY r.rating DESC",
             countQuery = "SELECT COUNT(r) FROM Review r WHERE r.reviewedProfile = :profile")
     Page<Review> findByReviewedProfileOrderByRatingDesc(Profile profile, Pageable pageable);
 
-    @Query(value = "SELECT r FROM Review r JOIN FETCH r.reviewTags WHERE r.reviewedProfile = :profile ORDER BY r.rating ASC",
+    @Query(value = "SELECT r FROM Review r " +
+            "JOIN FETCH r.reviewTags " +
+            "JOIN FETCH r.reviewer rev " +
+            "JOIN FETCH rev.profile p " +
+            "JOIN FETCH p.profileImage " +
+            "WHERE r.reviewedProfile = :profile ORDER BY r.rating ASC",
             countQuery = "SELECT COUNT(r) FROM Review r WHERE r.reviewedProfile = :profile")
     Page<Review> findByReviewedProfileOrderByRatingAsc(Profile profile, Pageable pageable);
-
 
     @Query("SELECT COUNT(r) FROM Review r WHERE r.reviewedProfile = :profile")
     long countByReviewedProfile(@Param("profile") Profile profile);
@@ -54,4 +68,13 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewRep
             "JOIN et.review r WHERE r.reviewedProfile.id = :profileId " +
             "GROUP BY et.tagContent")
     List<Object[]> countTagsByProfileId(@Param("profileId") Long profileId);
+
+    @Query("SELECT r FROM Review r " +
+            "JOIN FETCH r.reviewer rev " +
+            "JOIN FETCH rev.profile p " +
+            "JOIN FETCH p.profileImage " +
+            "JOIN FETCH r.reviewTags " +
+            "WHERE r.reviewedProfile = :profile ORDER BY r.createdAt DESC")
+    Page<Review> findRecentReviewsByReviewedProfileWithProfileImage(
+            @Param("profile") Profile profile, Pageable pageable);
 }

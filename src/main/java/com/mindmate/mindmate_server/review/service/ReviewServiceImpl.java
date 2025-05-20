@@ -213,7 +213,7 @@ public class ReviewServiceImpl implements ReviewService{
 
     private List<ReviewListResponse> getRecentReviews(Profile profile) {
 
-        Page<Review> reviewsPage = reviewRepository.findByReviewedProfileOrderByCreatedAtDesc(
+        Page<Review> reviewsPage = reviewRepository.findRecentReviewsByReviewedProfileWithProfileImage(
                 profile,
                 PageRequest.of(0, 5)
         );
@@ -302,5 +302,4 @@ public class ReviewServiceImpl implements ReviewService{
         return reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new CustomException(ReviewErrorCode.REVIEW_NOT_FOUND));
     }
-
 }
