@@ -289,7 +289,6 @@ public class ReviewServiceImpl implements ReviewService{
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void updateProfileMetrics(Long userId, double rating) {
         try {
-            profileService.incrementCounselingCount(userId);
             profileService.updateAvgRating(userId, rating);
         } catch (OptimisticLockingFailureException e) {
             log.warn("프로필 업데이트 중 동시성 이슈 발생", e);
