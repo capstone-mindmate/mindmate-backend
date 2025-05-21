@@ -91,6 +91,7 @@ public class ReviewServiceImpl implements ReviewService{
                 .reviewedProfile(reviewedProfile)
                 .rating(request.getRating())
                 .comment(request.getComment())
+                .anonymous(request.isAnonymous())
                 .build();
 
         return reviewRepository.save(review);

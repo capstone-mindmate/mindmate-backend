@@ -29,13 +29,12 @@ public class ReviewResponse {
     public static ReviewResponse from(Review review) {
         ReviewResponseBuilder response = ReviewResponse.builder()
                 .id(review.getId())
-                .chatRoomId(review.getChatRoom() != null ? review.getChatRoom().getId() : null)
-                .reviewerId(review.getReviewer() != null ? review.getReviewer().getId() : null)
-                .reviewerNickname(review.getReviewer() != null && review.getReviewer().getProfile() != null ?
-                        review.getReviewer().getProfile().getNickname() : "Unknown")
-                .reviewerProfileImage(review.getReviewer() != null && review.getReviewer().getProfile() != null ?
-                        review.getReviewer().getProfile().getProfileImage().getImageUrl() : null)
-                .reviewedProfileId(review.getReviewedProfile() != null ? review.getReviewedProfile().getId() : null)
+                .chatRoomId(review.getChatRoom().getId())
+                .reviewerId(review.getReviewer().getId())
+                .reviewerNickname(review.isAnonymous() ? "익명" : review.getReviewer().getProfile().getNickname())
+                .reviewerProfileImage(review.isAnonymous() ? "/profileImages/default-profile-image.png" :
+                        review.getReviewer().getProfile().getProfileImage().getImageUrl())
+                .reviewedProfileId(review.getReviewedProfile().getId())
                 .rating(review.getRating())
                 .comment(review.getComment())
                 .createdAt(review.getCreatedAt());

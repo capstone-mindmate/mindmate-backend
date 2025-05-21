@@ -26,8 +26,10 @@ public class ReviewListResponse {
     public static ReviewListResponse from(Review review) {
         return ReviewListResponse.builder()
                 .id(review.getId())
-                .reviewerNickname(review.getReviewer().getProfile().getNickname())
-                .reviewerProfileImage(review.getReviewer().getProfile().getProfileImage().getImageUrl())
+                .reviewerNickname(review.isAnonymous() ? "익명" : review.getReviewer().getProfile().getNickname())
+                .reviewerProfileImage(review.isAnonymous() ? "/profileImages/default-profile-image.png" :
+                        review.getReviewer().getProfile().getProfileImage().getImageUrl())
+
                 .rating(review.getRating())
                 .comment(review.getComment())
                 .tags(review.getReviewTags().stream()
