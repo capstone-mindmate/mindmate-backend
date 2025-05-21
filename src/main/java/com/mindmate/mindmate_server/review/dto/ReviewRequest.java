@@ -22,4 +22,5 @@ public class ReviewRequest {
     @Size(max=200)
     private String comment;
     private List<String> tags;
+    private boolean anonymous;
 }
