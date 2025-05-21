@@ -30,15 +30,7 @@ public class ReviewDataService {
         );
 
         return recentReviews.stream()
-                .map(review -> ReviewResponse.builder()
-                        .id(review.getId())
-                        .tags(review.getReviewTags().stream()
-                                .map(tag -> tag.getTagContent().getContent())
-                                .collect(Collectors.toList()))
-                        .rating(review.getRating())
-                        .comment(review.getComment())
-                        .createdAt(review.getCreatedAt())
-                        .build())
+                .map(ReviewResponse::from)
                 .collect(Collectors.toList());
     }
 

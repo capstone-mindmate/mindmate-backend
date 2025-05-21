@@ -91,6 +91,7 @@ public class ReviewServiceImpl implements ReviewService{
                 .reviewedProfile(reviewedProfile)
                 .rating(request.getRating())
                 .comment(request.getComment())
+                .anonymous(request.isAnonymous())
                 .build();
 
         return reviewRepository.save(review);
@@ -213,7 +214,7 @@ public class ReviewServiceImpl implements ReviewService{
 
     private List<ReviewListResponse> getRecentReviews(Profile profile) {
 
-        Page<Review> reviewsPage = reviewRepository.findByReviewedProfileOrderByCreatedAtDesc(
+        Page<Review> reviewsPage = reviewRepository.findRecentReviewsByReviewedProfileWithProfileImage(
                 profile,
                 PageRequest.of(0, 5)
         );
@@ -289,7 +290,6 @@ public class ReviewServiceImpl implements ReviewService{
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void updateProfileMetrics(Long userId, double rating) {
         try {
-            profileService.incrementCounselingCount(userId);
             profileService.updateAvgRating(userId, rating);
         } catch (OptimisticLockingFailureException e) {
             log.warn("프로필 업데이트 중 동시성 이슈 발생", e);
@@ -303,5 +303,4 @@ public class ReviewServiceImpl implements ReviewService{
         return reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new CustomException(ReviewErrorCode.REVIEW_NOT_FOUND));
     }
-
 }

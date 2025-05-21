@@ -47,13 +47,17 @@ public class Review extends BaseTimeEntity {
     @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EvaluationTag> reviewTags = new ArrayList<>();
 
+    @Column(nullable = false)
+    private boolean anonymous;
+
     @Builder
-    public Review(ChatRoom chatRoom, User reviewer, Profile reviewedProfile, int rating, String comment) {
+    public Review(ChatRoom chatRoom, User reviewer, Profile reviewedProfile, int rating, String comment, boolean anonymous) {
         this.chatRoom = chatRoom;
         this.reviewer = reviewer;
         this.reviewedProfile = reviewedProfile;
         this.rating = rating;
         this.comment = comment;
+        this.anonymous = anonymous;
     }
 
     public void addTag(Tag tag) {
