@@ -47,7 +47,7 @@ public class Review extends BaseTimeEntity {
     @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<EvaluationTag> reviewTags = new ArrayList<>();
 
-    @Column(nullable = false)
+    @Column(name = "anonymous", nullable = false, columnDefinition = "TINYINT(1)")
     private boolean anonymous;
 
     @Builder
