@@ -50,6 +50,12 @@ public class ChatRoom extends BaseTimeEntity {
     private InitiatorType closureRequesterRole;
     private LocalDateTime closureRequestAt;
 
+    private boolean deletedByListener = false;
+    private boolean deletedBySpeaker = false;
+
+    private LocalDateTime listenerDeletedAt;
+    private LocalDateTime speakerDeletedAt;
+
     @Builder
     public ChatRoom(Matching matching) {
         this.matching = matching;
@@ -157,4 +163,17 @@ public class ChatRoom extends BaseTimeEntity {
         this.closedAt = LocalDateTime.now();
     }
 
+    public void markDeletedBy(InitiatorType role) {
+        if (role == InitiatorType.LISTENER) {
+            this.deletedByListener = true;
+            this.listenerDeletedAt = LocalDateTime.now();
+        } else if (role == InitiatorType.SPEAKER) {
+            this.deletedBySpeaker = true;
+            this.speakerDeletedAt = LocalDateTime.now();
+        }
+    }
+
+    public boolean isDeletedBy(InitiatorType role) {
+        return role == InitiatorType.LISTENER ? deletedByListener : deletedBySpeaker;
+    }
 }

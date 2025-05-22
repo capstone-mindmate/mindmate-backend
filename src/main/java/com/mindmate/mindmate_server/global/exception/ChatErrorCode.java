@@ -43,7 +43,8 @@ public enum ChatErrorCode implements ErrorCode {
     // 채팅방 종료 관련 오류
     CHAT_ROOM_NOT_REQUESTED_CLOSE(HttpStatus.BAD_REQUEST, "채팅방 종료 요청을 받지 않았습니다" ), 
     CHAT_ROOM_CANNOT_ACCEPT_OWN(HttpStatus.BAD_REQUEST, "자신이 요청한 종료 요청을 처리할 수 없습니다" ),
-    CHAT_ROOM_INVALID_PARAMETERS(HttpStatus.BAD_REQUEST, "잘못된 검색 요청입니다");
+    CHAT_ROOM_INVALID_PARAMETERS(HttpStatus.BAD_REQUEST, "잘못된 검색 요청입니다"),
+    CHAT_ROOM_DELETED(HttpStatus.BAD_REQUEST, "해당 채팅방은 삭제되었습니다." );
 
     private final HttpStatus status;
     private final String message;

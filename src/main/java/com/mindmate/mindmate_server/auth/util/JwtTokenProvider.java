@@ -55,11 +55,13 @@ public class JwtTokenProvider {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpiration);
 
-        String username = switch (user.getCurrentRole()) {
-            case ROLE_UNVERIFIED, ROLE_USER -> user.getEmail();
-            case ROLE_PROFILE, ROLE_SUSPENDED -> user.getProfile().getNickname();
-            case ROLE_ADMIN -> "admin:" + user.getEmail();
-        };
+        String username = user.getEmail();
+
+//        String username = switch (user.getCurrentRole()) {
+//            case ROLE_UNVERIFIED, ROLE_USER -> user.getEmail();
+//            case ROLE_PROFILE, ROLE_SUSPENDED -> user.getProfile().getNickname();
+//            case ROLE_ADMIN -> "admin:" + user.getEmail();
+//        };
 
         return Jwts.builder()
                 .subject(String.valueOf(user.getId()))
@@ -139,5 +141,10 @@ public class JwtTokenProvider {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public String getClaimFromToken(String token, String claimName) {
+        Claims claims = getClaims(token);
+        return claims.get(claimName, String.class);
     }
 }

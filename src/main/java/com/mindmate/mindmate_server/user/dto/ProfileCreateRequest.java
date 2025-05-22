@@ -25,4 +25,7 @@ public class ProfileCreateRequest {
     private Integer entranceTime;
 
     private boolean graduation;
+
+    @AssertTrue(message = "개인 정보 동의를 체크해주세요.")
+    private boolean agreeToTerm;
 }

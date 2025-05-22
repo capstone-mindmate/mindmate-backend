@@ -1,9 +1,10 @@
 package com.mindmate.mindmate_server.global.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindmate.mindmate_server.auth.service.OAuth2UserService;
 import com.mindmate.mindmate_server.auth.service.TokenService;
 import com.mindmate.mindmate_server.auth.util.JwtAuthenticationFilter;
 import com.mindmate.mindmate_server.auth.util.JwtTokenProvider;
+import com.mindmate.mindmate_server.auth.util.OAuth2AuthenticationSuccessHandler;
 import com.mindmate.mindmate_server.global.util.RateLimitFilter;
 import com.mindmate.mindmate_server.global.util.RequestLoggingFilter;
 import com.mindmate.mindmate_server.global.util.XssFilter;
@@ -39,7 +40,8 @@ public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenService tokenService;
     private final UserService userService;
-    private final ObjectMapper objectMapper;
+    private final OAuth2UserService oAuth2UserService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -72,20 +74,24 @@ public class SecurityConfig {
                                 "/magazineImages/**",
                                 "/profileImages/**",
                                 "/ws/**",
-                                "/auth/register",
-                                "/auth/login",
-                                "/auth/email/verify",
-                                "/auth/email/resend",
+                                "/auth/*",
+                                "/auth/oauth2/redirect",
                                 "/swagger-ui/**",
                                 "/swagger-resources/**",
                                 "/v3/api-docs/**",
-                                "/profiles/image/default/register"
+                                "/profiles/image/default/register",
+                                "/oauth2/**"
                         ).permitAll() // 향후 수정 (api 접근, role 별 접근 등)
                         .requestMatchers("/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
                         .requestMatchers("/profile/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
                         .requestMatchers("/chat/**", "/ws/**").hasAnyAuthority("ROLE_PROFILE", "ROLE_ADMIN")
 //        .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN") 나중에 admin 접근 제한 시 사용
                         .anyRequest().authenticated())
+                .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(endpoint -> endpoint.baseUri("/oauth2/authorize"))
+                        .redirectionEndpoint(endpoint -> endpoint.baseUri("/oauth2/callback/google"))
+                        .userInfoEndpoint(endpoint -> endpoint.userService(oAuth2UserService))
+                        .successHandler(oAuth2AuthenticationSuccessHandler))
                 .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class) // 초당 10개 요청 제한
                 .addFilterBefore(new XssFilter(), UsernamePasswordAuthenticationFilter.class) // XSS 공격 방지
                 .addFilterBefore(new RequestLoggingFilter(), UsernamePasswordAuthenticationFilter.class) // 모든 요청 로깅

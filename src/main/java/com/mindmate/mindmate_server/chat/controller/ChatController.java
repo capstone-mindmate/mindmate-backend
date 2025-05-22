@@ -241,4 +241,16 @@ public class ChatController {
         Long totalCount = chatPresenceService.getTotalUnreadCount(userId);
         return ResponseEntity.ok(totalCount);
     }
+
+    @Operation(
+            summary = "채팅방 삭제",
+            description = "해당 채팅방에 대해 삭제 상태로 변경합니다"
+    )
+    @PostMapping("/rooms/{roomId}/delete")
+    public ResponseEntity<Void> deleteChatRoom(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long roomId) {
+        chatRoomService.deleteChatRoomForUser(principal.getUserId(), roomId);
+        return ResponseEntity.ok().build();
+    }
 }
