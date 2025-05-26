@@ -137,7 +137,7 @@ public class ChatServiceImpl implements ChatService {
         return ChatMessageResponse.filteredResponse(
                 chatRoom.getId(),
                 sender.getId(),
-                sender.getProfile().getNickname(),
+                chatRoom.getMatching().isAnonymous() ? "익명" : sender.getProfile().getNickname(),
                 filteredContent,
                 request.getType()
         );

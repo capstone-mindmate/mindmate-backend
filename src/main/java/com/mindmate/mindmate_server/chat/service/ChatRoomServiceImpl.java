@@ -9,6 +9,7 @@ import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.global.exception.ChatErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.service.ResilientEventPublisher;
+import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import com.mindmate.mindmate_server.matching.domain.Matching;
 import com.mindmate.mindmate_server.matching.service.RedisMatchingService;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
@@ -66,6 +67,10 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
         boolean isListener = chatRoom.isListener(user);
 
+        if ((isListener && chatRoom.isDeletedByListener() || (!isListener && chatRoom.isDeletedBySpeaker()))) {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_DELETED);
+        }
+
         Long lastReadMessageId = isListener
                 ? chatRoom.getListenerLastReadMessageId()
                 : chatRoom.getSpeakerLastReadMessageId();
@@ -83,6 +88,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
     @Override
     public List<ChatMessageResponse> getPreviousMessages(Long roomId, Long messageId, Long userId, int size) {
+        validateChatRead(userId, roomId);
         List<ChatMessage> messages = chatMessageService.findPreviousMessages(roomId, messageId, size);
 
         return messages.stream()
@@ -132,6 +138,12 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
         if (!chatRoom.isListener(user) && !chatRoom.isSpeaker(user)) {
             throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+        }
+
+        boolean isListener = chatRoom.isListener(user);
+        if ((isListener && chatRoom.isDeletedByListener()) ||
+                (!isListener && chatRoom.isDeletedBySpeaker())) {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
         }
     }
 
@@ -253,4 +265,30 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         }
     }
 
+    @Override
+    @Transactional
+    public void deleteChatRoomForUser(Long userId, Long roomId) {
+        validateChatRead(userId, roomId);
+
+        User user = userService.findUserById(userId);
+        ChatRoom chatRoom = findChatRoomById(roomId);
+
+        if (!chatRoom.getChatRoomStatus().equals(ChatRoomStatus.CLOSED)) {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_NOT_CLOSED);
+        }
+
+        if (chatRoom.isListener(user)) {
+            chatRoom.markDeletedBy(InitiatorType.LISTENER);
+        } else if (chatRoom.isSpeaker(user)) {
+            chatRoom.markDeletedBy(InitiatorType.SPEAKER);
+        } else {
+            throw new CustomException(ChatErrorCode.CHAT_ROOM_ACCESS_DENIED);
+        }
+
+        // todo: 양쪽 모두 삭제한 경우 따로 처리할 게 있을까?
+        if (chatRoom.isDeletedByListener() && chatRoom.isDeletedBySpeaker()) {
+            chatRoom.updateChatRoomStatus(ChatRoomStatus.DELETED);
+        }
+        save(chatRoom);
+    }
 }

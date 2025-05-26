@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -35,20 +36,9 @@ public class UserServiceImpl implements UserService {
         return userRepository.existsByEmail(email);
     }
 
-//    @Override
-//    public boolean existsByNickname(String nickname) {
-//        return userRepository.existsByNickname(nickname);
-//    }
-
     @Override
-    public void save(User user) {
-        userRepository.save(user);
-    }
-
-    @Override
-    public User findVerificationToken(String token) {
-        return userRepository.findByVerificationToken(token)
-                .orElseThrow(() -> new CustomException(AuthErrorCode.INVALID_TOKEN));
+    public User save(User user) {
+        return userRepository.save(user);
     }
 
     @Override
@@ -60,5 +50,10 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public List<Long> findAllUserIds() {
         return userRepository.findAllUserIds();
+    }
+
+    @Override
+    public Optional<User> findByEmailOptional(String email) {
+        return userRepository.findByEmail(email);
     }
 }
