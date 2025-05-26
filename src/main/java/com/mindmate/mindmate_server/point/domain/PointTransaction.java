@@ -6,7 +6,11 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "point_transactions")
+@Table(name = "point_transactions",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_user_version",
+                        columnNames = {"user_id", "version"})
+        })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PointTransaction extends BaseTimeEntity {
@@ -18,7 +22,7 @@ public class PointTransaction extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Version
+    @Column(nullable = false)
     private Long version;
 
     @Enumerated(EnumType.STRING)
@@ -47,5 +51,13 @@ public class PointTransaction extends BaseTimeEntity {
         this.reasonType = reasonType;
         this.entityId = entityId;
         this.balance = balance;
+    }
+
+    public void incrementVersion(Long baseVersion) {
+        if (baseVersion == null) {
+            this.version = 1L;
+        } else {
+            this.version = baseVersion + 1;
+        }
     }
 }
