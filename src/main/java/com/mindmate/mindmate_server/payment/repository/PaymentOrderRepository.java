@@ -23,4 +23,6 @@ public interface PaymentOrderRepository extends JpaRepository<PaymentOrder, Long
             countQuery = "SELECT COUNT(o) FROM PaymentOrder o WHERE o.user.id = :userId")
     Page<PaymentOrder> findByUserIdWithProductOrderByCreatedAtDesc(
             @Param("userId") Long userId, Pageable pageable);
+
+    Optional<PaymentOrder> findByPaymentKey(String paymentKey);
 }

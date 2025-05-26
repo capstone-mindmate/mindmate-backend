@@ -80,6 +80,18 @@ public class PaymentServiceImpl implements PaymentService{
     @Override
     @Transactional
     public PaymentConfirmResponse confirmPayment(PaymentConfirmRequest request) {
+        Optional<PaymentOrder> processedOrder = paymentOrderRepository.findByPaymentKey(request.getPaymentKey());
+        if (processedOrder.isPresent() && processedOrder.get().getStatus() == PaymentStatus.DONE) {
+            PaymentOrder order = processedOrder.get();
+            return PaymentConfirmResponse.builder()
+                    .orderId(order.getOrderId())
+                    .status("success")
+                    .paymentKey(order.getPaymentKey())
+                    .amount(order.getAmount())
+                    .addedPoints(order.getProduct().getPoints())
+                    .build();
+        }
+
         PaymentOrder order = paymentOrderRepository.findByOrderId(request.getOrderId())
                 .orElseThrow(() -> new CustomException(PaymentErrorCode.ORDER_NOT_FOUND));
 
@@ -88,7 +100,13 @@ public class PaymentServiceImpl implements PaymentService{
         }
 
         if (order.getStatus() == PaymentStatus.DONE) {
-            throw new CustomException(PaymentErrorCode.ALREADY_PROCESSED_ORDER);
+            return PaymentConfirmResponse.builder()
+                    .orderId(order.getOrderId())
+                    .status("success")
+                    .paymentKey(order.getPaymentKey())
+                    .amount(order.getAmount())
+                    .addedPoints(order.getProduct().getPoints())
+                    .build();
         }
 
         HttpHeaders headers = new HttpHeaders();
