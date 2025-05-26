@@ -24,7 +24,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             .build(new CacheLoader<>() {
                 @Override
                 public RateLimiter load(String key) {
-                    return RateLimiter.create(10.0);
+                    return RateLimiter.create(40.0);
                 }
             });
 
