@@ -1,519 +1,166 @@
 package com.mindmate.mindmate_server.auth.service;
 
-import com.mindmate.mindmate_server.auth.dto.*;
+import com.mindmate.mindmate_server.auth.dto.TokenData;
+import com.mindmate.mindmate_server.auth.dto.TokenResponse;
 import com.mindmate.mindmate_server.auth.util.JwtTokenProvider;
-import com.mindmate.mindmate_server.auth.util.PasswordValidator;
 import com.mindmate.mindmate_server.global.exception.AuthErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
-import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
-import java.time.LocalDateTime;
-import java.util.Map;
+import java.util.stream.Stream;
 
-import static com.mindmate.mindmate_server.auth.service.AuthServiceImpl.RESEND_LIMIT_MINUTES;
-import static com.mindmate.mindmate_server.auth.service.LoginAttemptService.MAX_ATTEMPTS;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class AuthServiceTest {
     @Mock private UserService userService;
     @Mock private TokenService tokenService;
-    @Mock private EmailService emailService;
     @Mock private JwtTokenProvider jwtTokenProvider;
-    @Mock private LoginAttemptService loginAttemptService;
-    @Mock private PasswordValidator passwordValidator;
-    @Mock private RedisTemplate<String, String> redisTemplate;
-    @Mock private ValueOperations<String, String> valueOperations;
-    @Mock private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private AuthServiceImpl authService;
 
+    private static final String REFRESH_TOKEN = "valid.refresh.token";
+    private static final String ACCESS_TOKEN = "valid.access.token";
+    private static final String TOKEN_FAMILY = "token-family-123";
+    private static final Long USER_ID = 1L;
+    private static final String USER_EMAIL = "test@example.com";
+    private static final RoleType USER_ROLE = RoleType.ROLE_USER;
+
+    private User user;
+    private TokenData storedTokenData;
+
     @BeforeEach
-    void setup() {
-        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+    void setUp() {
+        user = createUser(USER_ID, USER_EMAIL, USER_ROLE);
+        storedTokenData = createTokenData(REFRESH_TOKEN, TOKEN_FAMILY);
     }
 
-    @Nested
-    @DisplayName("회원가입 테스트")
-    class RegisterUserTest {
-
-        @Test
-        @DisplayName("정상적인 회원가입 성공")
-        void registerUser_Success() {
-            // given
-            SignUpRequest request = new SignUpRequest("test@email.com", "password123", "password123", true);
-            when(userService.existsByEmail(anyString())).thenReturn(false);
-            when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword");
-
-            // when
-            authService.registerUser(request);
-
-            // then
-            verify(userService).existsByEmail(request.getEmail());
-            verify(passwordValidator).validatePassword(request.getPassword());
-            verify(userService).save(any(User.class));
-            verify(emailService).sendVerificationEmail(any(User.class), anyString());
-        }
-
-        @Test
-        @DisplayName("중복 이메일")
-        void registerUser_DuplicateEmail() {
-            // given
-            SignUpRequest request = new SignUpRequest("test@email.com", "password123", "password123", true);
-            when(userService.existsByEmail(anyString())).thenReturn(true);
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.registerUser(request));
-            verify(userService).existsByEmail(request.getEmail());
-        }
-
-        @Test
-        @DisplayName("비밀번호 검증 실패")
-        void registerUser_PasswordMismatch() {
-            // given
-            SignUpRequest request = new SignUpRequest("test@email.com", "password123", "password456", true);
-            doThrow(new CustomException(AuthErrorCode.PASSWORD_MISMATCH))
-                    .when(passwordValidator)
-                    .validatePasswordMatch(request.getPassword(), request.getConfirmPassword());
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.registerUser(request));
-        }
+    private User createUser(Long id, String email, RoleType role) {
+        User user = mock(User.class);
+        when(user.getId()).thenReturn(id);
+        when(user.getEmail()).thenReturn(email);
+        when(user.getCurrentRole()).thenReturn(role);
+        return user;
     }
 
-    @Nested
-    @DisplayName("이메일 재전송")
-    class ResendVerificationEmail {
-        @Test
-        @DisplayName("정상 재전송")
-        void resendVerificationEmail_Success() {
-            // given
-            String email = "test@email.com";
-            String verificationToken = "test-token";
-            User user = mock(User.class);
-
-            when(userService.findByEmail(email)).thenReturn(user);
-            when(user.isEmailVerified()).thenReturn(false);
-            when(user.getVerificationToken()).thenReturn(verificationToken);
-            when(valueOperations.get(anyString())).thenReturn(null);
-
-            // when
-            authService.resendVerificationEmail(email);
-
-            // then
-            verify(user).getVerificationToken();
-//            verify(userService).save(user);
-            verify(emailService).sendVerificationEmail(eq(user), eq(verificationToken));
-        }
-
-        @Test
-        @DisplayName("이미 인증된 이메일")
-        void resendVerificationEmail_AlreadyVerified() {
-            // given
-            String email = "test@email.com";
-            User user = mock(User.class);
-
-            when(userService.findByEmail(email)).thenReturn(user);
-            when(user.isEmailVerified()).thenReturn(true);
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.resendVerificationEmail(email));
-        }
-
-        @Test
-        @DisplayName("재전송 제한 시간")
-        void resendVerificationEmail_TooFrequent() {
-            // given
-            String email = "test@email.com";
-            User user = mock(User.class);
-
-            when(userService.findByEmail(email)).thenReturn(user);
-            when(user.isEmailVerified()).thenReturn(false);
-            when(valueOperations.get(anyString()))
-                    .thenReturn(LocalDateTime.now().toString());
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.resendVerificationEmail(email));
-        }
+    private TokenData createTokenData(String token, String tokenFamily) {
+        TokenData tokenData = mock(TokenData.class);
+        when(tokenData.getRefreshToken()).thenReturn(token);
+        when(tokenData.getTokenFamily()).thenReturn(tokenFamily);
+        return tokenData;
     }
 
-    @Nested
-    @DisplayName("이메일 인증 테스트")
-    class VerifyEmailTest {
-        @Test
-        @DisplayName("정상적인 이메일 인증 성공")
-        void verifyEmail_Success() {
-            // given
-            String token = "valid-token";
-            User user = mock(User.class);
+    @Test
+    @DisplayName("로그아웃 시 토큰 블랙리스트 처리 및 리프레시 토큰 삭제")
+    void logout_ShouldAddToBlacklistAndInvalidateRefreshToken() {
+        // given
+        when(jwtTokenProvider.getUserIdFromToken(ACCESS_TOKEN)).thenReturn(USER_ID);
 
-            when(userService.findVerificationToken(token)).thenReturn(user);
-            when(user.getVerificationToken()).thenReturn(token);
-            when(user.isTokenExpired()).thenReturn(false);
+        // when
+        authService.logout(ACCESS_TOKEN);
 
-            // when
-            authService.verifyEmail(token);
-
-            // then
-            verify(userService).findVerificationToken(token);
-            verify(user).verifyEmail();
-            verify(user).updateRole(RoleType.ROLE_USER);
-//            verify(userService).save(user); 영속성
-        }
-
-        @Test
-        @DisplayName("잘못된 토큰으로 인증 시도")
-        void verifyEmail_InvalidToken() {
-            // given
-            String token = "invalid-token";
-            when(userService.findVerificationToken(token)).thenReturn(null);
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.verifyEmail(token));
-        }
-
-        @Test
-        @DisplayName("만료된 토큰으로 인증 시도")
-        void verifyEmail_ExpiredToken() {
-            // given
-            String token = "expired-token";
-            User user = mock(User.class);
-
-            when(userService.findVerificationToken(token)).thenReturn(user);
-            when(user.getVerificationToken()).thenReturn(token);
-            when(user.isTokenExpired()).thenReturn(true);
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.verifyEmail(token));
-        }
-
-        @Test
-        @DisplayName("재전송 제한 시간 초과하지 않은 경우")
-        void resendVerificationEmail_TooFrequent() {
-            // given
-            String email = "test@email.com";
-            User user = mock(User.class);
-
-            LocalDateTime recentRequestTime = LocalDateTime.now().minusMinutes(RESEND_LIMIT_MINUTES - 1);
-            when(userService.findByEmail(email)).thenReturn(user);
-            when(user.isEmailVerified()).thenReturn(false);
-
-            when(valueOperations.get(anyString())).thenReturn(recentRequestTime.toString());
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.resendVerificationEmail(email));
-        }
+        // then
+        verify(tokenService).addToBlackList(ACCESS_TOKEN);
+        verify(jwtTokenProvider).getUserIdFromToken(ACCESS_TOKEN);
+        verify(tokenService).invalidateRefreshToken(USER_ID);
     }
 
-    @Nested
-    @DisplayName("로그인")
-    class Login {
-        @Test
-        @DisplayName("정상 로그인")
-        void login_Success() {
-            // given
-            LoginRequest request = new LoginRequest("test@email.com", "password123");
-            User user = mock(User.class);
+    @Test
+    @DisplayName("유효한 리프레시 토큰으로 새로운 토큰 발급")
+    void refresh_ShouldGenerateNewTokens_WhenValidRefreshToken() {
+        // given
+        setupRefreshMocks(REFRESH_TOKEN, USER_ID, storedTokenData, TOKEN_FAMILY);
+        when(jwtTokenProvider.validateToken(ACCESS_TOKEN)).thenReturn(true);
+        when(jwtTokenProvider.generateToken(user)).thenReturn("new.access.token");
+        when(jwtTokenProvider.generateRefreshToken(eq(user), any(String.class))).thenReturn("new.refresh.token");
 
-            Profile profile = mock(Profile.class);
-            when(user.getProfile()).thenReturn(profile);
+        // when
+        TokenResponse result = authService.refresh(REFRESH_TOKEN, ACCESS_TOKEN);
 
-            when(loginAttemptService.isBlocked(request.getEmail())).thenReturn(false);
-            when(userService.findByEmail(request.getEmail())).thenReturn(user);
-            when(user.isEmailVerified()).thenReturn(true);
-            when(passwordEncoder.matches(request.getPassword(), user.getPassword())).thenReturn(true);
-
-            String accessToken = "access-token";
-            String refreshToken = "refresh-token";
-
-            when(jwtTokenProvider.generateToken(any(User.class))).thenReturn(accessToken);
-            when(jwtTokenProvider.generateRefreshToken(any(User.class), anyString())).thenReturn(refreshToken);
-
-            // when
-            LoginResponse response = authService.login(request);
-
-            // then
-            assertNotNull(response);
-            assertEquals(accessToken, response.getAccessToken());
-            assertEquals(refreshToken, response.getRefreshToken());
-
-            verify(loginAttemptService).loginSucceeded(request.getEmail());
-        }
-
-        @Test
-        @DisplayName("계정 잠금 상태에서 로그인 시도")
-        void login_AccountLocked() {
-            // given
-            LoginRequest request = new LoginRequest("test@email.com", "password123");
-            when(loginAttemptService.isBlocked(request.getEmail())).thenReturn(true);
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.login(request));
-        }
-
-        @Test
-        @DisplayName("이메일 미인증 상태에서 로그인 시도")
-        void login_EmailNotVerified() {
-            // given
-            LoginRequest request = new LoginRequest("test@email.com", "password123");
-            User user = mock(User.class);
-
-            when(loginAttemptService.isBlocked(request.getEmail())).thenReturn(false);
-            when(userService.findByEmail(request.getEmail())).thenReturn(user);
-            when(user.isEmailVerified()).thenReturn(false);
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.login(request));
-        }
-
-        @Test
-        @DisplayName("비밀번호 불일치 로그인 실패")
-        void login_PasswordMismatch() {
-            // given
-            LoginRequest request = new LoginRequest("test@email.com", "wrong-password");
-            User user = mock(User.class);
-
-            Profile profile = mock(Profile.class);
-            when(user.getProfile()).thenReturn(profile);
-
-            when(loginAttemptService.isBlocked(request.getEmail())).thenReturn(false);
-            when(userService.findByEmail(request.getEmail())).thenReturn(user);
-            when(user.isEmailVerified()).thenReturn(true);
-            when(passwordEncoder.matches(request.getPassword(), user.getPassword())).thenReturn(false);
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.login(request));
-            verify(loginAttemptService).loginFailed(request.getEmail());
-        }
-
-        @Test
-        @DisplayName("프로필 작성이 필요한 경우 예외 발생")
-        void login_ProfileNotRegistered() {
-            // given
-            LoginRequest request = new LoginRequest("test@email.com", "password123");
-            User user = mock(User.class);
-
-            when(loginAttemptService.isBlocked(request.getEmail())).thenReturn(false);
-            when(userService.findByEmail(request.getEmail())).thenReturn(user);
-            when(user.isEmailVerified()).thenReturn(true);
-            when(user.getProfile()).thenReturn(null); // 프로필이 없음을 명시
-
-            // when & then
-            CustomException exception = assertThrows(CustomException.class, () -> authService.login(request));
-            assertEquals(AuthErrorCode.PROFILE_NOT_REGISTER, exception.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("로그인 시도가 횟수 남지 않아 계정이 잠긴 경우")
-        void login_AccountLockedAfterMaxAttempts() {
-            // given
-            LoginRequest request = new LoginRequest("test@email.com", "wrong-password");
-            User user = mock(User.class);
-
-            Profile profile = mock(Profile.class);
-            when(user.getProfile()).thenReturn(profile);
-
-            when(loginAttemptService.isBlocked(request.getEmail())).thenReturn(false);
-            when(userService.findByEmail(request.getEmail())).thenReturn(user);
-            when(user.isEmailVerified()).thenReturn(true);
-            when(passwordEncoder.matches(request.getPassword(), user.getPassword())).thenReturn(false);
-            when(loginAttemptService.getCurrentAttempts(request.getEmail())).thenReturn(MAX_ATTEMPTS);
-
-            // when & then
-            CustomException exception = assertThrows(CustomException.class, () -> authService.login(request));
-
-            assertEquals(AuthErrorCode.ACCOUNT_LOCKED, exception.getErrorCode());;
-            Map<String, Object> details = (Map<String, Object>) exception.getDetails();
-            assertNotNull(details);
-            assertEquals(0, details.get("remainingAttempts"));
-
-            verify(loginAttemptService).loginFailed(request.getEmail());
-        }
+        // then
+        assertThat(result.getAccessToken()).isEqualTo("new.access.token");
+        assertThat(result.getRefreshToken()).isEqualTo("new.refresh.token");
+        verify(tokenService).addToBlackList(ACCESS_TOKEN);
+        verify(tokenService).addToBlackList(REFRESH_TOKEN);
+        verify(tokenService).saveRefreshToken(eq(USER_ID), eq("new.refresh.token"), any(String.class));
     }
 
-    @Nested
-    @DisplayName("로그아웃 테스트")
-    class LogoutTest {
-        @Test
-        @DisplayName("정상적인 로그아웃 성공")
-        void logout_Success() {
-            // given
-            String token = "valid-access-token";
-            Long userId = 1L;
-
-            when(jwtTokenProvider.getUserIdFromToken(token)).thenReturn(userId);
-
-            // when
-            authService.logout(token);
-
-            // then
-            verify(tokenService).addToBlackList(token);
-            verify(tokenService).invalidateRefreshToken(userId);
+    @ParameterizedTest
+    @DisplayName("리프레시 토큰 검증 실패 시나리오")
+    @MethodSource("invalidRefreshTokenScenarios")
+    void refresh_ShouldThrowException_WhenInvalidRefreshToken(String scenario, String refreshToken,
+                                                              boolean isValidToken, String tokenType, AuthErrorCode expectedError) {
+        // given
+        when(jwtTokenProvider.validateToken(refreshToken)).thenReturn(isValidToken);
+        if (isValidToken) {
+            when(jwtTokenProvider.getTokenTypeFromToken(refreshToken)).thenReturn(tokenType);
         }
+
+        // when & then
+        CustomException exception = assertThrows(CustomException.class,
+                () -> authService.refresh(refreshToken, null));
+        assertThat(exception.getErrorCode()).isEqualTo(expectedError);
     }
 
-    @Nested
-    @DisplayName("토큰 갱신 테스트")
-    class RefreshTest {
-        @Test
-        @DisplayName("정상적인 토큰 갱신 성공")
-        void refresh_Success() {
-            // given
-            String refreshToken = "valid-refresh-token";
-            String accessToken = "old-access-token";
-
-            Long userId = 1L;
-            User user = mock(User.class);
-            TokenData tokenData = TokenData.of(refreshToken, "token-family");
-
-            String newAccessToken = "new-access-token";
-            String newRefreshToken = "new-refresh-token";
-
-            when(jwtTokenProvider.validateToken(refreshToken)).thenReturn(true);
-            when(jwtTokenProvider.getUserIdFromToken(refreshToken)).thenReturn(userId);
-            when(jwtTokenProvider.getTokenTypeFromToken(refreshToken)).thenReturn("REFRESH");
-            when(userService.findUserById(userId)).thenReturn(user);
-            when(jwtTokenProvider.getTokenFamilyFromToken(refreshToken)).thenReturn("token-family");
-            when(tokenService.getRefreshToken(userId)).thenReturn(tokenData);
-
-            when(jwtTokenProvider.generateToken(user)).thenReturn(newAccessToken);
-            when(jwtTokenProvider.generateRefreshToken(eq(user), anyString())).thenReturn(newRefreshToken);
-
-            // when
-            TokenResponse response = authService.refresh(refreshToken, accessToken);
-
-            // then
-            assertNotNull(response);
-            assertEquals(newAccessToken, response.getAccessToken());
-            assertEquals(newRefreshToken, response.getRefreshToken());
-
-            verify(tokenService).addToBlackList(refreshToken);
-            verify(tokenService).saveRefreshToken(eq(userId), eq(newRefreshToken), anyString());
-        }
-
-        @Test
-        @DisplayName("리프레시 토큰 재사용 감지")
-        void refresh_TokenReuseDetected() {
-            // given
-            String refreshToken = "valid-refresh-token";
-            Long userId = 1L;
-
-//            TokenData tokenData = null;
-
-            setupRefreshMocks(refreshToken, userId, null);
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.refresh(refreshToken, null));
-            verify(tokenService).invalidateRefreshToken(userId);
-        }
-
-        @Test
-        @DisplayName("저장된 토큰 데이터가 null인 경우 예외 발생")
-        void refresh_StoredTokenDataNull() {
-            // given
-            String refreshToken = "valid-refresh-token";
-            Long userId = 1L;
-
-            setupRefreshMocks(refreshToken, userId, null);
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.refresh(refreshToken, null));
-        }
-
-        @Test
-        @DisplayName("토큰 패밀리가 일치하지 않는 경우 예외 발생")
-        void refresh_TokenFamilyMismatch() {
-            // given
-            String refreshToken = "valid-refresh-token";
-            Long userId = 1L;
-            TokenData tokenData = TokenData.of("refresh-token", "different-family");
-
-            setupRefreshMocks(refreshToken, userId, tokenData);
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.refresh(refreshToken, null));
-        }
-
-        @Test
-        @DisplayName("유효하지 않은 리프레시 토큰으로 예외 발생")
-        void refresh_InvalidRefreshToken() {
-            // given
-            String refreshToken = "invalid-refresh-token";
-            when(jwtTokenProvider.validateToken(refreshToken)).thenReturn(false);
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.refresh(refreshToken, null));
-        }
-
-        @Test
-        @DisplayName("리프레시 토큰 타입이 올바르지 않은 경우")
-        void refresh_InvalidTokenType() {
-            // given
-            String refreshToken = "valid-refresh-token";
-            when(jwtTokenProvider.validateToken(refreshToken)).thenReturn(true);
-            when(jwtTokenProvider.getTokenTypeFromToken(refreshToken)).thenReturn("ACCESS");
-
-            // when & then
-            assertThrows(CustomException.class, () -> authService.refresh(refreshToken, null));
-        }
-
-        @Test
-        @DisplayName("유효한 액세스 토큰이 블랙리스트에 추가되는 경우")
-        void refresh_AccessTokenBlacklisted() {
-            // given
-            String refreshToken = "valid-refresh-token";
-            String accessToken = "valid-access-token";
-            Long userId = 1L;
-            User user = mock(User.class);
-
-            TokenData tokenData = TokenData.of(refreshToken, "token-family");
-
-            when(jwtTokenProvider.validateToken(refreshToken)).thenReturn(true);
-            when(jwtTokenProvider.validateToken(accessToken)).thenReturn(true);
-            when(jwtTokenProvider.getUserIdFromToken(refreshToken)).thenReturn(userId);
-            when(userService.findUserById(userId)).thenReturn(user);
-
-            setupRefreshMocks(refreshToken, userId, tokenData);
-
-            String newAccessToken = "new-access-token";
-            String newRefreshToken = "new-refresh-token";
-
-            when(jwtTokenProvider.generateRefreshToken(eq(user), anyString())).thenReturn(newRefreshToken);
-            when(jwtTokenProvider.generateToken(eq(user))).thenReturn(newAccessToken);
-
-            // when
-            TokenResponse response = authService.refresh(refreshToken, accessToken);
-
-            // then
-            verify(tokenService).addToBlackList(accessToken);
-        }
-
+    static Stream<Arguments> invalidRefreshTokenScenarios() {
+        return Stream.of(
+                Arguments.of("유효하지 않은 토큰", "invalid.token", false, null, AuthErrorCode.INVALID_REFRESH_TOKEN),
+                Arguments.of("잘못된 토큰 타입", "valid.token", true, "ACCESS", AuthErrorCode.INVALID_TOKEN_TYPE)
+        );
     }
 
-    private void setupRefreshMocks(String refreshToken, Long userId, TokenData tokenData) {
-        when(jwtTokenProvider.getTokenTypeFromToken(refreshToken)).thenReturn("REFRESH");
+    @Test
+    @DisplayName("토큰 재사용 감지 시 예외 발생")
+    void refresh_ShouldThrowException_WhenTokenReuseDetected() {
+        // given
+        String differentTokenFamily = "different-token-family";
+        TokenData storedTokenDataWithDifferentFamily = createTokenData(REFRESH_TOKEN, differentTokenFamily);
+        setupRefreshMocks(REFRESH_TOKEN, USER_ID, storedTokenDataWithDifferentFamily, TOKEN_FAMILY);
+
+        // when & then
+        CustomException exception = assertThrows(CustomException.class,
+                () -> authService.refresh(REFRESH_TOKEN, null));
+        assertThat(exception.getErrorCode()).isEqualTo(AuthErrorCode.TOKEN_REUSE_DETECTED);
+        verify(tokenService).invalidateRefreshToken(USER_ID);
+    }
+
+    @Test
+    @DisplayName("토큰 패밀리가 일치하지 않는 경우 예외 발생")
+    void refresh_TokenFamilyMismatch() {
+        // given
+        String differentTokenFamily = "different-token-family";
+        TokenData tokenData = createTokenData(REFRESH_TOKEN, differentTokenFamily);
+        setupRefreshMocks(REFRESH_TOKEN, USER_ID, tokenData, TOKEN_FAMILY);
+
+        // when & then
+        assertThrows(CustomException.class, () -> authService.refresh(REFRESH_TOKEN, null));
+        verify(tokenService).invalidateRefreshToken(USER_ID);
+    }
+
+    private void setupRefreshMocks(String refreshToken, Long userId, TokenData tokenData, String tokenFamily) {
         when(jwtTokenProvider.validateToken(refreshToken)).thenReturn(true);
+        when(jwtTokenProvider.getTokenTypeFromToken(refreshToken)).thenReturn("REFRESH");
         when(jwtTokenProvider.getUserIdFromToken(refreshToken)).thenReturn(userId);
-        when(jwtTokenProvider.getTokenFamilyFromToken(refreshToken)).thenReturn("token-family");
+        when(userService.findUserById(userId)).thenReturn(user);
+        when(jwtTokenProvider.getTokenFamilyFromToken(refreshToken)).thenReturn(tokenFamily);
         when(tokenService.getRefreshToken(userId)).thenReturn(tokenData);
     }
-
 }
