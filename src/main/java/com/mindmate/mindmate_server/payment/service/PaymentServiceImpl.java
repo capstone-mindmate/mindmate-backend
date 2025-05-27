@@ -80,19 +80,7 @@ public class PaymentServiceImpl implements PaymentService{
     @Override
     @Transactional
     public PaymentConfirmResponse confirmPayment(PaymentConfirmRequest request) {
-        Optional<PaymentOrder> processedOrder = paymentOrderRepository.findByPaymentKey(request.getPaymentKey());
-        if (processedOrder.isPresent() && processedOrder.get().getStatus() == PaymentStatus.DONE) {
-            PaymentOrder order = processedOrder.get();
-            return PaymentConfirmResponse.builder()
-                    .orderId(order.getOrderId())
-                    .status("success")
-                    .paymentKey(order.getPaymentKey())
-                    .amount(order.getAmount())
-                    .addedPoints(order.getProduct().getPoints())
-                    .build();
-        }
-
-        PaymentOrder order = paymentOrderRepository.findByOrderId(request.getOrderId())
+        PaymentOrder order = paymentOrderRepository.findByOrderIdWithLock(request.getOrderId())
                 .orElseThrow(() -> new CustomException(PaymentErrorCode.ORDER_NOT_FOUND));
 
         if (!order.getAmount().equals(request.getAmount())) {
@@ -187,7 +175,7 @@ public class PaymentServiceImpl implements PaymentService{
 
         String receiptUrl = null;
         if (order.getStatus() == PaymentStatus.DONE && order.getPaymentKey() != null) {
-            receiptUrl = "https://docs.tosspayments.com/창구매영수증?paymentKey=" + order.getPaymentKey();
+            receiptUrl = "https://dashboard.tosspayments.com/receipt/" + order.getPaymentKey();
         }
 
         return PaymentDetailResponse.from(order, receiptUrl);
