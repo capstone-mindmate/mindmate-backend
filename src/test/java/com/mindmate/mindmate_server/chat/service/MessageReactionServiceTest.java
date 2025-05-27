@@ -158,8 +158,6 @@ class MessageReactionServiceTest {
         assertEquals(messageId, result.get(0).getMessageId());
         assertEquals(userId, result.get(0).getUserId());
         assertEquals(ReactionType.LIKE, result.get(0).getReactionType());
-
-
     }
 
 }
