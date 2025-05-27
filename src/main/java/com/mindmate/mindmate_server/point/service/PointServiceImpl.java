@@ -3,7 +3,6 @@ package com.mindmate.mindmate_server.point.service;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.PointErrorCode;
 import com.mindmate.mindmate_server.global.exception.UserErrorCode;
-import com.mindmate.mindmate_server.point.domain.PointReasonType;
 import com.mindmate.mindmate_server.point.domain.PointTransaction;
 import com.mindmate.mindmate_server.point.domain.TransactionType;
 import com.mindmate.mindmate_server.point.dto.*;
@@ -136,6 +135,10 @@ public class PointServiceImpl implements PointService {
         int newBalance = (type == TransactionType.EARN)
                 ? currentBalance + request.getAmount()
                 : currentBalance - request.getAmount();
+
+        if (type == TransactionType.SPEND && newBalance < 0) {
+            throw new CustomException(PointErrorCode.INSUFFICIENT_POINTS);
+        }
 
         PointTransaction newTransaction = PointTransaction.builder()
                 .user(user)
