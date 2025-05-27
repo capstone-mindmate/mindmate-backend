@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -28,6 +29,9 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final JwtTokenProvider tokenProvider;
     private final TokenService tokenService;
     private final UserService userService;
+
+    @Value("${app.oauth2.redirect.uri}")
+    private String frontendRedirectUri;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
@@ -87,9 +91,10 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
             tokenService.saveRefreshToken(user.getId(), refreshToken, tokenFamily);
 
-            String targetUrl = UriComponentsBuilder.fromUriString("/auth/oauth2/redirect")
+            String targetUrl = UriComponentsBuilder.fromUriString(frontendRedirectUri)
                     .queryParam("token", accessToken)
                     .queryParam("refreshToken", refreshToken)
+                    .queryParam("email", user.getEmail())
                     .build().toUriString();
             return targetUrl;
         } catch (Exception e) {

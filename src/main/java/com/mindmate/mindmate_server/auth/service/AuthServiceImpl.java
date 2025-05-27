@@ -21,8 +21,6 @@ public class AuthServiceImpl implements AuthService {
     private final TokenService tokenService;
     private final JwtTokenProvider jwtTokenProvider;
 
-    public static final long RESEND_LIMIT_MINUTES = 5;
-
     /**
      * 로그아웃
      * 액세스 토큰 블랙리스트 처리
