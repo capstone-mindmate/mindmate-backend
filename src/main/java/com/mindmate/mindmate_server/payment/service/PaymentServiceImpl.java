@@ -108,38 +108,39 @@ public class PaymentServiceImpl implements PaymentService{
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
+        ResponseEntity<Map> response;
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(
+            response = restTemplate.exchange(
                     tossPaymentsConfig.getConfirmUrl(),
                     HttpMethod.POST,
                     entity,
                     Map.class
             );
-
-            order.completePayment(request.getPaymentKey());
-            paymentOrderRepository.save(order);
-
-            PointRequest pointRequest = PointRequest.builder()
-                    .transactionType(TransactionType.EARN)
-                    .amount(order.getProduct().getPoints())
-                    .reasonType(PointReasonType.PURCHASE)
-                    .entityId(order.getId())
-                    .build();
-
-            pointService.addPoints(order.getUser().getId(), pointRequest);
-
-            return PaymentConfirmResponse.builder()
-                    .orderId(order.getOrderId())
-                    .status("success")
-                    .paymentKey(order.getPaymentKey())
-                    .amount(order.getAmount())
-                    .addedPoints(order.getProduct().getPoints())
-                    .build();
         } catch (Exception e) {
             order.failPayment();
             paymentOrderRepository.save(order);
             throw new CustomException(PaymentErrorCode.FAILED_CONFIRM_PAYMENT);
         }
+
+        order.completePayment(request.getPaymentKey());
+        paymentOrderRepository.save(order);
+
+        PointRequest pointRequest = PointRequest.builder()
+                .transactionType(TransactionType.EARN)
+                .amount(order.getProduct().getPoints())
+                .reasonType(PointReasonType.PURCHASE)
+                .entityId(order.getId())
+                .build();
+
+        pointService.addPoints(order.getUser().getId(), pointRequest);
+
+        return PaymentConfirmResponse.builder()
+                .orderId(order.getOrderId())
+                .status("success")
+                .paymentKey(order.getPaymentKey())
+                .amount(order.getAmount())
+                .addedPoints(order.getProduct().getPoints())
+                .build();
     }
 
     @Override
