@@ -40,6 +40,10 @@ public class Profile extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean graduation;
 
+    @Column(nullable = false)
+    private boolean agreedToTerms = false;
+
+
     private int counselingCount = 0;
     private int avgResponseTime = 0;
     private int totalResponseTime = 0;
@@ -50,13 +54,14 @@ public class Profile extends BaseTimeEntity {
     private Long version;
 
     @Builder
-    public Profile(User user, String nickname, String department, Integer entranceTime, boolean graduation, ProfileImage profileImage) {
+    public Profile(User user, String nickname, String department, Integer entranceTime, boolean graduation, ProfileImage profileImage, boolean agreedToTerms) {
         this.user = user;
         this.profileImage = profileImage;
         this.nickname = nickname;
         this.department = department;
         this.entranceTime = entranceTime;
         this.graduation = graduation;
+        this.agreedToTerms = agreedToTerms;
     }
 
     public void updateProfileImage(ProfileImage profileImage) {this.profileImage = profileImage;}

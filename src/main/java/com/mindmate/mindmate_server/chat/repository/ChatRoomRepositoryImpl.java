@@ -9,6 +9,7 @@ import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import com.mindmate.mindmate_server.matching.domain.QMatching;
 import com.mindmate.mindmate_server.user.domain.QProfile;
+import com.mindmate.mindmate_server.user.domain.QProfileImage;
 import com.mindmate.mindmate_server.user.domain.QUser;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.Expression;
@@ -19,6 +20,7 @@ import com.querydsl.jpa.JPQLQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +31,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
+    @Value("${profile.dir}")
+    private String profileImageDir;
+
+    @Value("${profile.url.prefix}")
+    private String profileImageUrlPrefix;
+
+    @Value("${profile.default.filename}")
+    private String defaultProfileImageFilename;
+
     private final JPAQueryFactory queryFactory;
 
     // todo: admin용 채팅방 목록 조회는 없음 -> 지금 자신의 채팅방 목록 확인만 존재
@@ -60,6 +71,8 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
         QChatMessage lastMessage = new QChatMessage("lastMessage");
         QProfile creatorProfile = new QProfile("creatorProfile");
         QProfile acceptedUserProfile = new QProfile("acceptedUserProfile");
+        QProfileImage creatorProfileImage = new QProfileImage("creatorProfileImage");
+        QProfileImage acceptedUserProfileImage = new QProfileImage("acceptedUserProfileImage");
 
         // 각 채팅방의 마지막 메시지 ID 조회
         JPQLQuery<Long> subQuery = JPAExpressions
@@ -67,9 +80,11 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                 .from(lastMessage)
                 .where(lastMessage.chatRoom.eq(chatRoom));
 
-        // 기본 조건: 사용자가 참여한 채팅방
-        BooleanExpression baseCondition = matching.creator.id.eq(userId)
-                .or(matching.acceptedUser.id.eq(userId));
+        // 기본 조건: 사용자가 참여한 채팅방 + 삭제 여부 확인
+        BooleanExpression baseCondition = (matching.creator.id.eq(userId)
+                .and(chatRoom.deletedByListener.eq(false).or(chatRoom.deletedBySpeaker.eq(false).and(matching.creatorRole.eq(InitiatorType.SPEAKER)))))
+                .or(matching.acceptedUser.id.eq(userId)
+                        .and(chatRoom.deletedBySpeaker.eq(false).or(chatRoom.deletedByListener.eq(false).and(matching.creatorRole.eq(InitiatorType.LISTENER)))));
 
         // 추가 조건 적용
         if (roleCondition != null) {
@@ -81,16 +96,19 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
         }
 
         List<Tuple> results = queryFactory
-                .select(createSelectProjection(chatRoom, matching, lastMessage, userId))
+                .select(createSelectProjection(chatRoom, matching, lastMessage, userId,
+                        creatorProfileImage, acceptedUserProfileImage))
                 .from(chatRoom)
                 .join(chatRoom.matching, matching)
                 .join(matching.creator, creator)
                 .join(creator.profile, creatorProfile)
+                .leftJoin(creatorProfile.profileImage, creatorProfileImage)
                 .leftJoin(matching.acceptedUser, acceptedUser)
                 .leftJoin(acceptedUser.profile, acceptedUserProfile)
+                .leftJoin(acceptedUserProfile.profileImage, acceptedUserProfileImage)
                 .leftJoin(lastMessage).on(lastMessage.id.eq(subQuery))
                 .where(baseCondition)
-                .orderBy(chatRoom.lastMessageTime.desc())
+                .orderBy(chatRoom.lastMessageTime.desc().nullsLast())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -108,12 +126,17 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
         return new PageImpl<>(content, pageable, total);
     }
 
+
     private Expression<?>[] createSelectProjection(QChatRoom chatRoom, QMatching matching,
-                                                   QChatMessage lastMessage, Long userId) {
+                                                   QChatMessage lastMessage, Long userId,
+                                                   QProfileImage creatorProfileImage,
+                                                   QProfileImage acceptedUserProfileImage) {
         QProfile creatorProfile = new QProfile("creatorProfile");
         QProfile acceptedUserProfile = new QProfile("acceptedUserProfile");
         QUser creator = new QUser("creator");
         QUser acceptedUser = new QUser("acceptedUser");
+
+        String imageUrl = profileImageUrlPrefix + defaultProfileImageFilename;
 
         return new Expression<?>[]{
                 chatRoom.id,
@@ -126,16 +149,21 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                 matching.title.as("matchingTitle"),
                 // 상대방 이름
                 new CaseBuilder()
-                        .when(matching.creator.id.eq(userId))
+                        .when(matching.creator.id.eq(userId).and(matching.acceptedUser.isNotNull()))
                         .then(acceptedUserProfile.nickname)
+                        .when(matching.creator.id.eq(userId).and(matching.acceptedUser.isNull()))
+                        .then("대기 중")
                         .otherwise(creatorProfile.nickname).as("oppositeName"),
                 // 상대방 이미지
                 new CaseBuilder()
-                        .when(matching.creator.id.eq(userId))
-                        .then(acceptedUserProfile.profileImage.imageUrl)
-                        .otherwise(creatorProfile.profileImage.imageUrl).as("oppositeImage"),
+                        .when(matching.creator.id.eq(userId).and(matching.acceptedUser.isNotNull()))
+                        .then(acceptedUserProfileImage.imageUrl)
+                        .when(matching.creator.id.eq(userId).and(matching.acceptedUser.isNull()))
+                        .then(imageUrl)
+                        .otherwise(creatorProfileImage.imageUrl).as("oppositeImage"),
+                // 상대방 ID - 타입 모호성 해결
                 new CaseBuilder()
-                        .when(matching.creator.id.eq(userId))
+                        .when(matching.creator.id.eq(userId).and(matching.acceptedUser.isNotNull()))
                         .then(acceptedUser.id)
                         .otherwise(creator.id).as("oppositeId"),
                 // 안읽은 메시지 수
@@ -156,6 +184,8 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
         };
     }
 
+
+
     private BooleanExpression createRoleCondition(Long userId, String roleType) {
         QMatching matching = QMatching.matching;
 
@@ -171,17 +201,17 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
     private List<ChatRoomResponse> convertToDto(List<Tuple> results, QChatRoom chatRoom, QChatMessage lastMessage) {
         return results.stream()
                 .map(tuple -> {
-                    String lastMessageContent;
+                    String lastMessageContent = "새 채팅방이 생성되었습니다";
                     MessageType lastMessageType = tuple.get(lastMessage.type);
 
-                    if (lastMessageType == MessageType.TEXT) {
-                        lastMessageContent = "새 메시지가 있습니다";
-                    } else if (lastMessageType == MessageType.CUSTOM_FORM) {
-                        lastMessageContent = "커스텀 폼이 도착했습니다";
-                    } else if (lastMessageType == MessageType.EMOTICON) {
-                        lastMessageContent = "이모티콘이 도착했습니다";
-                    } else {
-                        lastMessageContent = "새 메시지가 있습니다";
+                    if (lastMessageType != null) {
+                        if (lastMessageType == MessageType.TEXT) {
+                            lastMessageContent = "💬 " + "암호화된 메시지";
+                        } else if (lastMessageType == MessageType.CUSTOM_FORM) {
+                            lastMessageContent = "📝 " + "커스텀 폼";
+                        } else if (lastMessageType == MessageType.EMOTICON) {
+                            lastMessageContent = "😊 " + "이모티콘";
+                        }
                     }
 
                     return ChatRoomResponse.builder()
@@ -195,7 +225,7 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                             .oppositeName(tuple.get(8, String.class))
                             .oppositeImage(tuple.get(9, String.class))
                             .oppositeId(tuple.get(10, Long.class))
-                            .unreadCount(tuple.get(11, Long.class))
+                            .unreadCount(tuple.get(11, Long.class) != null ? tuple.get(11, Long.class) : 0L)
                             .userRole(tuple.get(12, String.class))
                             .category(tuple.get(13, MatchingCategory.class))
                             .build();

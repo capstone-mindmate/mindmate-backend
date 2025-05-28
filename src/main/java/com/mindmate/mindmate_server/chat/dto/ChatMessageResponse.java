@@ -75,7 +75,7 @@ public class ChatMessageResponse {
                 .id(message.getId())
 //                .roomId(message.getChatRoom().getId())
                 .senderId(message.getSender().getId())
-                .senderName(message.getSender().getProfile() != null ? message.getSender().getProfile().getNickname() : "Unknown")
+                .senderName(message.getChatRoom().getMatching().isAnonymous() ? "익명" : message.getSender().getProfile().getNickname())
                 .content(message.getContent())
                 .type(message.getType())
                 .createdAt(message.getCreatedAt())

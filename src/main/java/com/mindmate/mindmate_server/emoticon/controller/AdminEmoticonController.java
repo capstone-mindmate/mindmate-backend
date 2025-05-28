@@ -1,13 +1,19 @@
 package com.mindmate.mindmate_server.emoticon.controller;
 
+import com.mindmate.mindmate_server.chat.domain.UserPrincipal;
+import com.mindmate.mindmate_server.emoticon.dto.BulkEmoticonUploadRequest;
 import com.mindmate.mindmate_server.emoticon.dto.EmoticonAdminResponse;
 import com.mindmate.mindmate_server.emoticon.service.AdminEmoticonService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @Tag(
@@ -49,4 +55,22 @@ public class AdminEmoticonController {
         emoticonService.rejectEmoticon(emoticonId);
         return ResponseEntity.ok().build();
     }
+
+    @Operation(
+            summary = "기본 이모티콘 일괄 등록",
+            description = "관리자가 여러 이모티콘을 한 번에 등록합니다. 기본 이모티콘으로 설정 시 모든 사용자가 사용 가능합니다."
+    )
+    @PostMapping("/upload/bulk")
+    public ResponseEntity<List<EmoticonAdminResponse>> uploadBulkEmoticons(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestPart("files") MultipartFile[] files,
+            @RequestPart("request") BulkEmoticonUploadRequest request) {
+        try {
+            List<EmoticonAdminResponse> responses = emoticonService.uploadBulkEmoticons(principal.getUserId(), files, request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(responses);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
 }

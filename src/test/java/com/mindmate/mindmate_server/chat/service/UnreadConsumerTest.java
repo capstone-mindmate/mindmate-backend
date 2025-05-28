@@ -18,10 +18,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.kafka.support.Acknowledgment;
 
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
@@ -32,6 +34,7 @@ class UnreadConsumerTest {
     @Mock private ChatPresenceService chatPresenceService;
     @Mock private ChatService chatService;
     @Mock private UserService userService;
+    @Mock private Acknowledgment acknowledgment;
 
 
     @InjectMocks
@@ -105,7 +108,7 @@ class UnreadConsumerTest {
             when(chatPresenceService.incrementUnreadCountInRedis(anyLong(), anyLong())).thenReturn(1L);
 
             // when
-            unreadCountConsumer.updateUnreadCount(mockRecord);
+            unreadCountConsumer.updateUnreadCount(mockRecord, acknowledgment);
 
             // then
             verify(mockChatRoom).markAsRead(sender, messageId);
@@ -132,6 +135,7 @@ class UnreadConsumerTest {
                 verify(mockChatRoom, never()).increaseUnreadCountForSpeaker();
                 verify(mockChatRoom, never()).increaseUnreadCountForListener();
             }
+            verify(acknowledgment).acknowledge();
         }
 
         static Stream<Arguments> messageScenarios() {
@@ -152,12 +156,14 @@ class UnreadConsumerTest {
         when(mockEvent.isFiltered()).thenReturn(true);
 
         // when
-        unreadCountConsumer.updateUnreadCount(mockRecord);
+        unreadCountConsumer.updateUnreadCount(mockRecord, acknowledgment);
 
         // then
         verify(chatRoomService, never()).findChatRoomById(anyLong());
         verify(userService, never()).findUserById(anyLong());
         verify(mockChatRoom, never()).markAsRead(any(), anyLong());
+
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
@@ -167,24 +173,31 @@ class UnreadConsumerTest {
         when(mockEvent.getMessageId()).thenReturn(null);
 
         // when
-        unreadCountConsumer.updateUnreadCount(mockRecord);
+        unreadCountConsumer.updateUnreadCount(mockRecord, acknowledgment);
 
         // then
         verify(chatRoomService, never()).findChatRoomById(anyLong());
         verify(userService, never()).findUserById(anyLong());
         verify(mockChatRoom, never()).markAsRead(any(), anyLong());
+
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
-    @DisplayName("예외 처리 테스트")
+    @DisplayName("예외 발생 시 예외를 단지 던짐 -> @RetryTopic")
     void updateUnreadCount_ExceptionHandling() {
         // given
         when(mockEvent.getSenderId()).thenReturn(listenerId);
+        when(mockEvent.getRecipientId()).thenReturn(speakerId);
         when(userService.findUserById(listenerId)).thenReturn(mockListener);
+        when(userService.findUserById(speakerId)).thenReturn(mockSpeaker);
         when(chatRoomService.findChatRoomById(anyLong())).thenThrow(new RuntimeException("Test exception"));
 
         // when & then
-        assertDoesNotThrow(() -> unreadCountConsumer.updateUnreadCount(mockRecord));
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> unreadCountConsumer.updateUnreadCount(mockRecord, acknowledgment));
+        assertThat(exception.getMessage()).isEqualTo("Test exception");
+
+        verify(acknowledgment, never()).acknowledge();
     }
 
 }

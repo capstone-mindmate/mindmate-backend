@@ -28,7 +28,6 @@ public class ProfileImageController {
     public ResponseEntity<ProfileImageResponse> uploadProfileImage(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestPart("file") MultipartFile file) throws IOException {
-        log.info("프로필 업로드 시작@@");
 
         ProfileImageResponse response = profileImageService.uploadProfileImage(userPrincipal.getUserId(), file);
         return ResponseEntity.ok(response);
@@ -37,10 +36,9 @@ public class ProfileImageController {
     @DeleteMapping("/{imageId}")
     @Operation(summary = "프로필 이미지 삭제", description = "프로필 이미지를 삭제합니다.")
     public ResponseEntity<Void> deleteProfileImage(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long imageId) {
-
-        profileImageService.deleteProfileImage(userId, imageId);
+        profileImageService.deleteProfileImage(principal.getUserId(), imageId);
         return ResponseEntity.noContent().build();
     }
 

@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.magazine.service;
 
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MagazineErrorCode;
+import com.mindmate.mindmate_server.global.service.ResilientEventPublisher;
 import com.mindmate.mindmate_server.global.util.SlackNotifier;
 import com.mindmate.mindmate_server.magazine.domain.*;
 import com.mindmate.mindmate_server.magazine.dto.*;
@@ -19,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,8 +41,8 @@ public class MagazineServiceImpl implements MagazineService {
     private final MagazineLikeRepository magazineLikeRepository;
     private final MagazineContentRepository magazineContentRepository;
 
-    private final KafkaTemplate<String, MagazineEngagementEvent> kafkaTemplate;
     private final SlackNotifier slackNotifier;
+    private final ResilientEventPublisher eventPublisher;
 
     public final static long MAX_IMAGE_SIZE = 10;
 
@@ -122,7 +122,8 @@ public class MagazineServiceImpl implements MagazineService {
 
     @Override
     public MagazineDetailResponse getMagazine(Long magazineId, Long userId) {
-        Magazine magazine = findMagazineById(magazineId);
+        Magazine magazine = magazineRepository.findWIthAllDetailsById(magazineId)
+                .orElseThrow(() -> new CustomException(MagazineErrorCode.MAGAZINE_NOT_FOUND));
         User user = userService.findUserById(userId);
 
         // PUBLISHED 아닌 매거진 작성자만 확인 가능
@@ -225,7 +226,7 @@ public class MagazineServiceImpl implements MagazineService {
                 .timestamp(Instant.now())
                 .build();
 
-        kafkaTemplate.send("magazine-engagement-topic", event);
+        eventPublisher.publishEvent("magazine-engagement-topic", event);
     }
 
     @Override

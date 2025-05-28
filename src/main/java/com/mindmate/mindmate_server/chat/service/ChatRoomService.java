@@ -36,4 +36,6 @@ public interface ChatRoomService {
     ChatRoom save(ChatRoom chatRoom);
 
     ChatRoom createChatRoom(Matching matching);
+
+    void deleteChatRoomForUser(Long userId, Long roomId);
 }

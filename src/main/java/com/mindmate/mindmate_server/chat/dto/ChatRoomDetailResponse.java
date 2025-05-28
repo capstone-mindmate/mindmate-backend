@@ -22,11 +22,17 @@ public class ChatRoomDetailResponse {
     private InitiatorType closeRequestRole;
     private LocalDateTime closeRequestedAt;
     private boolean isListener;
+    private boolean isCreator;
 
-    // todo: 상대방 아이디/이미지 + 내 이미지/아이디 + 방 생성자?(수정 권한)
     private List<ChatMessageResponse> messages;
+    private String myImageUrl;
+    private String oppositeImageUrl;
 
     public static ChatRoomDetailResponse from(ChatRoom chatRoom, List<ChatMessage> messages, User user) {
+        boolean isListener = chatRoom.isListener(user);
+        String myImageUrl = chatRoom.getMatching().isAnonymous() ? null : (isListener ? chatRoom.getListener().getProfile().getProfileImage().getImageUrl() : chatRoom.getSpeaker().getProfile().getProfileImage().getImageUrl());
+        String oppositeImageUrl = chatRoom.getMatching().isAnonymous() ? null : (isListener ? chatRoom.getSpeaker().getProfile().getProfileImage().getImageUrl() : chatRoom.getListener().getProfile().getProfileImage().getImageUrl());
+
         return ChatRoomDetailResponse.builder()
                 .roomId(chatRoom.getId())
                 .matchingId(chatRoom.getMatching() != null ? chatRoom.getMatching().getId() : null)
@@ -34,10 +40,13 @@ public class ChatRoomDetailResponse {
                 .roomStatus(chatRoom.getChatRoomStatus())
                 .closeRequestRole(chatRoom.getClosureRequesterRole())
                 .closeRequestedAt(chatRoom.getClosureRequestAt())
-                .isListener(chatRoom.isListener(user))
+                .isListener(isListener)
+                .isCreator(chatRoom.getMatching().isCreator(user))
                 .messages(messages.stream()
                         .map(message -> ChatMessageResponse.from(message, user.getId()))
                         .collect(Collectors.toList()))
+                .myImageUrl(myImageUrl)
+                .oppositeImageUrl(oppositeImageUrl)
                 .build();
     }
 }

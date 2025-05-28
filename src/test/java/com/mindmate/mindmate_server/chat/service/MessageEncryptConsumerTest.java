@@ -15,10 +15,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.kafka.support.Acknowledgment;
 
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,6 +29,7 @@ class MessageEncryptConsumerTest {
     @Mock private ConsumerRecord<String , ChatMessageEvent> mockRecord;
     @Mock private ChatMessageEvent mockEvent;
     @Mock private ChatMessage mockMessage;
+    @Mock private Acknowledgment acknowledgment;
 
     @InjectMocks
     private MessageEncryptConsumer messageEncryptConsumer;
@@ -61,12 +62,13 @@ class MessageEncryptConsumerTest {
         when(mockEvent.getMessageId()).thenReturn(messageId);
 
         // when
-        messageEncryptConsumer.encryptMessage(mockRecord);
+        messageEncryptConsumer.encryptMessage(mockRecord, acknowledgment);
 
         // then
         verify(chatMessageService, never()).findChatMessageById(anyLong());
         verify(aesGcmEncryptionService, never()).encrypt(anyString());
         verify(chatMessageService, never()).save(any(ChatMessage.class));
+        verify(acknowledgment).acknowledge();
     }
 
     static Stream<Arguments> noProcessingScenarios() {
@@ -85,13 +87,14 @@ class MessageEncryptConsumerTest {
         when(mockEvent.isEncrypted()).thenReturn(false);
 
         // when
-        messageEncryptConsumer.encryptMessage(mockRecord);
+        messageEncryptConsumer.encryptMessage(mockRecord, acknowledgment);
 
         // then
         verify(chatMessageService).findChatMessageById(messageId);
         verify(aesGcmEncryptionService).encrypt(originalContent);
         verify(mockMessage).updateEncryptedContent(encryptedContent);
         verify(chatMessageService).save(mockMessage);
+        verify(acknowledgment).acknowledge();
     }
 
 }

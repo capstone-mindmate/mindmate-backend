@@ -21,6 +21,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.kafka.support.Acknowledgment;
 
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
@@ -39,6 +40,8 @@ class FilteringEventConsumerTest {
     @Mock private ChatMessageEvent mockEvent;
     @Mock private ValueOperations<String, Object> valueOperations;
     @Mock private ListOperations<String, Object> listOperations;
+    @Mock private Acknowledgment acknowledgment;
+
 
     @InjectMocks
     private FilteringEventConsumer filteringEventConsumer;
@@ -75,11 +78,12 @@ class FilteringEventConsumerTest {
         when(mockEvent.getSenderId()).thenReturn(senderId);
 
         // when
-        filteringEventConsumer.processFilteringEvent(mockRecord);
+        filteringEventConsumer.processFilteringEvent(mockRecord, acknowledgment);
 
         // then
         verify(redisTemplate, never()).opsForValue();
         verify(redisTemplate, never()).opsForList();
+        verify(acknowledgment).acknowledge();
     }
 
     static Stream<Arguments> noProcessingScenarios() {
@@ -98,7 +102,7 @@ class FilteringEventConsumerTest {
         when(valueOperations.increment(filteringCountKey, 1)).thenReturn(count);
 
         // when
-        filteringEventConsumer.processFilteringEvent(mockRecord);
+        filteringEventConsumer.processFilteringEvent(mockRecord, acknowledgment);
 
         // then
         verify(valueOperations).increment(filteringCountKey, 1);
@@ -122,6 +126,7 @@ class FilteringEventConsumerTest {
             verify(suspensionService, never()).suspendUser(anyLong(), anyInt(), any(), anyString());
             verify(redisTemplate, never()).delete(filteringCountKey);
         }
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
@@ -135,7 +140,7 @@ class FilteringEventConsumerTest {
         when(mockEvent.getContent()).thenReturn(longContent);
 
         // when
-        filteringEventConsumer.processFilteringEvent(mockRecord);
+        filteringEventConsumer.processFilteringEvent(mockRecord, acknowledgment);
 
         // then
         ArgumentCaptor<String> contentCaptor = ArgumentCaptor.forClass(String.class);
@@ -144,6 +149,7 @@ class FilteringEventConsumerTest {
         String capturedContent = contentCaptor.getValue();
         assertThat(capturedContent).hasSize(103);
         assertThat(capturedContent).endsWith("...");
+        verify(acknowledgment).acknowledge();
     }
 
 

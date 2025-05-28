@@ -10,7 +10,6 @@ import com.mindmate.mindmate_server.user.service.UserService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -21,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.kafka.support.Acknowledgment;
 
 import java.util.stream.Stream;
 
@@ -37,6 +37,8 @@ class ChatNotificationConsumerTest {
     @Mock private User mockSender;
     @Mock private User mockRecipient;
     @Mock private Profile mockSenderProfile;
+    @Mock private Acknowledgment acknowledgment;
+
 
     @InjectMocks
     private ChatNotificationConsumer chatNotificationConsumer;
@@ -79,11 +81,12 @@ class ChatNotificationConsumerTest {
         when(mockEvent.isRecipientActive()).thenReturn(isRecipientActive);
 
         // when
-        chatNotificationConsumer.sendNotification(mockRecord);
+        chatNotificationConsumer.sendNotification(mockRecord, acknowledgment);
 
         // then
         verify(userService, never()).findUserById(anyLong());
         verify(notificationService, never()).processNotification(any());
+        verify(acknowledgment).acknowledge();
     }
 
     static Stream<Arguments> noProcessingScenarios() {
@@ -107,7 +110,7 @@ class ChatNotificationConsumerTest {
         when(mockEvent.getPlainContent()).thenReturn(messageContent);
 
         // when
-        chatNotificationConsumer.sendNotification(mockRecord);
+        chatNotificationConsumer.sendNotification(mockRecord, acknowledgment);
 
         // then
         ArgumentCaptor<ChatMessageNotificationEvent> captor = ArgumentCaptor.forClass(ChatMessageNotificationEvent.class);
@@ -120,6 +123,8 @@ class ChatNotificationConsumerTest {
         assertThat(capturedEvent.getRoomId()).isEqualTo(roomId);
         assertThat(capturedEvent.getMessageId()).isEqualTo(messageId);
         assertThat(capturedEvent.getMessageContent()).isEqualTo(expectedContent);
+
+        verify(acknowledgment).acknowledge();
     }
     static Stream<Arguments> messageTypeScenarios() {
         return Stream.of(

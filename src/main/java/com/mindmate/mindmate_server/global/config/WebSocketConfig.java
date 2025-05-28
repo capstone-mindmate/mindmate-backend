@@ -16,10 +16,15 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
+
+import java.util.Collections;
+import java.util.List;
 
 @Configuration
 @Slf4j
@@ -42,10 +47,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void configureMessageBroker(MessageBrokerRegistry config) {
         // topic -> 일대다 메시징을 위한 topic 기반 메시지 브로딩캐스팅
         // queue -> 일대일 메시징을 위한 큐 기반 메시지 전달
-        // heartbeat -> 클라이언트-서버 간 연결 상태 확인 (10초)
+        // heartbeat -> 클라이언트-서버 간 연결 상태 확인 (30초)
         config.enableSimpleBroker("/topic", "/queue")
                 .setTaskScheduler(heartBeatScheduler())
-                .setHeartbeatValue(new long[] {10000, 10000});
+                .setHeartbeatValue(new long[] {30000, 30000});
 
         config.setApplicationDestinationPrefixes("/app"); // 클라이언트 메시지 전송 경로
         config.setUserDestinationPrefix("/user"); // 특정 사용자에게 메시지 보낼 때 사용할 prefix
@@ -58,7 +63,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
-                .withSockJS();
+                .withSockJS()
+                .setDisconnectDelay(30 * 1000) // 연결 해제 지연 시간 30초
+                .setHeartbeatTime(25 * 1000); // SockJS 하트비트 25초
     }
 
     /**
@@ -67,9 +74,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
         registration
-                .setSendTimeLimit(15 * 1000) // 메시지 전송 제한 시간 15초
+                .setSendTimeLimit(30 * 1000) // 메시지 전송 제한 시간 30초
                 .setSendBufferSizeLimit(512 * 1024) // 버퍼 크기 512KB
-                .setMessageSizeLimit(128 * 1024); // 메시지 크기 128KB
+                .setMessageSizeLimit(128 * 1024) // 메시지 크기 128KB
+                .setTimeToFirstMessage(60 * 1000); // 첫 메시지 대기 시간 60초
     }
 
     /**
@@ -78,7 +86,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Bean
     public ThreadPoolTaskScheduler heartBeatScheduler() {
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-        scheduler.setPoolSize(1); // 단일 스레드
+        scheduler.setPoolSize(3); // 단일 스레드
         scheduler.setThreadNamePrefix("ws-heartbeat-");
         return scheduler;
     }
@@ -100,10 +108,18 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     if (token != null && token.startsWith("Bearer ")) {
                         try {
                             String jwtToken = token.substring(7);
-                            Long userId = jwtTokenProvider.getUserIdFromToken(jwtToken);
+                            if (jwtTokenProvider.validateToken(jwtToken)) {
+                                Long userId = jwtTokenProvider.getUserIdFromToken(jwtToken);
+                                String username = jwtTokenProvider.getUsernameFromToken(jwtToken);
+                                String role = jwtTokenProvider.getClaimFromToken(jwtToken, "role");
 
-                            accessor.setUser(new UserPrincipal(userId));
-                            log.info("WebSocket Authentication successful for user: {}", userId);
+                                List<GrantedAuthority> authorities = Collections.singletonList(
+                                        new SimpleGrantedAuthority(role));
+
+                                UserPrincipal userPrincipal = new UserPrincipal(userId, username, authorities);
+                                accessor.setUser(userPrincipal);
+                                log.info("WebSocket Authentication successful for user: {}", userId);
+                            }
                         } catch (Exception e) {
                             log.error("WebSocket Authentication failed: {}", e.getMessage());
                             throw new MessageDeliveryException("Authentication failed");

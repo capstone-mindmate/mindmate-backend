@@ -7,7 +7,6 @@ import com.mindmate.mindmate_server.chat.dto.ToastBoxEvent;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,12 +17,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.kafka.support.Acknowledgment;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,6 +32,7 @@ class ToastBoxConsumerTest {
     @Mock private ChatEventPublisher chatEventPublisher;
     @Mock private ConsumerRecord<String, ChatMessageEvent> mockRecord;
     @Mock private ChatMessageEvent mockEvent;
+    @Mock private Acknowledgment acknowledgment;
 
     @InjectMocks
     private ToastBoxConsumer toastBoxConsumer;
@@ -64,11 +64,12 @@ class ToastBoxConsumerTest {
         when(mockEvent.getMessageId()).thenReturn(messageId);
 
         // when
-        toastBoxConsumer.processToastBox(mockRecord);
+        toastBoxConsumer.processToastBox(mockRecord, acknowledgment);
 
         // then
         verify(toastBoxService, never()).findToastBoxKeywords(anyString());
         verify(chatEventPublisher, never()).publishChatRoomEvent(anyLong(), any(), any());
+        verify(acknowledgment).acknowledge();
     }
 
     static Stream<Arguments> noProcessingScenarios() {
@@ -85,11 +86,12 @@ class ToastBoxConsumerTest {
         when(toastBoxService.findToastBoxKeywords(content)).thenReturn(Collections.emptyList());
 
         // when
-        toastBoxConsumer.processToastBox(mockRecord);
+        toastBoxConsumer.processToastBox(mockRecord, acknowledgment);
 
         // then
         verify(toastBoxService).findToastBoxKeywords(content);
         verify(chatEventPublisher, never()).publishChatRoomEvent(anyLong(), any(), any());
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
@@ -100,7 +102,7 @@ class ToastBoxConsumerTest {
         when(toastBoxService.findToastBoxKeywords(content)).thenReturn(List.of(keyword));
 
         // when
-        toastBoxConsumer.processToastBox(mockRecord);
+        toastBoxConsumer.processToastBox(mockRecord, acknowledgment);
 
         // then
         verify(toastBoxService).findToastBoxKeywords(content);
@@ -116,6 +118,7 @@ class ToastBoxConsumerTest {
                             toastEvent.getContent().equals("내용");
                 })
         );
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
@@ -129,7 +132,7 @@ class ToastBoxConsumerTest {
         when(toastBoxService.findToastBoxKeywords(content)).thenReturn(keywords);
 
         // when
-        toastBoxConsumer.processToastBox(mockRecord);
+        toastBoxConsumer.processToastBox(mockRecord, acknowledgment);
 
         // then
         verify(toastBoxService).findToastBoxKeywords(content);
@@ -138,6 +141,7 @@ class ToastBoxConsumerTest {
                 eq(ChatEventType.TOAST_BOX),
                 any(ToastBoxEvent.class)
         );
+        verify(acknowledgment).acknowledge();
     }
 
     private ToastBoxKeyword createKeyword(String keyword, String title, String content) {

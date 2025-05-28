@@ -15,10 +15,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.kafka.support.Acknowledgment;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,6 +30,7 @@ class ChatRoomCloseNotificationConsumerTest {
     @Mock private NotificationService notificationService;
     @Mock private ConsumerRecord<String, ChatRoomCloseEvent> mockRecord;
     @Mock private ChatRoomCloseEvent mockEvent;
+    @Mock private Acknowledgment acknowledgment;
 
     @InjectMocks
     private ChatRoomCloseNotificationConsumer chatRoomCloseNotificationConsumer;
@@ -48,7 +51,7 @@ class ChatRoomCloseNotificationConsumerTest {
     @DisplayName("채팅방 종료 시 발신자 수신자 모두에게 알림 전송")
     void sendCloseNotification_Success() {
         // when
-        chatRoomCloseNotificationConsumer.sendCloseNotification(mockRecord);
+        chatRoomCloseNotificationConsumer.sendCloseNotification(mockRecord, acknowledgment);
 
         // then
         ArgumentCaptor<ChatRoomNotificationEvent> captor = ArgumentCaptor.forClass(ChatRoomNotificationEvent.class);
@@ -66,6 +69,7 @@ class ChatRoomCloseNotificationConsumerTest {
         assertThat(listenerEvent.getChatRoomId()).isEqualTo(chatRoomId);
 
         assertThat(listenerEvent.getCloseType()).isEqualTo(ChatRoomCloseType.ACCEPT);
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
@@ -74,12 +78,11 @@ class ChatRoomCloseNotificationConsumerTest {
         // given
         doThrow(new RuntimeException("Test exception")).when(notificationService).processNotification(any());
 
-        // when
-        chatRoomCloseNotificationConsumer.sendCloseNotification(mockRecord);
+        // when & then
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> chatRoomCloseNotificationConsumer.sendCloseNotification(mockRecord, acknowledgment));
 
-        // then
+        assertThat(exception.getMessage()).isEqualTo("Test exception");
         verify(notificationService).processNotification(any());
+        verify(acknowledgment, never()).acknowledge();
     }
-
-
 }

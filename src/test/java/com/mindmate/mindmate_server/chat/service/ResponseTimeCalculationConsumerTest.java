@@ -16,13 +16,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Pageable;
+import org.springframework.kafka.support.Acknowledgment;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -34,6 +34,7 @@ class ResponseTimeCalculationConsumerTest {
     @Mock private ChatMessageRepository chatMessageRepository;
     @Mock private ConsumerRecord<String, ChatRoomCloseEvent> mockRecord;
     @Mock private ChatRoomCloseEvent mockEvent;
+    @Mock private Acknowledgment acknowledgment;
 
     @InjectMocks
     private ResponseTimeCalculationConsumer responseTimeCalculationConsumer;
@@ -58,11 +59,12 @@ class ResponseTimeCalculationConsumerTest {
                 .thenReturn(Collections.emptyList());
 
         // when
-        responseTimeCalculationConsumer.calculateResponseTime(mockRecord);
+        responseTimeCalculationConsumer.calculateResponseTime(mockRecord, acknowledgment);
 
         // then
         verify(chatMessageRepository).findByChatRoomIdOrderByIdAsc(eq(chatRoomId), any(Pageable.class));
         verify(profileService, never()).updateResponseTimes(anyLong(), anyList());
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
@@ -75,12 +77,13 @@ class ResponseTimeCalculationConsumerTest {
                 .thenReturn(messages);
 
         // when
-        responseTimeCalculationConsumer.calculateResponseTime(mockRecord);
+        responseTimeCalculationConsumer.calculateResponseTime(mockRecord, acknowledgment);
 
         // then
         verify(chatMessageRepository).findByChatRoomIdOrderByIdAsc(eq(chatRoomId), any(Pageable.class));
         verify(profileService).updateResponseTimes(eq(speakerId), any());
         verify(profileService).updateResponseTimes(eq(listenerId), any());
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
@@ -100,7 +103,7 @@ class ResponseTimeCalculationConsumerTest {
                 .thenReturn(secondBatch);
 
         // when
-        responseTimeCalculationConsumer.calculateResponseTime(mockRecord);
+        responseTimeCalculationConsumer.calculateResponseTime(mockRecord, acknowledgment);
 
         // then
         verify(chatMessageRepository).findByChatRoomIdOrderByIdAsc(eq(chatRoomId), any(Pageable.class));
@@ -109,6 +112,7 @@ class ResponseTimeCalculationConsumerTest {
 
         verify(profileService).updateResponseTimes(eq(speakerId), any());
         verify(profileService).updateResponseTimes(eq(listenerId), any());
+        verify(acknowledgment).acknowledge();
     }
 
     @Test
@@ -127,11 +131,12 @@ class ResponseTimeCalculationConsumerTest {
                 .thenReturn(messages);
 
         // when
-        responseTimeCalculationConsumer.calculateResponseTime(mockRecord);
+        responseTimeCalculationConsumer.calculateResponseTime(mockRecord, acknowledgment);
 
         // then
         verify(profileService, never()).updateResponseTimes(eq(speakerId), argThat(list -> !list.isEmpty()));
         verify(profileService, never()).updateResponseTimes(eq(listenerId), any());
+        verify(acknowledgment).acknowledge();
     }
 
     private List<ChatMessage> createMessages(int count) {
