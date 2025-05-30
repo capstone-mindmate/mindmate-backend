@@ -1,11 +1,13 @@
 package com.mindmate.mindmate_server.magazine.service;
 
+import com.mindmate.mindmate_server.global.dto.FileInfo;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MagazineErrorCode;
 import com.mindmate.mindmate_server.global.service.FileStorageService;
 import com.mindmate.mindmate_server.magazine.domain.Magazine;
 import com.mindmate.mindmate_server.magazine.domain.MagazineContent;
 import com.mindmate.mindmate_server.magazine.domain.MagazineImage;
+import com.mindmate.mindmate_server.magazine.dto.ImageResponse;
 import com.mindmate.mindmate_server.magazine.repository.MagazineContentRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineImageRepository;
 import com.mindmate.mindmate_server.user.domain.User;
@@ -14,6 +16,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -21,13 +26,19 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static com.mindmate.mindmate_server.magazine.service.MagazineImageService.MAX_FILE_SIZE;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -41,26 +52,58 @@ class MagazineImageServiceTest {
     @InjectMocks
     private MagazineImageService magazineImageService;
 
-    private Long imageId;
+    private static final Long IMAGE_ID = 1L;
+    private static final Long USER_ID = 1L;
+    private static final Long UNAUTHORIZED_USER_ID = 2L;
+    private static final String ORIGINAL_NAME = "test.jpg";
+    private static final String STORED_NAME = "uuid.webp";
+    private static final String IMAGE_URL = "http://localhost:8080/images/uuid.webp";
+    private static final String IMAGE_DIR = "src/test/resources/images/";
+    private static final String IMAGE_URL_PREFIX = "http://localhost:8080/images/";
+
     private MagazineImage mockImage;
+    private MockMultipartFile validFile;
+    private FileInfo mockFileInfo;
 
     @BeforeEach
     void setup() {
-        imageId = 1L;
-        mockImage = mock(MagazineImage.class);
+        setupMockImage();
+        setupMockFile();
+        setupMockFileInfo();
+        setupFieldInjection();
+    }
 
-        when(mockImage.getId()).thenReturn(imageId);
-        when(mockImage.getOriginalName()).thenReturn("test.jpg");
-        when(mockImage.getStoredName()).thenReturn("uuid.webp");
-        when(mockImage.getImageUrl()).thenReturn("test/images/uuid.webp");
+    private void setupMockImage() {
+        mockImage = mock(MagazineImage.class);
+        when(mockImage.getId()).thenReturn(IMAGE_ID);
+        when(mockImage.getOriginalName()).thenReturn(ORIGINAL_NAME);
+        when(mockImage.getStoredName()).thenReturn(STORED_NAME);
+        when(mockImage.getImageUrl()).thenReturn(IMAGE_URL);
         when(mockImage.getContentType()).thenReturn("image/webp");
         when(mockImage.getFileSize()).thenReturn(100L);
 
-        when(magazineImageRepository.findById(imageId)).thenReturn(Optional.of(mockImage));
+        when(magazineImageRepository.findById(IMAGE_ID)).thenReturn(Optional.of(mockImage));
+    }
 
-        // 동적 데이터 필드 주입
-        ReflectionTestUtils.setField(magazineImageService, "imageDir", "src/test/resources/images/");
-        ReflectionTestUtils.setField(magazineImageService, "imageUrlPrefix", "http://localhost:8080/images/");
+    private void setupMockFile() {
+        validFile = new MockMultipartFile(
+                "image",
+                ORIGINAL_NAME,
+                "image/jpeg",
+                "test image content".getBytes()
+        );
+    }
+
+    private void setupMockFileInfo() {
+        mockFileInfo = mock(FileInfo.class);
+        when(mockFileInfo.getOriginalFileName()).thenReturn(ORIGINAL_NAME);
+        when(mockFileInfo.getStoredFileName()).thenReturn(STORED_NAME);
+        when(mockFileInfo.getFileSize()).thenReturn(100L);
+    }
+
+    private void setupFieldInjection() {
+        ReflectionTestUtils.setField(magazineImageService, "imageDir", IMAGE_DIR);
+        ReflectionTestUtils.setField(magazineImageService, "imageUrlPrefix", IMAGE_URL_PREFIX);
     }
 
     @Nested
@@ -70,12 +113,12 @@ class MagazineImageServiceTest {
         @DisplayName("이미지 ID로 조회 성공")
         void findMagazineImageById_Success() {
             // when
-            MagazineImage result = magazineImageService.findMagazineImageById(imageId);
+            MagazineImage result = magazineImageService.findMagazineImageById(IMAGE_ID);
 
             // then
-            assertNotNull(result);
-            assertEquals(imageId, result.getId());
-            verify(magazineImageRepository).findById(imageId);
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(IMAGE_ID);
+            verify(magazineImageRepository).findById(IMAGE_ID);
         }
 
         @Test
@@ -92,67 +135,116 @@ class MagazineImageServiceTest {
     }
 
     @Nested
-    @DisplayName("이미지 업로드 유효성 검사 테스트")
-    class UploadImageValidationTest {
-        // 이미지 업로드 테스트 부분은 단위 테스트로 하기 매우매우 어려움
-        // 외부 의존성을 다루고 있기 때문에 모킹이나 이런게 말이 안됨 -> 통합 테스트로 직접 테스트
+    @DisplayName("단일 이미지 업로드")
+    class UploadSingleImageTest {
         @Test
-        @DisplayName("이미지 업로드 실패 - 빈 파일")
-        void uploadImage_EmptyFile() {
+        @DisplayName("이미지 업로드 성공")
+        void uploadImage_Success() throws IOException {
             // given
-            MockMultipartFile emptyFile = new MockMultipartFile(
-                    "image",
-                    "",
-                    "image/jpeg",
-                    new byte[0]
-            );
+            when(fileStorageService.storeFileAsWebp(validFile, IMAGE_DIR)).thenReturn(mockFileInfo);
+            when(magazineImageRepository.save(any(MagazineImage.class))).thenReturn(mockImage);
 
-            doThrow(new CustomException(MagazineErrorCode.EMPTY_FILE))
-                    .when(fileStorageService).validateFile(emptyFile);
+            // when
+            MagazineImage result = magazineImageService.uploadImage(validFile);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(IMAGE_ID);
+
+            verify(fileStorageService).validateFile(validFile);
+            verify(fileStorageService).storeFileAsWebp(validFile, IMAGE_DIR);
+            verify(magazineImageRepository).save(any(MagazineImage.class));
+        }
+
+        @ParameterizedTest
+        @DisplayName("이미지 업로드 실패 시나리오")
+        @MethodSource("uploadFailureScenarios")
+        void uploadImage_FailureScenarios(String description, MockMultipartFile file,
+                                          Exception mockException, MagazineErrorCode expectedError) {
+            // given
+            if (mockException != null) {
+                doThrow(mockException).when(fileStorageService).validateFile(file);
+            }
 
             // when & then
-            CustomException exception = assertThrows(CustomException.class, () -> magazineImageService.uploadImage(emptyFile));
-            assertEquals(MagazineErrorCode.EMPTY_FILE, exception.getErrorCode());
+            CustomException exception = assertThrows(CustomException.class,
+                    () -> magazineImageService.uploadImage(file));
+            assertThat(exception.getErrorCode()).isEqualTo(expectedError);
+        }
+
+        static Stream<Arguments> uploadFailureScenarios() {
+            MockMultipartFile emptyFile = new MockMultipartFile("image", "", "image/jpeg", new byte[0]);
+            MockMultipartFile textFile = new MockMultipartFile("file", "test.txt", "text/plain", "test".getBytes());
+            MockMultipartFile largeFile = new MockMultipartFile("file", "large.jpg", "image/jpeg",
+                    new byte[(int) (MAX_FILE_SIZE + 1)]);
+
+            return Stream.of(
+                    Arguments.of("빈 파일", emptyFile,
+                            new CustomException(MagazineErrorCode.EMPTY_FILE), MagazineErrorCode.EMPTY_FILE),
+                    Arguments.of("잘못된 파일 타입", textFile,
+                            new CustomException(MagazineErrorCode.INVALID_FILE_TYPE), MagazineErrorCode.INVALID_FILE_TYPE),
+                    Arguments.of("파일 크기 초과", largeFile, null, MagazineErrorCode.FILE_TOO_LARGE)
+            );
+        }
+    }
+
+    @Nested
+    @DisplayName("다중 이미지 업로드")
+    class UploadMultipleImagesTest {
+
+        @Test
+        @DisplayName("다중 이미지 업로드 성공")
+        void uploadImages_Success() throws IOException {
+            // given
+            List<MultipartFile> files = List.of(validFile, validFile);
+            when(fileStorageService.storeFileAsWebp(any(), eq(IMAGE_DIR))).thenReturn(mockFileInfo);
+            when(magazineImageRepository.save(any(MagazineImage.class))).thenReturn(mockImage);
+
+            // when
+            List<ImageResponse> responses = magazineImageService.uploadImages(files);
+
+            // then
+            assertThat(responses).hasSize(2);
+            assertThat(responses.get(0).getId()).isEqualTo(IMAGE_ID);
+            assertThat(responses.get(0).getImageUrl()).isEqualTo(IMAGE_URL);
+
+            verify(fileStorageService, times(2)).validateFile(any());
+            verify(magazineImageRepository, times(2)).save(any(MagazineImage.class));
         }
 
         @Test
-        @DisplayName("이미지 업로드 실패 - 잘못된 파일 타입")
-        void uploadImage_InvalidFileType() {
+        @DisplayName("이미지 개수 초과 시 예외 발생")
+        void uploadImages_TooManyImages_ThrowsException() {
             // given
-            MockMultipartFile textFile = new MockMultipartFile(
-                    "file",
-                    "test.txt",
-                    "text/plain",
-                    "test content".getBytes()
-            );
-
-            doThrow(new CustomException(MagazineErrorCode.INVALID_FILE_TYPE))
-                    .when(fileStorageService).validateFile(textFile);
+            List<MultipartFile> tooManyFiles = IntStream.range(0, 11)
+                    .mapToObj(i -> validFile)
+                    .collect(Collectors.toList());
 
             // when & then
-            CustomException exception = assertThrows(CustomException.class, () -> magazineImageService.uploadImage(textFile));
-            assertEquals(MagazineErrorCode.INVALID_FILE_TYPE, exception.getErrorCode());
+            CustomException exception = assertThrows(CustomException.class,
+                    () -> magazineImageService.uploadImages(tooManyFiles));
+            assertThat(exception.getErrorCode()).isEqualTo(MagazineErrorCode.TOO_MANY_IMAGES);
         }
 
         @Test
-        @DisplayName("이미지 업로드 실패 - 파일 크기 초과")
-        void uploadImage_FileTooLarge() {
+        @DisplayName("업로드 중 실패 시 롤백")
+        void uploadImages_FailureRollback() throws IOException {
             // given
-            byte[] largeContent = new byte[(int) (MagazineImageService.MAX_FILE_SIZE + 1)]; // 10MB 초과
+            List<MultipartFile> files = List.of(validFile, validFile);
+            MagazineImageService spyService = spy(magazineImageService);
 
-            MockMultipartFile largeFile = new MockMultipartFile(
-                    "file",
-                    "large.jpg",
-                    "image/jpeg",
-                    largeContent
-            );
+            when(fileStorageService.storeFileAsWebp(any(), eq(IMAGE_DIR))).thenReturn(mockFileInfo);
+            when(magazineImageRepository.save(any(MagazineImage.class)))
+                    .thenReturn(mockImage)
+                    .thenThrow(new RuntimeException("Database error"));
 
-            // fileStorageService.validateFile는 통과한다고 가정
-            doNothing().when(fileStorageService).validateFile(largeFile);
+            doNothing().when(spyService).deleteImage(anyString());
 
             // when & then
-            CustomException exception = assertThrows(CustomException.class, () -> magazineImageService.uploadImage(largeFile));
-            assertEquals(MagazineErrorCode.FILE_TOO_LARGE, exception.getErrorCode());
+            assertThrows(RuntimeException.class, () -> spyService.uploadImages(files));
+
+            verify(spyService).deleteImage(STORED_NAME);
+            verify(magazineImageRepository).delete(mockImage);
         }
     }
 
@@ -203,76 +295,78 @@ class MagazineImageServiceTest {
         }
     }
 
+
     @Nested
-    @DisplayName("이미지 삭제 테스트")
+    @DisplayName("이미지 삭제")
     class DeleteImageTest {
+
         @Test
-        @DisplayName("이미지 삭제 권한 검사")
-        void deleteImageById_AccessDenied() {
+        @DisplayName("권한이 있는 사용자의 이미지 삭제 성공")
+        void deleteImageById_AuthorizedUser_Success() {
             // given
-            Long userId = 1L;
-            Long unauthorizedUserID = 2L;
+            setupAuthorizedUser();
+            MagazineImageService spyService = spy(magazineImageService);
+            doNothing().when(spyService).deleteImage(anyString());
 
-            Magazine mockMagazine = mock(Magazine.class);
-            User mockAuthor = mock(User.class);
-            MagazineContent mockContent = mock(MagazineContent.class);
+            // when
+            spyService.deleteImageById(USER_ID, IMAGE_ID);
 
-            when(mockAuthor.getId()).thenReturn(userId);
-            when(mockMagazine.getAuthor()).thenReturn(mockAuthor);
-            when(mockContent.getMagazine()).thenReturn(mockMagazine);
+            // then
+            verify(spyService).deleteImage(STORED_NAME);
+            verify(magazineImageRepository).delete(mockImage);
+        }
 
-            List<MagazineContent> contents = List.of(mockContent);
-            when(magazineContentRepository.findByImage(mockImage)).thenReturn(contents);
+        @Test
+        @DisplayName("권한이 없는 사용자의 이미지 삭제 실패")
+        void deleteImageById_UnauthorizedUser_ThrowsException() {
+            // given
+            setupAuthorizedUser();
 
             // when & then
             CustomException exception = assertThrows(CustomException.class,
-                    () -> magazineImageService.deleteImageById(unauthorizedUserID, imageId));
-            assertEquals(MagazineErrorCode.MAGAZINE_IMAGE_ACCESS_DENIED, exception.getErrorCode());
+                    () -> magazineImageService.deleteImageById(UNAUTHORIZED_USER_ID, IMAGE_ID));
+            assertThat(exception.getErrorCode()).isEqualTo(MagazineErrorCode.MAGAZINE_IMAGE_ACCESS_DENIED);
         }
 
         @Test
-        @DisplayName("이미지 삭제 성공 - 콘텐츠 연결된 경우")
-        void deleteImageById_WithContent_Success() {
+        @DisplayName("연결된 콘텐츠가 없는 이미지 삭제 성공")
+        void deleteImageById_NoContent_Success() {
             // given
-            Long userId = 1L;
+            when(magazineContentRepository.findByImage(mockImage)).thenReturn(Collections.emptyList());
+            MagazineImageService spyService = spy(magazineImageService);
+            doNothing().when(spyService).deleteImage(anyString());
+
+            // when
+            spyService.deleteImageById(USER_ID, IMAGE_ID);
+
+            // then
+            verify(spyService).deleteImage(STORED_NAME);
+            verify(magazineImageRepository).delete(mockImage);
+        }
+
+        private void setupAuthorizedUser() {
             Magazine mockMagazine = mock(Magazine.class);
             User mockAuthor = mock(User.class);
             MagazineContent mockContent = mock(MagazineContent.class);
 
-            when(mockAuthor.getId()).thenReturn(userId);
+            when(mockAuthor.getId()).thenReturn(USER_ID);
             when(mockMagazine.getAuthor()).thenReturn(mockAuthor);
             when(mockContent.getMagazine()).thenReturn(mockMagazine);
 
-            List<MagazineContent> contents = List.of(mockContent);
-            when(magazineContentRepository.findByImage(mockImage)).thenReturn(contents);
-
-            MagazineImageService spyService = spy(magazineImageService);
-            doNothing().when(spyService).deleteImage(anyString());
-
-            // when
-            spyService.deleteImageById(userId, imageId);
-
-            // then
-            verify(spyService).deleteImage(mockImage.getStoredName());
-            verify(magazineImageRepository).delete(mockImage);
+            when(magazineContentRepository.findByImage(mockImage)).thenReturn(List.of(mockContent));
         }
+    }
 
-        @Test
-        @DisplayName("연결된 콘텐츠 없는 이미지 삭제 성공")
-        void deleteImageById_NoContent_Success() {
-            // given
-            Long userId = 1L;
-            when(magazineContentRepository.findByImage(mockImage)).thenReturn(Collections.emptyList());
+    @Test
+    @DisplayName("물리적 파일 삭제")
+    void deleteImage_FileSystemOperation() {
+        // given
+        String testFileName = "test-file.webp";
 
-            MagazineImageService spyService = spy(magazineImageService);
-            doNothing().when(spyService).deleteImage(anyString());
+        // when
+        magazineImageService.deleteImage(testFileName);
 
-            // when
-            spyService.deleteImageById(userId, imageId);
-
-            // then
-            verify(spyService).deleteImage(mockImage.getStoredName());
-            verify(magazineImageRepository).delete(mockImage);
-        }
+        // then
+        assertDoesNotThrow(() -> magazineImageService.deleteImage(testFileName));
     }
 }

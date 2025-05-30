@@ -274,6 +274,8 @@ public class EmoticonServiceImpl implements EmoticonService {
                     .emoticonName(emoticon.getName())
                     .timestamp(savedMessage.getCreatedAt())
                     .build();
+        } catch (CustomException e) {
+            throw e;
         } catch (Exception e) {
             log.error("이모티콘 메시지 전송 중 오류 발생", e);
             throw new CustomException(EmoticonErrorCode.EMOTICON_SEND_FAILED);

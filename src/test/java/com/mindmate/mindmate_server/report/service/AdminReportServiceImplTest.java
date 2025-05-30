@@ -5,9 +5,9 @@ import com.mindmate.mindmate_server.report.domain.ReportReason;
 import com.mindmate.mindmate_server.report.domain.ReportTarget;
 import com.mindmate.mindmate_server.report.dto.ReportDetailResponse;
 import com.mindmate.mindmate_server.report.dto.ReportStatisticsResponse;
-import com.mindmate.mindmate_server.report.dto.UnsuspendRequest;
 import com.mindmate.mindmate_server.report.repository.ReportRepository;
 import com.mindmate.mindmate_server.user.domain.Profile;
+import com.mindmate.mindmate_server.user.domain.ProfileImage;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,7 +22,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.domain.*;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -31,7 +30,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.anyIterable;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -131,45 +129,6 @@ class AdminReportServiceImplTest {
     }
 
     @Nested
-    @DisplayName("사용자 정지 테스트")
-    class SuspendUserTest {
-//        @Test
-//        @DisplayName("사용자 정지 성공")
-//        void suspendUser_Success() {
-//            // given
-//            int reportCount = 5;
-//            Duration duration = Duration.ofDays(3);
-//
-//            // when
-//            adminReportService.suspendUser(userId, reportCount, duration);
-//
-//            // then
-//            verify(mockUser).setReportCount(reportCount);
-//            verify(mockUser).suspend(duration);
-//            verify(userService).save(mockUser);
-//        }
-    }
-
-    @Nested
-    @DisplayName("사용자 정지 해제 테스트")
-    class UnsuspendUserTest {
-//        @Test
-//        @DisplayName("사용자 정지 해제 성공")
-//        void unsuspendUser_Success() {
-//            // given
-//            UnsuspendRequest request = UnsuspendRequest.builder().reportCount(0).build();
-//
-//            // when
-//            adminReportService.unsuspendUser(userId, request);
-//
-//            // then
-//            verify(mockUser).setReportCount(0);
-//            verify(mockUser).unsuspend();
-//            verify(userService).save(mockUser);
-//        }
-    }
-
-    @Nested
     @DisplayName("신고 통계 조회 테스트")
     class GetStatisticsTest {
         @Test
@@ -239,6 +198,8 @@ class AdminReportServiceImplTest {
         private User reportedUser = mock(User.class);
         private Profile reporterProfile = mock(Profile.class);
         private Profile reportedUserProfile = mock(Profile.class);
+        private ProfileImage reporterProfileImage = mock(ProfileImage.class);
+        private ProfileImage reportedUserProfileImage = mock(ProfileImage.class);
         private ReportReason reason = ReportReason.ABUSIVE_LANGUAGE;
         private ReportTarget target = ReportTarget.MATCHING;
 
@@ -255,8 +216,8 @@ class AdminReportServiceImplTest {
             when(reportedUser.getReportCount()).thenReturn(3);
             when(reporterProfile.getNickname()).thenReturn("Reporter");
             when(reportedUserProfile.getNickname()).thenReturn("ReportedUser");
-//            when(reporterProfile.getProfileImage()).thenReturn("reporter.jpg");
-//            when(reportedUserProfile.getProfileImage()).thenReturn("reported.jpg");
+            when(reporterProfile.getProfileImage()).thenReturn(reporterProfileImage);
+            when(reportedUserProfile.getProfileImage()).thenReturn(reportedUserProfileImage);
         }
 
         Report build() {
