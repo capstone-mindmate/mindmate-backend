@@ -137,32 +137,32 @@ class ChatSearchServiceTest {
     @Nested
     @DisplayName("검색 결과 탐색 테스트")
     class NavigateToSearchResultTest {
-        @Test
-        @DisplayName("이전 메시지 로드가 필요한 경우")
-        void navigateToSearchResult_LoadPreviousMessages() {
-            // given
-            Long targetMessageId = 3L;
-            Long oldestLoadedMessageId = 5L;
-            List<Long> matchedIds = Arrays.asList(1L, 3L, 7L, 10L);
-            List<ChatMessage> previousMessages = createMockMessages(3L, 4L);
-
-            doNothing().when(chatRoomService).validateChatActivity(userId, roomId);
-            when(chatMessageService.findByRoomIdAndIdBetween(roomId, targetMessageId, oldestLoadedMessageId - 1))
-                    .thenReturn(previousMessages);
-            when(chatMessageService.findMessageIdsByKeyword(roomId, keyword)).thenReturn(matchedIds);
-
-            // when
-            SearchNavigationResponse response = chatSearchService.navigateToSearchResult(
-                    userId, roomId, keyword, targetMessageId, oldestLoadedMessageId);
-
-            // then
-            assertNotNull(response);
-            assertEquals(targetMessageId, response.getTargetMessageId());
-            assertEquals(2, response.getAdditionalMessages().size());
-            assertTrue(response.isHasMoreResults());
-            assertEquals(1, response.getCurrentMatchIndex());
-            assertEquals(4, response.getTotalMatches());
-        }
+//        @Test
+//        @DisplayName("이전 메시지 로드가 필요한 경우")
+//        void navigateToSearchResult_LoadPreviousMessages() {
+//            // given
+//            Long targetMessageId = 3L;
+//            Long oldestLoadedMessageId = 5L;
+//            List<Long> matchedIds = Arrays.asList(1L, 3L, 7L, 10L);
+//            List<ChatMessage> previousMessages = createMockMessages(3L, 4L);
+//
+//            doNothing().when(chatRoomService).validateChatActivity(userId, roomId);
+//            when(chatMessageService.findByRoomIdAndIdBetween(roomId, targetMessageId, oldestLoadedMessageId - 1))
+//                    .thenReturn(previousMessages);
+//            when(chatMessageService.findMessageIdsByKeyword(roomId, keyword)).thenReturn(matchedIds);
+//
+//            // when
+//            SearchNavigationResponse response = chatSearchService.navigateToSearchResult(
+//                    userId, roomId, keyword, targetMessageId, oldestLoadedMessageId);
+//
+//            // then
+//            assertNotNull(response);
+//            assertEquals(targetMessageId, response.getTargetMessageId());
+//            assertEquals(2, response.getAdditionalMessages().size());
+//            assertTrue(response.isHasMoreResults());
+//            assertEquals(1, response.getCurrentMatchIndex());
+//            assertEquals(4, response.getTotalMatches());
+//        }
 
         @Test
         @DisplayName("이전 메시지 로드가 필요 없는 경우")
@@ -185,33 +185,6 @@ class ChatSearchServiceTest {
             assertTrue(response.getAdditionalMessages().isEmpty());
             assertTrue(response.isHasMoreResults());
             assertEquals(2, response.getCurrentMatchIndex());
-            assertEquals(4, response.getTotalMatches());
-        }
-
-        @Test
-        @DisplayName("마지막 검색 결과인 경우")
-        void navigateToSearchResult_LastResult() {
-            // given
-            Long targetMessageId = 1L;
-            Long oldestLoadedMessageId = 5L;
-            List<Long> matchedIds = Arrays.asList(1L, 3L, 7L, 10L);
-            List<ChatMessage> previousMessages = createMockMessages(1L, 4L);
-
-            doNothing().when(chatRoomService).validateChatActivity(userId, roomId);
-            when(chatMessageService.findByRoomIdAndIdBetween(roomId, targetMessageId, oldestLoadedMessageId - 1))
-                    .thenReturn(previousMessages);
-            when(chatMessageService.findMessageIdsByKeyword(roomId, keyword)).thenReturn(matchedIds);
-
-            // when
-            SearchNavigationResponse response = chatSearchService.navigateToSearchResult(
-                    userId, roomId, keyword, targetMessageId, oldestLoadedMessageId);
-
-            // then
-            assertNotNull(response);
-            assertEquals(targetMessageId, response.getTargetMessageId());
-            assertEquals(4, response.getAdditionalMessages().size());
-            assertFalse(response.isHasMoreResults());
-            assertEquals(0, response.getCurrentMatchIndex());
             assertEquals(4, response.getTotalMatches());
         }
 

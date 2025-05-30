@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.magazine.service;
 
 import com.mindmate.mindmate_server.emoticon.domain.Emoticon;
+import com.mindmate.mindmate_server.emoticon.service.EmoticonInteractionService;
 import com.mindmate.mindmate_server.emoticon.service.EmoticonService;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.magazine.domain.Magazine;
@@ -35,6 +36,7 @@ class MagazineContentServiceTest {
     @Mock private EmoticonService emoticonService;
     @Mock private MagazineImageService magazineImageService;
     @Mock private MagazineContentRepository magazineContentRepository;
+    @Mock private EmoticonInteractionService emoticonInteractionService;
 
     @InjectMocks
     private MagazineContentService magazineContentService;

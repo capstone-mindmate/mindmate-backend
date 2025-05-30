@@ -7,6 +7,7 @@ import com.mindmate.mindmate_server.report.dto.ReportDetailResponse;
 import com.mindmate.mindmate_server.report.dto.ReportStatisticsResponse;
 import com.mindmate.mindmate_server.report.repository.ReportRepository;
 import com.mindmate.mindmate_server.user.domain.Profile;
+import com.mindmate.mindmate_server.user.domain.ProfileImage;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -197,6 +198,8 @@ class AdminReportServiceImplTest {
         private User reportedUser = mock(User.class);
         private Profile reporterProfile = mock(Profile.class);
         private Profile reportedUserProfile = mock(Profile.class);
+        private ProfileImage reporterProfileImage = mock(ProfileImage.class);
+        private ProfileImage reportedUserProfileImage = mock(ProfileImage.class);
         private ReportReason reason = ReportReason.ABUSIVE_LANGUAGE;
         private ReportTarget target = ReportTarget.MATCHING;
 
@@ -213,8 +216,8 @@ class AdminReportServiceImplTest {
             when(reportedUser.getReportCount()).thenReturn(3);
             when(reporterProfile.getNickname()).thenReturn("Reporter");
             when(reportedUserProfile.getNickname()).thenReturn("ReportedUser");
-//            when(reporterProfile.getProfileImage()).thenReturn("reporter.jpg");
-//            when(reportedUserProfile.getProfileImage()).thenReturn("reported.jpg");
+            when(reporterProfile.getProfileImage()).thenReturn(reporterProfileImage);
+            when(reportedUserProfile.getProfileImage()).thenReturn(reportedUserProfileImage);
         }
 
         Report build() {
