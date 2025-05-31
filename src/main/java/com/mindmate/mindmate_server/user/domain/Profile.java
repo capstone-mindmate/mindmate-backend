@@ -1,17 +1,21 @@
 package com.mindmate.mindmate_server.user.domain;
 
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
+import com.mindmate.mindmate_server.global.exception.CustomException;
+import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
 @Entity
 @Table(name = "profiles")
 @Getter
+@Slf4j
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Profile extends BaseTimeEntity {
     @Id
@@ -94,15 +98,27 @@ public class Profile extends BaseTimeEntity {
         this.ratingSum += rating;
     }
 
-    public void decrementCounselingCount() {
-        if (this.counselingCount > 0) {
-            this.counselingCount--;
+    public void decrementCountAndRating(double rating) {
+        if (this.counselingCount <= 0) {
+            throw new CustomException(ProfileErrorCode.COUNT_NOT_FOUND);
         }
-    }
 
-    public void subtractRating(double rating) {
-        this.ratingSum -= rating;
-        if (this.ratingSum < 0) {
+        if (rating < 0 || rating > 5) {
+            throw new CustomException(ProfileErrorCode.INVALID_RATING);
+        }
+
+        this.counselingCount--;
+
+        double newRatingSum = this.ratingSum - rating;
+        if (newRatingSum < 0) {
+            log.warn("프로필 평점 이슈 {}: {} - {} = {}.",
+                    this.id, this.ratingSum, rating, newRatingSum);
+            this.ratingSum = 0;
+        } else {
+            this.ratingSum = newRatingSum;
+        }
+
+        if (this.counselingCount == 0) {
             this.ratingSum = 0;
         }
     }

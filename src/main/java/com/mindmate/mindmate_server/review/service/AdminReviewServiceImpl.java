@@ -62,9 +62,8 @@ public class AdminReviewServiceImpl implements AdminReviewService {
     }
 
     private void adjustProfileMetricsAfterReviewDeletion(Profile profile, Review review) {
-        profile.decrementCounselingCount();
 
-        profile.subtractRating(review.getRating());
+        profile.decrementCountAndRating(review.getRating());
 
         for (EvaluationTag tag : review.getReviewTags()) {
             reviewRedisRepository.decrementTagCount(profile.getId(), tag.getTagContent().getContent());
