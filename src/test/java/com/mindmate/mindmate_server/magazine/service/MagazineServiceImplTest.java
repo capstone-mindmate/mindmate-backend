@@ -2,6 +2,7 @@ package com.mindmate.mindmate_server.magazine.service;
 
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.MagazineErrorCode;
+import com.mindmate.mindmate_server.global.service.ResilientEventPublisher;
 import com.mindmate.mindmate_server.global.util.SlackNotifier;
 import com.mindmate.mindmate_server.magazine.domain.*;
 import com.mindmate.mindmate_server.magazine.dto.*;
@@ -11,6 +12,7 @@ import com.mindmate.mindmate_server.magazine.repository.MagazineRepository;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
 import com.mindmate.mindmate_server.user.domain.Profile;
+import com.mindmate.mindmate_server.user.domain.ProfileImage;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
@@ -20,7 +22,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -31,11 +34,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.kafka.core.KafkaTemplate;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -51,47 +55,92 @@ class MagazineServiceImplTest {
     @Mock private MagazineRepository magazineRepository;
     @Mock private MagazineLikeRepository magazineLikeRepository;
     @Mock private MagazineContentRepository magazineContentRepository;
-    @Mock private KafkaTemplate<String, MagazineEngagementEvent> kafkaTemplate;
     @Mock private SlackNotifier slackNotifier;
+    @Mock private ResilientEventPublisher eventPublisher;
 
     @InjectMocks
     private MagazineServiceImpl magazineService;
 
-    private Long userId;
-    private Long magazineId;
+    private static final Long USER_ID = 1L;
+    private static final Long ADMIN_USER_ID = 2L;
+    private static final Long OTHER_USER_ID = 3L;
+    private static final Long MAGAZINE_ID = 100L;
+
     private User mockUser;
+    private User mockAdminUser;
+    private User mockOtherUser;
     private Magazine mockMagazine;
-    private MagazineContent mockContent;
+    private MagazineContent mockTextContent;
+    private MagazineContent mockImageContent;
+    private MagazineImage mockImage;
+    private Profile mockProfile;
+    private ProfileImage mockProfileImage;
 
     @BeforeEach
     void setup() {
-        userId = 1L;
-        magazineId = 100L;
+        setupMockUsers();
+        setupMockMagazine();
+        setupMockContent();
+        setupRepositoryMocks();
+    }
 
-        mockUser = mock(User.class);
+    private void setupMockUsers() {
+        mockUser = createMockUser(USER_ID, "testUser", RoleType.ROLE_USER);
+        mockAdminUser = createMockUser(ADMIN_USER_ID, "adminUser", RoleType.ROLE_ADMIN);
+        mockOtherUser = createMockUser(OTHER_USER_ID, "otherUser", RoleType.ROLE_USER);
+    }
+
+    private User createMockUser(Long id, String nickname, RoleType role) {
+        User user = mock(User.class);
+        Profile profile = mock(Profile.class);
+        ProfileImage profileImage = mock(ProfileImage.class);
+
+        when(user.getId()).thenReturn(id);
+        when(user.getProfile()).thenReturn(profile);
+        when(user.getCurrentRole()).thenReturn(role);
+        when(profile.getNickname()).thenReturn(nickname);
+        when(profile.getProfileImage()).thenReturn(profileImage);
+        when(profileImage.getImageUrl()).thenReturn("https://example.com/profile.jpg");
+
+        return user;
+    }
+
+    private void setupMockMagazine() {
         mockMagazine = mock(Magazine.class);
-        mockContent = mock(MagazineContent.class);
-
-        Profile mockProfile = mock(Profile.class);
-        when(mockProfile.getNickname()).thenReturn("testUser");
-        when(mockUser.getId()).thenReturn(userId);
-        when(mockUser.getProfile()).thenReturn(mockProfile);
-        when(mockUser.getCurrentRole()).thenReturn(RoleType.ROLE_USER);
-
-        when(mockMagazine.getId()).thenReturn(magazineId);
+        when(mockMagazine.getId()).thenReturn(MAGAZINE_ID);
         when(mockMagazine.getTitle()).thenReturn("Test Magazine");
+        when(mockMagazine.getSubtitle()).thenReturn("Test Subtitle");
         when(mockMagazine.getAuthor()).thenReturn(mockUser);
         when(mockMagazine.getCategory()).thenReturn(MatchingCategory.CAREER);
         when(mockMagazine.getMagazineStatus()).thenReturn(MagazineStatus.PUBLISHED);
         when(mockMagazine.getLikeCount()).thenReturn(10);
-        when(mockMagazine.getContents()).thenReturn(List.of(mockContent));
-
-        when(mockContent.getType()).thenReturn(MagazineContentType.TEXT);
-        when(mockContent.getText()).thenReturn("본문 내용");
-
-        when(magazineRepository.findById(magazineId)).thenReturn(Optional.of(mockMagazine));
-        when(userService.findUserById(userId)).thenReturn(mockUser);
     }
+
+    private void setupMockContent() {
+        mockTextContent = mock(MagazineContent.class);
+        when(mockTextContent.getType()).thenReturn(MagazineContentType.TEXT);
+        when(mockTextContent.getText()).thenReturn("본문 내용");
+        when(mockTextContent.getId()).thenReturn(1L);
+        when(mockTextContent.getContentOrder()).thenReturn(1);
+
+        mockImageContent = mock(MagazineContent.class);
+        mockImage = mock(MagazineImage.class);
+        when(mockImageContent.getType()).thenReturn(MagazineContentType.IMAGE);
+        when(mockImageContent.getImage()).thenReturn(mockImage);
+        when(mockImageContent.getId()).thenReturn(2L);
+        when(mockImageContent.getContentOrder()).thenReturn(2);
+        when(mockImage.getStoredName()).thenReturn("test-image.webp");
+
+        when(mockMagazine.getContents()).thenReturn(List.of(mockTextContent, mockImageContent));
+    }
+
+    private void setupRepositoryMocks() {
+        when(magazineRepository.findById(MAGAZINE_ID)).thenReturn(Optional.of(mockMagazine));
+        when(userService.findUserById(USER_ID)).thenReturn(mockUser);
+        when(userService.findUserById(ADMIN_USER_ID)).thenReturn(mockAdminUser);
+        when(userService.findUserById(OTHER_USER_ID)).thenReturn(mockOtherUser);
+    }
+
 
     @Nested
     @DisplayName("매거진 생성 테스트")
@@ -100,22 +149,66 @@ class MagazineServiceImplTest {
         @DisplayName("매거진 생성 성공")
         void createMagazine_Success() {
             // given
-            MagazineCreateRequest request = mock(MagazineCreateRequest.class);
-            when(request.getTitle()).thenReturn("New Magazine");
-            when(request.getCategory()).thenReturn(MatchingCategory.CAREER);
-            when(request.getContents()).thenReturn(List.of());
-
+            MagazineCreateRequest request = createMagazineCreateRequest();
             when(magazineRepository.save(any(Magazine.class))).thenReturn(mockMagazine);
 
             // when
-            MagazineResponse response = magazineService.createMagazine(userId, request);
+            MagazineResponse response = magazineService.createMagazine(USER_ID, request);
 
             // then
-            assertNotNull(response);
-            assertEquals("Test Magazine", response.getTitle());
+            assertThat(response).isNotNull();
+            assertThat(response.getTitle()).isEqualTo("Test Magazine");
+
             verify(magazineRepository).save(any(Magazine.class));
-            verify(magazineContentService).processContents(any(), any());
-            verify(slackNotifier).sendMagazineCreateAlert(any(), eq(mockUser));
+            verify(magazineContentService).processContents(any(Magazine.class), eq(request.getContents()));
+            verify(slackNotifier).sendMagazineCreateAlert(any(Magazine.class), eq(mockUser));
+        }
+
+        @Test
+        @DisplayName("이미지가 없는 매거진 생성 실패")
+        void createMagazine_NoImage_ThrowsException() {
+            // given
+            MagazineCreateRequest request = createMagazineCreateRequestWithoutImage();
+
+            // when & then
+            CustomException exception = assertThrows(CustomException.class, () -> magazineService.createMagazine(USER_ID, request));
+            assertThat(exception.getErrorCode()).isEqualTo(MagazineErrorCode.MAGAZINE_IMAGE_REQUIRED);
+        }
+
+
+        private MagazineCreateRequest createMagazineCreateRequest() {
+            List<MagazineContentDTO> contents = List.of(
+                    MagazineContentDTO.builder()
+                            .type(MagazineContentType.TEXT)
+                            .text("본문 내용")
+                            .build(),
+                    MagazineContentDTO.builder()
+                            .type(MagazineContentType.IMAGE)
+                            .imageId(1L)
+                            .build()
+            );
+
+            return MagazineCreateRequest.builder()
+                    .title("New Magazine")
+                    .subtitle("New Subtitle")
+                    .category(MatchingCategory.CAREER)
+                    .contents(contents)
+                    .build();
+        }
+        private MagazineCreateRequest createMagazineCreateRequestWithoutImage() {
+            List<MagazineContentDTO> contents = List.of(
+                    MagazineContentDTO.builder()
+                            .type(MagazineContentType.TEXT)
+                            .text("본문 내용")
+                            .build()
+            );
+
+            return MagazineCreateRequest.builder()
+                    .title("New Magazine")
+                    .subtitle("New Subtitle")
+                    .category(MatchingCategory.CAREER)
+                    .contents(contents)
+                    .build();
         }
     }
 
@@ -126,19 +219,17 @@ class MagazineServiceImplTest {
         @DisplayName("매거진 수정 성공")
         void updateMagazine_Success() {
             // given
-            MagazineUpdateRequest request = mock(MagazineUpdateRequest.class);
-            when(request.getTitle()).thenReturn("Updated Title");
-            when(request.getCategory()).thenReturn(MatchingCategory.ACADEMIC);
-            when(request.getContents()).thenReturn(List.of());
+            MagazineUpdateRequest request = createMagazineUpdateRequest();
 
             // when
-            MagazineResponse response = magazineService.updateMagazine(magazineId, request, userId);
+            MagazineResponse response = magazineService.updateMagazine(MAGAZINE_ID, request, USER_ID);
 
             // then
-            assertNotNull(response);
+            assertThat(response).isNotNull();
+            verify(mockMagazine).update("Updated Title", "Updated Subtitle", MatchingCategory.ACADEMIC);
             verify(magazineContentRepository).deleteByMagazine(mockMagazine);
-//            verify(mockMagazine).update("Updated Title", MatchingCategory.ACADEMIC);
-            verify(magazineContentService).processContents(mockMagazine, List.of());
+            verify(mockMagazine).clearContents();
+            verify(magazineContentService).processContents(mockMagazine, request.getContents());
             verify(slackNotifier).sendMagazineUpdateAlert(mockMagazine, mockUser);
         }
 
@@ -146,43 +237,69 @@ class MagazineServiceImplTest {
         @DisplayName("매거진 수정 실패 - 권한 없음")
         void updateMagazine_AccessDenied() {
             // given
-            Long otherUserId = 2L;
-            User otherUser = mock(User.class);
-            when(otherUser.getId()).thenReturn(otherUserId);
-            when(userService.findUserById(otherUserId)).thenReturn(otherUser);
-            MagazineUpdateRequest request = mock(MagazineUpdateRequest.class);
+            MagazineUpdateRequest request = createMagazineUpdateRequest();
 
             // when & then
             CustomException exception = assertThrows(CustomException.class,
-                    () -> magazineService.updateMagazine(magazineId, request, otherUserId));
-            assertEquals(MagazineErrorCode.MAGAZINE_ACCESS_DENIED, exception.getErrorCode());
+                    () -> magazineService.updateMagazine(MAGAZINE_ID, request, OTHER_USER_ID));
+            assertThat(exception.getErrorCode()).isEqualTo(MagazineErrorCode.MAGAZINE_ACCESS_DENIED);
+        }
+
+        private MagazineUpdateRequest createMagazineUpdateRequest() {
+            List<MagazineContentDTO> contents = List.of(
+                    MagazineContentDTO.builder()
+                            .type(MagazineContentType.TEXT)
+                            .text("수정된 본문")
+                            .build(),
+                    MagazineContentDTO.builder()
+                            .type(MagazineContentType.IMAGE)
+                            .imageId(1L)
+                            .build()
+            );
+
+            return MagazineUpdateRequest.builder()
+                    .title("Updated Title")
+                    .subtitle("Updated Subtitle")
+                    .category(MatchingCategory.ACADEMIC)
+                    .contents(contents)
+                    .build();
         }
     }
 
     @Nested
-    @DisplayName("매거진 삭제 테스트")
+    @DisplayName("매거진 삭제")
     class DeleteMagazineTest {
-        @ParameterizedTest
-        @CsvSource({"ROLE_ADMIN,true", "ROLE_USER,false"})
-        @DisplayName("매거진 삭제 권한별")
-        void deleteMagazine_RoleTest(String role, boolean isAllowed) {
-            // given
-            Long testUserId = 2L;
-            User testUser = mock(User.class);
-            when(testUser.getId()).thenReturn(testUserId);
-            when(testUser.getCurrentRole()).thenReturn(RoleType.valueOf(role));
-            when(userService.findUserById(testUserId)).thenReturn(testUser);
 
+        @Test
+        @DisplayName("관리자의 매거진 삭제 성공")
+        void deleteMagazine_AdminUser_Success() {
+            // when
+            magazineService.deleteMagazine(MAGAZINE_ID, ADMIN_USER_ID);
+
+            // then
+            verify(magazineImageService).deleteImage(mockImage.getStoredName());
+            verify(magazinePopularityService).removePopularityScores(MAGAZINE_ID, MatchingCategory.CAREER);
+            verify(magazineRepository).delete(mockMagazine);
+        }
+
+        @Test
+        @DisplayName("일반 사용자의 매거진 삭제 실패")
+        void deleteMagazine_RegularUser_ThrowsException() {
             // when & then
-            if (isAllowed) {
-                magazineService.deleteMagazine(magazineId, testUserId);
-                verify(magazineRepository).delete(mockMagazine);
-                verify(magazinePopularityService).removePopularityScores(magazineId, mockMagazine.getCategory());
-            } else {
-                CustomException exception = assertThrows(CustomException.class,
-                        () -> magazineService.deleteMagazine(magazineId, testUserId));
-                assertEquals(MagazineErrorCode.MAGAZINE_ACCESS_DENIED, exception.getErrorCode());
-            }
+            CustomException exception = assertThrows(CustomException.class,
+                    () -> magazineService.deleteMagazine(MAGAZINE_ID, USER_ID));
+            assertThat(exception.getErrorCode()).isEqualTo(MagazineErrorCode.MAGAZINE_ACCESS_DENIED);
+        }
+
+        @Test
+        @DisplayName("이미지가 포함된 매거진 삭제")
+        void deleteMagazine_WithImages_DeletesImages() {
+            // when
+            magazineService.deleteMagazine(MAGAZINE_ID, ADMIN_USER_ID);
+
+            // then
+            verify(magazineImageService).deleteImage(mockImage.getStoredName());
+            verify(magazineRepository).delete(mockMagazine);
         }
     }
 
@@ -190,21 +307,59 @@ class MagazineServiceImplTest {
     @DisplayName("매거진 상세 조회 테스트")
     class GetMagazineTest {
         @Test
-        void getMagazine_NotPublished_Exception() {
+        @DisplayName("발행된 매거진 조회 성공")
+        void getMagazine_PublishedMagazine_Success() {
+            // given
+            when(magazineRepository.findWIthAllDetailsById(MAGAZINE_ID)).thenReturn(Optional.of(mockMagazine));
+            when(magazineLikeRepository.existsByMagazineAndUser(mockMagazine, mockUser)).thenReturn(true);
+
+            // when
+            MagazineDetailResponse response = magazineService.getMagazine(MAGAZINE_ID, USER_ID);
+
+            // then
+            assertThat(response).isNotNull();
+            verify(magazinePopularityService).incrementViewCount(mockMagazine, USER_ID);
+        }
+
+        @Test
+        @DisplayName("미발행 매거진을 다른 사용자가 조회 시 실패")
+        void getMagazine_UnpublishedByOtherUser_ThrowsException() {
             // given
             when(mockMagazine.getMagazineStatus()).thenReturn(MagazineStatus.PENDING);
-            User otherUser = mock(User.class);
-            when(otherUser.getId()).thenReturn(2L);
-            when(userService.findUserById(2L)).thenReturn(otherUser);
-            when(mockMagazine.getAuthor()).thenReturn(mockUser);
-
-            when(mockContent.getType()).thenReturn(MagazineContentType.TEXT);
-            when(mockContent.getText()).thenReturn("본문 내용");
+            when(magazineRepository.findWIthAllDetailsById(MAGAZINE_ID)).thenReturn(Optional.of(mockMagazine));
 
             // when & then
             CustomException exception = assertThrows(CustomException.class,
-                    () -> magazineService.getMagazine(magazineId, 2L));
-            assertEquals(MagazineErrorCode.MAGAZINE_NOT_FOUND, exception.getErrorCode());
+                    () -> magazineService.getMagazine(MAGAZINE_ID, OTHER_USER_ID));
+            assertThat(exception.getErrorCode()).isEqualTo(MagazineErrorCode.MAGAZINE_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("미발행 매거진 작성자 조회 성공")
+        void getMagazine_UnpublishedByAuthor_Success() {
+            // given
+            when(mockMagazine.getMagazineStatus()).thenReturn(MagazineStatus.PENDING);
+            when(magazineRepository.findWIthAllDetailsById(MAGAZINE_ID)).thenReturn(Optional.of(mockMagazine));
+            when(magazineLikeRepository.existsByMagazineAndUser(mockMagazine, mockUser)).thenReturn(false);
+
+            // when
+            MagazineDetailResponse response = magazineService.getMagazine(MAGAZINE_ID, USER_ID);
+
+            // then
+            assertThat(response).isNotNull();
+            verify(magazinePopularityService).incrementViewCount(mockMagazine, USER_ID);
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 매거진 조회 시 예외 발생")
+        void getMagazine_NotFound_ThrowsException() {
+            // given
+            Long nonExistentId = 999L;
+            when(magazineRepository.findWIthAllDetailsById(nonExistentId)).thenReturn(Optional.empty());
+
+            // when & then
+            CustomException exception = assertThrows(CustomException.class, () -> magazineService.getMagazine(nonExistentId, USER_ID));
+            assertThat(exception.getErrorCode()).isEqualTo(MagazineErrorCode.MAGAZINE_NOT_FOUND);
         }
     }
 
@@ -212,22 +367,60 @@ class MagazineServiceImplTest {
     @DisplayName("매거진 목록/대기 목록 조회 테스트")
     class GetMagazinesTest {
         @Test
-        @DisplayName("매거진 목록 조회 성공")
-        void getMagazines_Success() {
+        @DisplayName("필터링된 매거진 목록 조회")
+        void getMagazines_WithFilter_Success() {
             // given
             Pageable pageable = PageRequest.of(0, 10);
-            MagazineSearchFilter filter = mock(MagazineSearchFilter.class);
-            Page<MagazineResponse> mockPage = new PageImpl<>(List.of(MagazineResponse.from(mockMagazine)));
+            MagazineSearchFilter filter = MagazineSearchFilter.builder()
+                    .category(MatchingCategory.CAREER)
+                    .keyword("test")
+                    .build();
 
+            Page<MagazineResponse> mockPage = new PageImpl<>(List.of(MagazineResponse.from(mockMagazine)));
             when(magazineRepository.findMagazinesWithFilters(filter, pageable)).thenReturn(mockPage);
 
             // when
-            Page<MagazineResponse> result = magazineService.getMagazines(userId, filter, pageable);
+            Page<MagazineResponse> result = magazineService.getMagazines(USER_ID, filter, pageable);
 
             // then
-            assertNotNull(result);
-            assertEquals(1, result.getTotalElements());
+            assertThat(result).isNotNull();
+            assertThat(result.getTotalElements()).isEqualTo(1);
             verify(magazineRepository).findMagazinesWithFilters(filter, pageable);
+        }
+
+        @Test
+        @DisplayName("사용자의 매거진 목록 조회")
+        void getMyMagazines_Success() {
+            // given
+            Pageable pageable = PageRequest.of(0, 10);
+            Page<Magazine> mockPage = new PageImpl<>(List.of(mockMagazine));
+            when(magazineRepository.findByAuthorIdOrderByCreatedAtDesc(USER_ID, pageable)).thenReturn(mockPage);
+
+            // when
+            Page<MagazineResponse> result = magazineService.getMyMagazines(USER_ID, pageable);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.getTotalElements()).isEqualTo(1);
+            verify(magazineRepository).findByAuthorIdOrderByCreatedAtDesc(USER_ID, pageable);
+        }
+
+        @Test
+        @DisplayName("좋아요한 매거진 목록 조회")
+        void getLikedMagazines_Success() {
+            // given
+            Pageable pageable = PageRequest.of(0, 10);
+            Page<Magazine> mockPage = new PageImpl<>(List.of(mockMagazine));
+            when(magazineRepository.findByLikesUserIdOrderByCreatedAtDesc(USER_ID, pageable))
+                    .thenReturn(mockPage);
+
+            // when
+            Page<MagazineResponse> result = magazineService.getLikedMagazines(USER_ID, pageable);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result.getTotalElements()).isEqualTo(1);
+            verify(magazineRepository).findByLikesUserIdOrderByCreatedAtDesc(USER_ID, pageable);
         }
 
         @Test
@@ -252,17 +445,19 @@ class MagazineServiceImplTest {
     @DisplayName("좋아요 토글 테스트")
     class ToggleLikeTest {
         @ParameterizedTest
-        @CsvSource({"false,true", "true,false"})
-        @DisplayName("좋아요 토글 성공")
+        @DisplayName("좋아요 토글")
+        @MethodSource("likeToggleScenarios")
         void toggleLike_Param(boolean alreadyLiked, boolean expectedLiked) {
             // given
             when(magazineLikeRepository.existsByMagazineAndUser(mockMagazine, mockUser)).thenReturn(alreadyLiked);
 
             // when
-            LikeResponse response = magazineService.toggleLike(magazineId, userId);
+            LikeResponse response = magazineService.toggleLike(MAGAZINE_ID, USER_ID);
 
             // then
-            assertEquals(expectedLiked, response.isLiked());
+            assertThat(response.isLiked()).isEqualTo(expectedLiked);
+            assertThat(response.getLikeCount()).isEqualTo(10);
+
             if (alreadyLiked) {
                 verify(magazineLikeRepository).deleteByMagazineAndUser(mockMagazine, mockUser);
                 verify(mockMagazine).removeLike(mockUser);
@@ -273,26 +468,45 @@ class MagazineServiceImplTest {
                 verify(magazinePopularityService).updateLikeScore(mockMagazine, true);
             }
         }
+
+        static Stream<Arguments> likeToggleScenarios() {
+            return Stream.of(
+                    Arguments.of(false, true),   // 좋아요 추가
+                    Arguments.of(true, false)    // 좋아요 제거
+            );
+        }
     }
 
     @Nested
     @DisplayName("매거진 관리 테스트")
     class ManageMagazineTest {
         @ParameterizedTest
-        @CsvSource({"true,PUBLISHED", "false,REJECTED"})
         @DisplayName("매거진 승인/거절 성공")
-        void manageMagazine_Param(boolean isAccepted, MagazineStatus expectedStatus) {
+        @MethodSource("managementScenarios")
+        void manageMagazine_ApprovalAndRejection(boolean isAccepted, MagazineStatus expectedStatus) {
             // given
             when(mockMagazine.getMagazineStatus()).thenReturn(MagazineStatus.PENDING);
-            when(magazineRepository.findById(magazineId)).thenReturn(Optional.of(mockMagazine));
             when(magazineRepository.save(mockMagazine)).thenReturn(mockMagazine);
 
             // when
-            MagazineResponse response = magazineService.manageMagazine(magazineId, isAccepted);
+            MagazineResponse response = magazineService.manageMagazine(MAGAZINE_ID, isAccepted);
 
             // then
+            assertThat(response).isNotNull();
             verify(mockMagazine).setStatus(expectedStatus);
             verify(magazineRepository).save(mockMagazine);
+            verify(notificationService).processNotification(any());
+
+            if (isAccepted) {
+                verify(magazinePopularityService).initializePopularityScore(mockMagazine);
+            }
+        }
+
+        static Stream<Arguments> managementScenarios() {
+            return Stream.of(
+                    Arguments.of(true, MagazineStatus.PUBLISHED),
+                    Arguments.of(false, MagazineStatus.REJECTED)
+            );
         }
 
         @Test
@@ -300,11 +514,50 @@ class MagazineServiceImplTest {
         void manageMagazine_AlreadyPublished() {
             // given
             when(mockMagazine.getMagazineStatus()).thenReturn(MagazineStatus.PUBLISHED);
-            when(magazineRepository.findById(magazineId)).thenReturn(Optional.of(mockMagazine));
 
             // when & then
-            CustomException exception = assertThrows(CustomException.class, () -> magazineService.manageMagazine(magazineId, true));
-            assertEquals(MagazineErrorCode.ALREADY_PUBLISHED, exception.getErrorCode());
+            CustomException exception = assertThrows(CustomException.class, () -> magazineService.manageMagazine(MAGAZINE_ID, true));
+            assertThat(exception.getErrorCode()).isEqualTo(MagazineErrorCode.ALREADY_PUBLISHED);
+        }
+    }
+
+    @Nested
+    @DisplayName("인기 매거진 조회")
+    class PopularMagazineTest {
+        @Test
+        @DisplayName("전체 인기 매거진 조회")
+        void getPopularMagazines_Success() {
+            // given
+            int limit = 5;
+            List<MagazineResponse> popularMagazines = List.of(MagazineResponse.from(mockMagazine));
+            when(magazinePopularityService.getPopularMagazines(limit)).thenReturn(popularMagazines);
+
+            // when
+            List<MagazineResponse> result = magazineService.getPopularMagazines(limit);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result).hasSize(1);
+            verify(magazinePopularityService).getPopularMagazines(limit);
+        }
+
+        @Test
+        @DisplayName("카테고리별 인기 매거진 조회")
+        void getPopularMagazinesByCategory_Success() {
+            // given
+            MatchingCategory category = MatchingCategory.CAREER;
+            int limit = 3;
+            List<MagazineResponse> popularMagazines = List.of(MagazineResponse.from(mockMagazine));
+            when(magazinePopularityService.getPopularMagazinesByCategory(category, limit))
+                    .thenReturn(popularMagazines);
+
+            // when
+            List<MagazineResponse> result = magazineService.getPopularMagazinesByCategory(category, limit);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result).hasSize(1);
+            verify(magazinePopularityService).getPopularMagazinesByCategory(category, limit);
         }
     }
 
@@ -316,23 +569,20 @@ class MagazineServiceImplTest {
         void handleEngagement_Success() {
             // given
             MagazineEngagementRequest request = new MagazineEngagementRequest(1500L, 85.5);
-            ArgumentCaptor<MagazineEngagementEvent> eventCaptor = ArgumentCaptor.forClass(MagazineEngagementEvent.class);
 
             // when
-            magazineService.handleEngagement(userId, magazineId, request);
+            magazineService.handleEngagement(USER_ID, MAGAZINE_ID, request);
 
             // then
-            verify(kafkaTemplate).send(eq("magazine-engagement-topic"), eventCaptor.capture());
+            ArgumentCaptor<MagazineEngagementEvent> eventCaptor = ArgumentCaptor.forClass(MagazineEngagementEvent.class);
+            verify(eventPublisher).publishEvent(eq("magazine-engagement-topic"), eventCaptor.capture());
+
             MagazineEngagementEvent capturedEvent = eventCaptor.getValue();
-
-            assertAll(
-                    () -> assertEquals(userId, capturedEvent.getUserId()),
-                    () -> assertEquals(magazineId, capturedEvent.getMagazineId()),
-                    () -> assertEquals(1500L, capturedEvent.getDwellTime()),
-                    () -> assertEquals(85.5f, capturedEvent.getScrollPercentage()),
-                    () -> assertNotNull(capturedEvent.getTimestamp())
-            );
+            assertThat(capturedEvent.getUserId()).isEqualTo(USER_ID);
+            assertThat(capturedEvent.getMagazineId()).isEqualTo(MAGAZINE_ID);
+            assertThat(capturedEvent.getDwellTime()).isEqualTo(1500L);
+            assertThat(capturedEvent.getScrollPercentage()).isEqualTo(85.5);
+            assertThat(capturedEvent.getTimestamp()).isNotNull();
         }
-
     }
 }
