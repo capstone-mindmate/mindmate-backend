@@ -50,18 +50,17 @@ class MagazinePopularityServiceImplTest {
 
     private Magazine mockMagazine;
     private User mockUser;
+    private Profile mockProfile;
     private Long magazineId = 1L;
     private Long userId = 1L;
 
     @BeforeEach
     void setup() {
-        // 기본 Mock 설정
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
         when(redisTemplate.opsForZSet()).thenReturn(zSetOps);
 
-        // 매거진 모킹
         mockUser = mock(User.class);
-        Profile mockProfile = mock(Profile.class);
+        mockProfile = mock(Profile.class);
         when(mockUser.getId()).thenReturn(userId);
         when(mockUser.getProfile()).thenReturn(mockProfile);
         when(mockProfile.getNickname()).thenReturn("testUser");
@@ -122,6 +121,19 @@ class MagazinePopularityServiceImplTest {
             verify(valueOps).setIfAbsent(eq(viewKey), eq("1"), eq(30L), eq(TimeUnit.MINUTES));
             verify(valueOps, never()).increment(anyString());
             verify(zSetOps, never()).incrementScore(anyString(), anyString(), anyDouble());
+        }
+
+        @Test
+        @DisplayName("조회수 증가 중 예외 발생 시 로깅만 발생")
+        void incrementViewCount_ExceptionHandling() {
+            // given
+            String viewKey = "user:1:viewed:magazine:1";
+            when(redisKeyManager.getMagazineViewedKey(userId, magazineId)).thenReturn(viewKey);
+            when(valueOps.setIfAbsent(eq(viewKey), eq("1"), eq(30L), eq(TimeUnit.MINUTES)))
+                    .thenThrow(new RuntimeException("Redis connection failed"));
+
+            // when & then
+            assertDoesNotThrow(() -> magazinePopularityService.incrementViewCount(mockMagazine, userId));
         }
     }
 
@@ -235,6 +247,27 @@ class MagazinePopularityServiceImplTest {
             assertNotNull(result);
             assertEquals(expectedSize, result.size());
         }
+
+        @Test
+        @DisplayName("존재하지 않은 매거진 ID 필터링")
+        void getMagazineResponsesFromIds_FilterNonExistentMagazines() {
+            // given
+            String popularityKey = "magazine:popularity";
+            Set<String> magazineIds = new LinkedHashSet<>();
+            magazineIds.add("1");
+            magazineIds.add("999");
+
+            when(redisKeyManager.getMagazinePopularityKey()).thenReturn(popularityKey);
+            when(zSetOps.reverseRange(popularityKey, 0, 9)).thenReturn(magazineIds);
+            when(magazineRepository.findAllById(Arrays.asList(1L, 999L)))
+                    .thenReturn(Collections.singletonList(mockMagazine));
+
+            // when
+            List<MagazineResponse> result = magazinePopularityService.getPopularMagazines(10);
+
+            // then
+            assertEquals(1, result.size());
+        }
     }
 
     @Nested
@@ -334,5 +367,135 @@ class MagazinePopularityServiceImplTest {
             verify(zSetOps).remove("magazine:popularity", magazineId.toString());
             verify(zSetOps, never()).remove(anyString(), eq("category:null:popularity"));
         }
+
+        @Test
+        @DisplayName("카테고리 null인 경우 점수 업데이트")
+        void removePopularityScores_NullCategory_onlyMainKey() {
+            // given
+            when(redisKeyManager.getMagazinePopularityKey()).thenReturn("magazine:popularity");
+
+            // when
+            magazinePopularityService.removePopularityScores(magazineId, null);
+
+            // then
+            verify(zSetOps).remove("magazine:popularity", magazineId.toString());
+            verify(zSetOps, never()).remove(contains("category:"), anySet());
+        }
     }
+
+
+    @Nested
+    @DisplayName("사용자 참여 처리 - 추가 분기 테스트")
+    class EngagementProcessingAdditionalTest {
+
+        @Test
+        @DisplayName("체류 시간만 유효한 경우 (스크롤 null)")
+        void processEngagement_OnlyDwellTimeValid_ScrollNull() {
+            // given
+            String dwellTimeKey = "magazine:1:dwell_time";
+            long dwellTime = 120000L;
+            Double scrollPercentage = null;
+
+            when(redisKeyManager.getMagazineDwellTimeKey(magazineId)).thenReturn(dwellTimeKey);
+            when(redisKeyManager.getMagazinePopularityKey()).thenReturn("magazine:popularity");
+            when(redisKeyManager.getCategoryPopularityKey("ACADEMIC")).thenReturn("category:ACADEMIC:popularity");
+
+            // when
+            magazinePopularityService.processEngagement(magazineId, userId, dwellTime, scrollPercentage);
+
+            // then
+            verify(zSetOps).add(eq(dwellTimeKey), eq(userId.toString()), eq((double) dwellTime));
+            verify(zSetOps).incrementScore(eq("magazine:popularity"), eq(magazineId.toString()), anyDouble());
+        }
+
+        @Test
+        @DisplayName("체류 시간만 유효한 경우 (스크롤 0)")
+        void processEngagement_OnlyDwellTimeValid_ScrollZero() {
+            // given
+            String dwellTimeKey = "magazine:1:dwell_time";
+            long dwellTime = 120000L;
+            double scrollPercentage = 0.0;
+
+            when(redisKeyManager.getMagazineDwellTimeKey(magazineId)).thenReturn(dwellTimeKey);
+            when(redisKeyManager.getMagazinePopularityKey()).thenReturn("magazine:popularity");
+            when(redisKeyManager.getCategoryPopularityKey("ACADEMIC")).thenReturn("category:ACADEMIC:popularity");
+
+            // when
+            magazinePopularityService.processEngagement(magazineId, userId, dwellTime, scrollPercentage);
+
+            // then
+            verify(zSetOps).add(eq(dwellTimeKey), eq(userId.toString()), eq((double) dwellTime));
+            verify(zSetOps).incrementScore(eq("magazine:popularity"), eq(magazineId.toString()), anyDouble());
+        }
+
+        @Test
+        @DisplayName("스크롤만 유효한 경우 (체류 시간 null)")
+        void processEngagement_OnlyScrollValid_DwellTimeNull() {
+            // given
+            Long dwellTime = null;
+            double scrollPercentage = 85.0;
+
+            when(redisKeyManager.getMagazinePopularityKey()).thenReturn("magazine:popularity");
+            when(redisKeyManager.getCategoryPopularityKey("ACADEMIC")).thenReturn("category:ACADEMIC:popularity");
+
+            // when
+            magazinePopularityService.processEngagement(magazineId, userId, dwellTime, scrollPercentage);
+
+            // then
+            verify(zSetOps, never()).add(anyString(), anyString(), anyDouble());
+            verify(zSetOps).incrementScore(eq("magazine:popularity"), eq(magazineId.toString()), anyDouble());
+        }
+
+        @Test
+        @DisplayName("스크롤만 유효한 경우 (체류 시간 0)")
+        void processEngagement_OnlyScrollValid_DwellTimeZero() {
+            // given
+            long dwellTime = 0L;
+            double scrollPercentage = 85.0;
+
+            when(redisKeyManager.getMagazinePopularityKey()).thenReturn("magazine:popularity");
+            when(redisKeyManager.getCategoryPopularityKey("ACADEMIC")).thenReturn("category:ACADEMIC:popularity");
+
+            // when
+            magazinePopularityService.processEngagement(magazineId, userId, dwellTime, scrollPercentage);
+
+            // then
+            verify(zSetOps, never()).add(anyString(), anyString(), anyDouble());
+            verify(zSetOps).incrementScore(eq("magazine:popularity"), eq(magazineId.toString()), anyDouble());
+        }
+
+        @Test
+        @DisplayName("모든 값이 유효하지 않은 경우 (totalScore = 0)")
+        void processEngagement_NoValidInputs_NoScoreUpdate() {
+            // given
+            Long dwellTime = null;
+            Double scrollPercentage = null;
+
+            // when
+            magazinePopularityService.processEngagement(magazineId, userId, dwellTime, scrollPercentage);
+
+            // then
+            verify(zSetOps, never()).add(anyString(), anyString(), anyDouble());
+            verify(zSetOps, never()).incrementScore(anyString(), anyString(), anyDouble());
+        }
+
+        @Test
+        @DisplayName("체류 시간 음수인 경우")
+        void processEngagement_NegativeDwellTime() {
+            // given
+            long dwellTime = -1000L;
+            double scrollPercentage = 85.0;
+
+            when(redisKeyManager.getMagazinePopularityKey()).thenReturn("magazine:popularity");
+            when(redisKeyManager.getCategoryPopularityKey("ACADEMIC")).thenReturn("category:ACADEMIC:popularity");
+
+            // when
+            magazinePopularityService.processEngagement(magazineId, userId, dwellTime, scrollPercentage);
+
+            // then
+            verify(zSetOps, never()).add(anyString(), anyString(), anyDouble());
+            verify(zSetOps).incrementScore(eq("magazine:popularity"), eq(magazineId.toString()), anyDouble());
+        }
+    }
+
 }

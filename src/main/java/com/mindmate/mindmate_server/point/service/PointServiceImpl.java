@@ -2,7 +2,7 @@ package com.mindmate.mindmate_server.point.service;
 
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.PointErrorCode;
-import com.mindmate.mindmate_server.point.domain.PointReasonType;
+import com.mindmate.mindmate_server.global.exception.UserErrorCode;
 import com.mindmate.mindmate_server.point.domain.PointTransaction;
 import com.mindmate.mindmate_server.point.domain.TransactionType;
 import com.mindmate.mindmate_server.point.dto.*;
@@ -124,24 +124,35 @@ public class PointServiceImpl implements PointService {
     }
 
     private PointTransaction createTransaction(Long userId, TransactionType type, PointRequest request) {
-        User user = userService.findUserById(userId);
+        User user = pointTransactionRepository.findUserByIdWithLock(userId)
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+
         PointTransaction lastTx = pointTransactionRepository.findTopByUserOrderByVersionDesc(user).orElse(null);
+
+        Long currentVersion = (lastTx != null) ? lastTx.getVersion() : 0L;
         int currentBalance = (lastTx != null) ? lastTx.getBalance() : 0;
 
         int newBalance = (type == TransactionType.EARN)
                 ? currentBalance + request.getAmount()
                 : currentBalance - request.getAmount();
 
-        return pointTransactionRepository.save(
-                PointTransaction.builder()
-                        .user(user)
-                        .transactionType(type)
-                        .amount(request.getAmount())
-                        .reasonType(request.getReasonType())
-                        .entityId(request.getEntityId())
-                        .balance(newBalance)
-                        .build()
-        );
+        if (type == TransactionType.SPEND && newBalance < 0) {
+            throw new CustomException(PointErrorCode.INSUFFICIENT_POINTS);
+        }
+
+        PointTransaction newTransaction = PointTransaction.builder()
+                .user(user)
+                .transactionType(type)
+                .amount(request.getAmount())
+                .reasonType(request.getReasonType())
+                .entityId(request.getEntityId())
+                .balance(newBalance)
+                .build();
+
+        newTransaction.incrementVersion(currentVersion);
+
+        return pointTransactionRepository.save(newTransaction);
+
     }
 
     private PointTransaction executeWithRetry(Supplier<PointTransaction> operation) {
@@ -156,7 +167,7 @@ public class PointServiceImpl implements PointService {
                     throw new CustomException(PointErrorCode.TRANSACTION_CONFLICT);
                 }
                 try {
-                    Thread.sleep(retryDelayMs);
+                    Thread.sleep(retryDelayMs * (long) Math.pow(2, attempt));
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                 }

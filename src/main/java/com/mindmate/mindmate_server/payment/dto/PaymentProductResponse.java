@@ -7,7 +7,7 @@ import lombok.Getter;
 @Getter
 @Builder
 public class PaymentProductResponse {
-    private Long id;
+    private Long productId;
     private Integer points;
     private Integer amount;
     private Boolean isPromotion;
@@ -15,7 +15,7 @@ public class PaymentProductResponse {
 
     public static PaymentProductResponse from(PaymentProduct product) {
         return PaymentProductResponse.builder()
-                .id(product.getId())
+                .productId(product.getId())
                 .points(product.getPoints())
                 .amount(product.getAmount())
                 .isPromotion(product.getIsPromotion())
