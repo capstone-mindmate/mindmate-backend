@@ -5,6 +5,7 @@ import com.mindmate.mindmate_server.chat.domain.MessageType;
 import com.mindmate.mindmate_server.chat.domain.QChatMessage;
 import com.mindmate.mindmate_server.chat.domain.QChatRoom;
 import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
+import com.mindmate.mindmate_server.global.util.RedisKeyManager;
 import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import com.mindmate.mindmate_server.matching.domain.MatchingCategory;
 import com.mindmate.mindmate_server.matching.domain.QMatching;
@@ -24,9 +25,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static net.minidev.asm.DefaultConverter.convertToLong;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -41,6 +45,8 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
     private String defaultProfileImageFilename;
 
     private final JPAQueryFactory queryFactory;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisKeyManager redisKeyManager;
 
     // todo: admin용 채팅방 목록 조회는 없음 -> 지금 자신의 채팅방 목록 확인만 존재
 
@@ -115,7 +121,7 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                 .fetch();
 
         // DTO 변환
-        List<ChatRoomResponse> content = convertToDto(results, chatRoom, lastMessage);
+        List<ChatRoomResponse> content = convertToDto(results, chatRoom, lastMessage, userId);
 
         // 전체 개수 조회
         long total = queryFactory
@@ -212,9 +218,13 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
         }
     }
 
-    private List<ChatRoomResponse> convertToDto(List<Tuple> results, QChatRoom chatRoom, QChatMessage lastMessage) {
+    private List<ChatRoomResponse> convertToDto(List<Tuple> results, QChatRoom chatRoom, QChatMessage lastMessage, Long userId) {
         return results.stream()
                 .map(tuple -> {
+                    Long roomId = tuple.get(chatRoom.id);
+                    Long dbUnreadCount = tuple.get(11, Long.class) != null ? tuple.get(11, Long.class) : 0L;
+                    Long actualUnreadCount = getUnreadCountFromRedis(roomId, userId, dbUnreadCount);
+
                     String lastMessageContent = "새 채팅방이 생성되었습니다";
                     MessageType lastMessageType = tuple.get(lastMessage.type);
 
@@ -239,11 +249,29 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                             .oppositeName(tuple.get(8, String.class))
                             .oppositeImage(tuple.get(9, String.class))
                             .oppositeId(tuple.get(10, Long.class))
-                            .unreadCount(tuple.get(11, Long.class) != null ? tuple.get(11, Long.class) : 0L)
+                            .unreadCount(actualUnreadCount)
                             .userRole(tuple.get(12, String.class))
                             .category(tuple.get(13, MatchingCategory.class))
                             .build();
                 })
                 .collect(Collectors.toList());
+    }
+
+    private Long getUnreadCountFromRedis(Long roomId, Long userId, Long dbFallback) {
+        try {
+            String unreadKey = redisKeyManager.getUnreadCountKey(roomId, userId);
+            Object redisValue = redisTemplate.opsForValue().get(unreadKey);
+
+            if (redisValue != null) {
+                return convertToLong(redisValue);
+            }
+
+            // Redis에 없으면 DB 값을 Redis에 저장하고 반환
+            redisTemplate.opsForValue().set(unreadKey, dbFallback);
+            return dbFallback;
+        } catch (Exception e) {
+            log.error("Redis에서 unreadCount 조회 실패: {}", e.getMessage());
+            return dbFallback;
+        }
     }
 }
