@@ -98,6 +98,7 @@ public class MatchingServiceImpl implements MatchingService {
         User user = userService.findUserById(userId);
         Matching matching = findMatchingById(matchingId);
 
+        validateActiveMatchingCount(userId);
         validateMatchingApplication(user, matching);
 
         WaitingUser waitingUser = createWaitingUser(user, matching, request);
