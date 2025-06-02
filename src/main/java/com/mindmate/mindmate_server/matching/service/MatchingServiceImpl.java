@@ -178,13 +178,6 @@ public class MatchingServiceImpl implements MatchingService {
 
         validateActiveMatchingCount(userId);
 
-        if (userRole == InitiatorType.SPEAKER) {
-            int currentBalance = pointService.getCurrentBalance(userId);
-            if (currentBalance < 100) {
-                throw new CustomException(MatchingErrorCode.INSUFFICIENT_POINTS_FOR_MATCHING);
-            }
-        }
-
         Long matchingId = redisMatchingService.getRandomMatching(user, userRole);
         if (matchingId == null) {
             throw new CustomException(MatchingErrorCode.NO_MATCHING_AVAILABLE);
@@ -361,6 +354,7 @@ public class MatchingServiceImpl implements MatchingService {
                 })
                 .collect(Collectors.toList());
 
+        chatRoomService.deleteChatRoom(matching.getChatRoom());
         matching.cancelMatching();
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
