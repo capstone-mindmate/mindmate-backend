@@ -97,6 +97,7 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
 
         List<Tuple> results = queryFactory
                 .select(createSelectProjection(chatRoom, matching, lastMessage, userId,
+                        creator, acceptedUser, creatorProfile, acceptedUserProfile,
                         creatorProfileImage, acceptedUserProfileImage))
                 .from(chatRoom)
                 .join(chatRoom.matching, matching)
@@ -129,12 +130,14 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
 
     private Expression<?>[] createSelectProjection(QChatRoom chatRoom, QMatching matching,
                                                    QChatMessage lastMessage, Long userId,
+                                                   QUser creator, QUser acceptedUser,
+                                                   QProfile creatorProfile, QProfile acceptedUserProfile,
                                                    QProfileImage creatorProfileImage,
                                                    QProfileImage acceptedUserProfileImage) {
-        QProfile creatorProfile = new QProfile("creatorProfile");
-        QProfile acceptedUserProfile = new QProfile("acceptedUserProfile");
-        QUser creator = new QUser("creator");
-        QUser acceptedUser = new QUser("acceptedUser");
+//        QProfile creatorProfile = new QProfile("creatorProfile");
+//        QProfile acceptedUserProfile = new QProfile("acceptedUserProfile");
+//        QUser creator = new QUser("creator");
+//        QUser acceptedUser = new QUser("acceptedUser");
 
         String imageUrl = profileImageUrlPrefix + defaultProfileImageFilename;
 
@@ -168,12 +171,23 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                         .otherwise(creator.id).as("oppositeId"),
                 // 안읽은 메시지 수
                 new CaseBuilder()
-                        // 사용자가 리스너인 경우
-                        .when(matching.creatorRole.eq(InitiatorType.LISTENER).and(matching.creator.id.eq(userId))
-                                .or(matching.creatorRole.eq(InitiatorType.SPEAKER).and(matching.acceptedUser.id.eq(userId))))
+                        .when(
+                                // 사용자가 생성자이면서 리스너 역할
+                                matching.creator.id.eq(userId).and(matching.creatorRole.eq(InitiatorType.LISTENER))
+                                        .or(
+                                                // 사용자가 수락자이면서 생성자가 스피커 역할 (즉, 수락자가 리스너)
+                                                matching.acceptedUser.id.eq(userId).and(matching.creatorRole.eq(InitiatorType.SPEAKER))
+                                        )
+                        )
                         .then(chatRoom.listenerUnreadCount)
-                        // 사용자가 스피커인 경우
                         .otherwise(chatRoom.speakerUnreadCount).as("unreadCount"),
+//                new CaseBuilder()
+//                        // 사용자가 리스너인 경우
+//                        .when(matching.creatorRole.eq(InitiatorType.LISTENER).and(matching.creator.id.eq(userId))
+//                                .or(matching.creatorRole.eq(InitiatorType.SPEAKER).and(matching.acceptedUser.id.eq(userId))))
+//                        .then(chatRoom.listenerUnreadCount)
+//                        // 사용자가 스피커인 경우
+//                        .otherwise(chatRoom.speakerUnreadCount).as("unreadCount"),
                 // 사용자 역할
                 new CaseBuilder()
                         .when(matching.creatorRole.eq(InitiatorType.LISTENER).and(matching.creator.id.eq(userId))
