@@ -1,6 +1,7 @@
 package com.mindmate.mindmate_server.matching.domain;
 
 import com.mindmate.mindmate_server.chat.domain.ChatRoom;
+import com.mindmate.mindmate_server.chat.domain.ChatRoomStatus;
 import com.mindmate.mindmate_server.global.entity.BaseTimeEntity;
 import com.mindmate.mindmate_server.user.domain.User;
 import jakarta.persistence.*;
@@ -49,7 +50,6 @@ public class Matching extends BaseTimeEntity {
     private User acceptedUser;
 
     @OneToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "chat_room_id")
     private ChatRoom chatRoom;
 
     private LocalDateTime matchedAt;
@@ -81,6 +81,7 @@ public class Matching extends BaseTimeEntity {
 
     public void cancelMatching() {
         this.status = MatchingStatus.CANCELED;
+        this.chatRoom = null;
     }
 
     public void acceptMatching(User acceptedUser) {
