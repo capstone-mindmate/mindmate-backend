@@ -10,6 +10,7 @@ import com.mindmate.mindmate_server.review.dto.ReviewResponse;
 import com.mindmate.mindmate_server.review.repository.ReviewRedisRepository;
 import com.mindmate.mindmate_server.review.repository.ReviewRepository;
 import com.mindmate.mindmate_server.user.domain.Profile;
+import com.mindmate.mindmate_server.chat.domain.ChatRoom;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -64,16 +65,32 @@ class AdminReviewServiceImplTest {
     @Mock
     private EvaluationTag evaluationTag2;
 
+    @Mock
+    private ChatRoom chatRoom;
+
     private List<Review> reviews;
 
     @BeforeEach
     void setUp() {
-        // Common mock setup for all tests
         when(review.getId()).thenReturn(1L);
         when(review.getReviewedProfile()).thenReturn(profile);
         when(profile.getId()).thenReturn(1L);
 
         when(review.getRating()).thenReturn(5);
+
+        when(review.getChatRoom()).thenReturn(chatRoom);
+        when(chatRoom.getId()).thenReturn(1L);
+
+        when(review.getReviewer()).thenReturn(mock(com.mindmate.mindmate_server.user.domain.User.class));
+        when(review.getReviewer().getId()).thenReturn(1L);
+        when(review.getReviewer().getProfile()).thenReturn(mock(Profile.class));
+        when(review.getReviewer().getProfile().getNickname()).thenReturn("테스트유저");
+        when(review.getReviewer().getProfile().getProfileImage()).thenReturn(mock(com.mindmate.mindmate_server.user.domain.ProfileImage.class));
+        when(review.getReviewer().getProfile().getProfileImage().getImageUrl()).thenReturn("test-image.jpg");
+
+        when(review.getComment()).thenReturn("테스트 댓글");
+        when(review.isAnonymous()).thenReturn(false);
+        when(review.getCreatedAt()).thenReturn(java.time.LocalDateTime.now());
 
         List<EvaluationTag> tags = new ArrayList<>();
         when(evaluationTag1.getTagContent()).thenReturn(Tag.RESPONSIVE);
@@ -232,8 +249,7 @@ class AdminReviewServiceImplTest {
 
             // Then
             verify(reviewService).findReviewById(reviewId);
-            verify(profile).decrementCounselingCount();
-            verify(profile).subtractRating(anyDouble());
+            verify(profile).decrementCountAndRating(anyDouble());
             verify(reviewRedisRepository).decrementTagCount(eq(profile.getId()), eq(Tag.RESPONSIVE.getContent()));
             verify(reviewRedisRepository).decrementTagCount(eq(profile.getId()), eq(Tag.EMPATHETIC.getContent()));
             verify(reviewRepository).delete(review);
@@ -270,8 +286,7 @@ class AdminReviewServiceImplTest {
             adminReviewService.deleteReview(reviewId);
 
             // Then
-            verify(profile).decrementCounselingCount();
-            verify(profile).subtractRating(eq((double)rating));
+            verify(profile).decrementCountAndRating(eq((double)rating));
         }
 
         @Test

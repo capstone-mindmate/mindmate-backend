@@ -17,7 +17,9 @@ public enum ProfileErrorCode implements ErrorCode {
     IMAGE_UPLOAD_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드 중 오류가 발생했습니다."),
     PROFILE_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "프로필 이미지를 찾을 수 없습니다."),
     PROFILE_IMAGE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "프로필 이미지에 접근 권한이 없습니다."),
-    PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "프로필이 존재하지 않습니다.");
+    PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "프로필이 존재하지 않습니다."),
+    COUNT_NOT_FOUND(HttpStatus.NOT_FOUND,"삭제할 상담 기록이 없습니다." ),
+    INVALID_RATING(HttpStatus.NOT_FOUND,"올바르지 않은 평점입니다" );
 
     private final HttpStatus status;
     private final String message;

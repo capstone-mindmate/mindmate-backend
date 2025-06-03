@@ -17,6 +17,7 @@ import java.util.Map;
 public class ProfileDetailResponse {
     private Long id;
     private Long userId;
+    private String email;
     private String nickname;
     private String profileImage;
     private String department;

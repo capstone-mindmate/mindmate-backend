@@ -8,6 +8,7 @@ import com.mindmate.mindmate_server.chat.dto.ChatRoomResponse;
 import com.mindmate.mindmate_server.matching.domain.Matching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -38,4 +39,6 @@ public interface ChatRoomService {
     ChatRoom createChatRoom(Matching matching);
 
     void deleteChatRoomForUser(Long userId, Long roomId);
+
+    void deleteChatRoom(ChatRoom chatRoom);
 }
