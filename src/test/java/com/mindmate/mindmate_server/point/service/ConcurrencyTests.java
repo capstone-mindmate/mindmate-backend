@@ -1,5 +1,6 @@
 package com.mindmate.mindmate_server.point.service;
 
+import com.mindmate.mindmate_server.auth.domain.AuthProvider;
 import com.mindmate.mindmate_server.chat.repository.ChatMessageRepository;
 import com.mindmate.mindmate_server.chat.repository.ChatRoomRepository;
 import com.mindmate.mindmate_server.magazine.repository.MagazineLikeRepository;
@@ -142,8 +143,7 @@ public class ConcurrencyTests {
 
         testUser = User.builder()
                 .email("test_" + UUID.randomUUID().toString() + "@example.com")
-                .password("password123")
-                .agreedToTerms(true)
+                .provider(AuthProvider.GOOGLE)
                 .role(RoleType.ROLE_ADMIN)
                 .build();
         testUser = userRepository.save(testUser);
@@ -158,6 +158,7 @@ public class ConcurrencyTests {
 
         testProfile = Profile.builder()
                 .user(testUser)
+                .agreedToTerms(true)
                 .nickname("test_" + UUID.randomUUID().toString())
                 .department("Computer Science")
                 .entranceTime(2020)

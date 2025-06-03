@@ -98,6 +98,7 @@ public class MatchingServiceImpl implements MatchingService {
         User user = userService.findUserById(userId);
         Matching matching = findMatchingById(matchingId);
 
+        validateActiveMatchingCount(userId);
         validateMatchingApplication(user, matching);
 
         WaitingUser waitingUser = createWaitingUser(user, matching, request);
@@ -176,13 +177,6 @@ public class MatchingServiceImpl implements MatchingService {
         User user = userService.findUserById(userId);
 
         validateActiveMatchingCount(userId);
-
-        if (userRole == InitiatorType.SPEAKER) {
-            int currentBalance = pointService.getCurrentBalance(userId);
-            if (currentBalance < 100) {
-                throw new CustomException(MatchingErrorCode.INSUFFICIENT_POINTS_FOR_MATCHING);
-            }
-        }
 
         Long matchingId = redisMatchingService.getRandomMatching(user, userRole);
         if (matchingId == null) {
@@ -360,6 +354,7 @@ public class MatchingServiceImpl implements MatchingService {
                 })
                 .collect(Collectors.toList());
 
+        chatRoomService.deleteChatRoom(matching.getChatRoom());
         matching.cancelMatching();
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

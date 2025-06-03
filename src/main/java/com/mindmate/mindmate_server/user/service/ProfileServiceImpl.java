@@ -221,6 +221,7 @@ public class ProfileServiceImpl implements ProfileService {
         return ProfileDetailResponse.builder()
                 .id(profileId)
                 .userId(userId)
+                .email(user.getEmail())
                 .nickname(profile.getNickname())
                 .profileImage(profile.getProfileImage().getImageUrl())
                 .department(profile.getDepartment())

@@ -291,4 +291,10 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         }
         save(chatRoom);
     }
+
+    @Override
+    @Transactional
+    public void deleteChatRoom(ChatRoom chatRoom){
+        chatRoomRepository.delete(chatRoom);
+    }
 }
