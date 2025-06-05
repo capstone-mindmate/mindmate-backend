@@ -389,6 +389,17 @@ public class MatchingServiceImpl implements MatchingService {
         return categoryCounts;
     }
 
+    @Override
+    public MatchingStatusResponse getMatchingStatus(Long userId) {
+                int currentCount = redisMatchingService.getUserActiveMatchingCount(userId);
+
+                        return MatchingStatusResponse.builder()
+                                .currentActiveMatchings(currentCount)
+                                .maxActiveMatchings(MAX_ACTIVE_MATCHINGS)
+                                .canCreateMore(currentCount < MAX_ACTIVE_MATCHINGS)
+                                .build();
+    }
+
     private WaitingUser findWaitingUserById(Long waitingUserId) {
         return waitingUserRepository.findById(waitingUserId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.WAITING_NOT_FOUND));
