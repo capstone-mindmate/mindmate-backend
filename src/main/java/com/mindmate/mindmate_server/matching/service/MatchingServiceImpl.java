@@ -130,7 +130,7 @@ public class MatchingServiceImpl implements MatchingService {
         try {
             pointService.usePoints(speakerUser.getId(), PointRequest.builder()
                     .transactionType(TransactionType.SPEND)
-                    .amount(100)
+                    .amount(50)
                     .reasonType(PointReasonType.COUNSELING_REQUESTED)
                     .entityId(matchingId)
                     .build());
