@@ -26,7 +26,12 @@ public class UnreadCountConsumer {
 //    @KafkaStandardRetry
     @RetryableTopic(
             attempts = "3",
-            backoff = @Backoff(delay = 1000),
+            backoff = @Backoff(
+                    delay = 1000,
+                    multiplier = 2.0,
+                    maxDelay = 10000,
+                    random = true
+            ),
             dltTopicSuffix = "-unread-count-group-dlt",
             retryTopicSuffix = "-unread-count-group-retry"
     )

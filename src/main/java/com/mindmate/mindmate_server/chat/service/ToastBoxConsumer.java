@@ -27,7 +27,12 @@ public class ToastBoxConsumer {
 //    @KafkaStandardRetry
     @RetryableTopic(
             attempts = "3",
-            backoff = @Backoff(delay = 1000),
+            backoff = @Backoff(
+                    delay = 1000,
+                    multiplier = 2.0,
+                    maxDelay = 10000,
+                    random = true
+            ),
             dltTopicSuffix = "-toast-box-group-dlt",
             retryTopicSuffix = "-toast-box-group-retry"
     )
