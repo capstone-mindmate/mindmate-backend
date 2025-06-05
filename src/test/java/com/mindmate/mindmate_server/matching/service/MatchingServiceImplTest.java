@@ -345,7 +345,7 @@ class MatchingServiceImplTest {
 
             verify(pointService).usePoints(eq(1L), argThat(pointRequest ->
                     pointRequest.getTransactionType() == TransactionType.SPEND &&
-                            pointRequest.getAmount() == 100 &&
+                            pointRequest.getAmount() == 50 &&
                             pointRequest.getReasonType() == PointReasonType.COUNSELING_REQUESTED));
             verify(waitingUser).accept();
             verify(matching).acceptMatching(applicant);

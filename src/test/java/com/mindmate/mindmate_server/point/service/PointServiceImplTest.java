@@ -86,7 +86,7 @@ class PointServiceImplTest {
         Long userId = 1L;
         PointRequest request = PointRequest.builder()
                 .transactionType(TransactionType.EARN)
-                .amount(0)
+                .amount(-1)
                 .reasonType(PointReasonType.REVIEW_WRITTEN)
                 .entityId(1L)
                 .build();
