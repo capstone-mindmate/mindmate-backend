@@ -86,11 +86,7 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                 .from(lastMessage)
                 .where(lastMessage.chatRoom.eq(chatRoom));
 
-        // 기본 조건: 사용자가 참여한 채팅방 + 삭제 여부 확인
-        BooleanExpression baseCondition = (matching.creator.id.eq(userId)
-                .and(chatRoom.deletedByListener.eq(false).or(chatRoom.deletedBySpeaker.eq(false).and(matching.creatorRole.eq(InitiatorType.SPEAKER)))))
-                .or(matching.acceptedUser.id.eq(userId)
-                        .and(chatRoom.deletedBySpeaker.eq(false).or(chatRoom.deletedByListener.eq(false).and(matching.creatorRole.eq(InitiatorType.LISTENER)))));
+        BooleanExpression baseCondition = createUserParticipationCondition(userId);
 
         // 추가 조건 적용
         if (roleCondition != null) {
@@ -274,4 +270,17 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
             return dbFallback;
         }
     }
+
+    private BooleanExpression createUserParticipationCondition(Long userId) {
+        QChatRoom chatRoom = QChatRoom.chatRoom;
+        QMatching matching = QMatching.matching;
+
+        return (matching.creator.id.eq(userId)
+                .and(matching.creatorRole.eq(InitiatorType.LISTENER).and(chatRoom.deletedByListener.eq(false))
+                        .or(matching.creatorRole.eq(InitiatorType.SPEAKER).and(chatRoom.deletedBySpeaker.eq(false)))))
+                .or(matching.acceptedUser.id.eq(userId)
+                        .and(matching.creatorRole.eq(InitiatorType.LISTENER).and(chatRoom.deletedBySpeaker.eq(false))
+                                .or(matching.creatorRole.eq(InitiatorType.SPEAKER).and(chatRoom.deletedByListener.eq(false)))));
+    }
+
 }
