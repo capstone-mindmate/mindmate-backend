@@ -231,14 +231,7 @@ public class MatchingServiceImpl implements MatchingService {
 
     @Override @Transactional
     public void cancelWaiting(Long userId, Long waitingUserId) {
-        User user = userService.findUserById(userId);
         WaitingUser waitingUser = findWaitingUserById(waitingUserId);
-
-        validateWaitingCancellation(user, waitingUser);
-
-        if (!user.addCancelCount()) {
-            throw new CustomException(MatchingErrorCode.DAILY_LIMIT_CANCEL_EXCEED);
-        }
 
         waitingUserRepository.delete(waitingUser);
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -479,16 +472,6 @@ public class MatchingServiceImpl implements MatchingService {
         }
 
         return matching;
-    }
-
-    private void validateWaitingCancellation(User user, WaitingUser waitingUser) {
-        if (!waitingUser.isOwner(user)) {
-            throw new CustomException(MatchingErrorCode.NOT_WAITING_OWNER);
-        }
-
-        if (waitingUser.getStatus() != WaitingStatus.PENDING) {
-            throw new CustomException(MatchingErrorCode.CANNOT_CANCEL_PROCESSED_WAITING);
-        }
     }
 
     private WaitingUser validateWaitingUser(Long waitingId, Long matchingId) {
