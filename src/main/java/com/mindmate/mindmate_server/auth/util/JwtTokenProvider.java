@@ -74,10 +74,6 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    private boolean isProfileComplete(User user) {
-        return user.getCurrentRole() != RoleType.ROLE_UNVERIFIED && user.getCurrentRole() != RoleType.ROLE_USER;
-    }
-
     /**
      * 변조 방지
      */

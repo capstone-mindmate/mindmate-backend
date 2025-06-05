@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum RoleType {
-    ROLE_UNVERIFIED("ROLE_UNVERIFIED", "이메일 인증 안한 사용자"),
     ROLE_USER("ROLE_USER", "프로필 입력 안한 사용자"),
     ROLE_PROFILE("ROLE_PROFILE", "프로필 입력 한 사용자"),
     // todo: 해당 status일때 api 호출 제한
