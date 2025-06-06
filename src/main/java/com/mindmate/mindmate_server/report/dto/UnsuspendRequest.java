@@ -11,4 +11,8 @@ import lombok.NoArgsConstructor;
 @Builder
 public class UnsuspendRequest {
     private int reportCount;
+
+    public void setReportCount(Integer count) {
+        this.reportCount = count;
+    }
 }

@@ -27,17 +27,54 @@ public class RedisMatchingService {
 
     private static final Map<String, String> DEPARTMENT_TO_COLLEGE_MAP = new HashMap<>();
     static {
-        DEPARTMENT_TO_COLLEGE_MAP.put("공학", "공과대학");
-        DEPARTMENT_TO_COLLEGE_MAP.put("응용화학", "공과대학");
-        DEPARTMENT_TO_COLLEGE_MAP.put("경영", "경영대학");
-        DEPARTMENT_TO_COLLEGE_MAP.put("경제", "경영대학");
-        DEPARTMENT_TO_COLLEGE_MAP.put("소프트", "소프트웨어융합");
-        DEPARTMENT_TO_COLLEGE_MAP.put("미디어", "소프트웨어융합");
-        DEPARTMENT_TO_COLLEGE_MAP.put("사회", "사회과학대학");
-        DEPARTMENT_TO_COLLEGE_MAP.put("정치", "사회과학대학");
-        DEPARTMENT_TO_COLLEGE_MAP.put("국어", "인문대학");
-        DEPARTMENT_TO_COLLEGE_MAP.put("불어", "인문대학");
-    } // todo : 이후 단과대 더 추가
+        DEPARTMENT_TO_COLLEGE_MAP.put("기계공학과", "공과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("환경안전공학과", "공과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("산업공학과", "공과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("건설시스템공학과", "공과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("화학공학과", "공과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("교통시스템공학과", "공과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("첨단신소재공학과", "공과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("건축", "공과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("응용화학생명공학과", "공과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("융합시스템공학과", "공과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("응용화학과", "공과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("전자공학과", "첨단ICT융합대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("지능형반도체공학과", "첨단ICT융합대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("미래모빌리티공학과", "첨단ICT융합대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("디지털미디어학과", "소프트웨어융합대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("소프트웨어학과", "소프트웨어융합대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("국방디지털융합학과", "소프트웨어융합대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("사이버보안학과", "소프트웨어융합대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("인공지능융합학과", "소프트웨어융합대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("수학과", "자연과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("화학과", "자연과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("물리학과", "자연과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("생명과학과", "자연과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("프런티어과학학부", "자연과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("경영학과", "경영대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("금융공학과", "경영대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("경영인텔리전스학과", "경영대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("글로벌경영학과", "경영대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("사회학과", "사회과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("정치외교학과", "사회과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("경제학과", "사회과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("행정학과", "사회과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("심리학과", "사회과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("스포츠레저학과", "사회과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("경제정치사회융합학부", "사회과학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("국어국문학과", "인문대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("불어불문학과", "인문대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("사학과", "인문대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("영어영문학과", "인문대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("문화콘텐츠학과", "인문대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("의학과", "의과대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("간호학과", "간호대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("약학과", "약학대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("첨단바이오융합대학", "첨단바이오융합대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("다산학부대학", "다산학부대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("자유전공학부", "다산학부대학");
+        DEPARTMENT_TO_COLLEGE_MAP.put("국제학부", "인문대학");
+    }
 
 
     public void addMatchingToAvailableSet(Matching matching) {

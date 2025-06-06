@@ -104,7 +104,7 @@ public class PointServiceImpl implements PointService {
     }
 
     private void validateAmount(int amount) {
-        if (amount <= 0) {
+        if (amount < 0) {
             throw new CustomException(PointErrorCode.INVALID_POINT_AMOUNT);
         }
     }

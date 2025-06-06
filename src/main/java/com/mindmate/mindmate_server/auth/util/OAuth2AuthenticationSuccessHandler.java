@@ -95,6 +95,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                     .queryParam("token", accessToken)
                     .queryParam("refreshToken", refreshToken)
                     .queryParam("email", user.getEmail())
+                    .queryParam("role", user.getCurrentRole().name())
                     .build().toUriString();
             return targetUrl;
         } catch (Exception e) {

@@ -22,7 +22,12 @@ public class ChatRoomCloseNotificationConsumer {
 //    @KafkaStandardRetry
     @RetryableTopic(
             attempts = "3",
-            backoff = @Backoff(delay = 1000),
+            backoff = @Backoff(
+                    delay = 1000,
+                    multiplier = 2.0,
+                    maxDelay = 10000,
+                    random = true
+            ),
             dltTopicSuffix = "-chat-notification-group-dlt",
             retryTopicSuffix = "-chat-notification-group-retry"
     )

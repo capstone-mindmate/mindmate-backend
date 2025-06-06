@@ -32,4 +32,6 @@ public interface ProfileService {
     Profile findProfileById(Long profileId);
 
     ProfileDetailResponse getMyProfileDetail(Long userId);
+
+    Page<ProfileDetailResponse> getAllProfiles(Pageable pageable);
 }
