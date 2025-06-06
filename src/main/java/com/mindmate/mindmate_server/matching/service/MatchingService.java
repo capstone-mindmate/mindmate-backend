@@ -43,4 +43,6 @@ public interface MatchingService {
     Matching findMatchingById(Long matchingId);
 
     Map<String, Integer> getCategoryCountsByUserId(Long userId);
+
+    MatchingStatusResponse getMatchingStatus(Long userId);
 }

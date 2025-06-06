@@ -6,6 +6,10 @@ import com.mindmate.mindmate_server.chat.service.ChatRoomService;
 import com.mindmate.mindmate_server.global.exception.*;
 import com.mindmate.mindmate_server.notification.dto.ReviewCreatedNotificationEvent;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
+import com.mindmate.mindmate_server.point.domain.PointReasonType;
+import com.mindmate.mindmate_server.point.domain.TransactionType;
+import com.mindmate.mindmate_server.point.dto.PointRequest;
+import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.review.domain.Review;
 import com.mindmate.mindmate_server.review.domain.Tag;
 import com.mindmate.mindmate_server.review.dto.*;
@@ -42,6 +46,7 @@ public class ReviewServiceImpl implements ReviewService{
     private final UserService userService;
     private final ProfileService profileService;
     private final NotificationService notificationService;
+    private final PointService pointService;
 
     @Override
     @Transactional(propagation = Propagation.REQUIRED)
@@ -65,6 +70,22 @@ public class ReviewServiceImpl implements ReviewService{
         reviewRedisRepository.deleteAllProfileCaches(reviewedProfile.getId());
 
         processReviewRewards(reviewer, reviewedUser, review.getId());
+
+        if(chatRoom.isListener(reviewer)) {
+            try {
+                pointService.addPoints(reviewer.getId(), PointRequest.builder()
+                        .transactionType(TransactionType.EARN)
+                        .amount(30)
+                        .reasonType(PointReasonType.COUNSELING_PROVIDED)
+                        .entityId(review.getId())
+                        .build());
+            } catch (CustomException e) {
+                if (e.getErrorCode() == PointErrorCode.INSUFFICIENT_POINTS) {
+                    throw new CustomException(MatchingErrorCode.INSUFFICIENT_POINTS_FOR_MATCHING);
+                }
+                throw e;
+            }
+        }
 
         return ReviewResponse.from(review);
     }

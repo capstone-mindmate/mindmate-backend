@@ -18,6 +18,8 @@ import com.mindmate.mindmate_server.user.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -138,6 +140,18 @@ public class ProfileServiceImpl implements ProfileService {
 
         return buildProfileDetailResponse(profile, user);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProfileDetailResponse> getAllProfiles(Pageable pageable) {
+        Page<Profile> profiles = profileRepository.findAllWithUser(pageable);
+
+        return profiles.map(profile -> {
+            User user = profile.getUser();
+            return buildProfileDetailResponse(profile, user);
+        });
+    }
+
 
     private void validateNickname(String nickname) {
         if (profileRepository.existsByNickname(nickname)) {

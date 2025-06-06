@@ -168,4 +168,12 @@ public class MatchingController {
                 userPrincipal.getUserId(), request);
         return ResponseEntity.ok(matchingId);
     }
+
+    @Operation(summary = "내 활성 매칭 상태 조회", description = "현재 사용자의 활성 매칭 수와 생성 가능 여부를 조회합니다.")
+    @GetMapping("/status")
+    public ResponseEntity<MatchingStatusResponse> getMatchingStatus(
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        MatchingStatusResponse status = matchingService.getMatchingStatus(userPrincipal.getUserId());
+        return ResponseEntity.ok(status);
+    }
 }

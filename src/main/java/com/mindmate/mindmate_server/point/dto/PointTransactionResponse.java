@@ -14,7 +14,7 @@ public class PointTransactionResponse {
     private Long id;
     private TransactionType transactionType;
     private int amount;
-    private PointReasonType reasonType;
+    private String reasonType;
     private Long entityId;
     private int balance;
     private LocalDateTime createdAt;
@@ -24,7 +24,7 @@ public class PointTransactionResponse {
                 .id(transaction.getId())
                 .amount(transaction.getAmount())
                 .transactionType(transaction.getTransactionType())
-                .reasonType(transaction.getReasonType())
+                .reasonType(transaction.getReasonType().getTitle())
                 .createdAt(transaction.getCreatedAt())
                 .entityId(transaction.getEntityId())
                 .balance(transaction.getBalance())

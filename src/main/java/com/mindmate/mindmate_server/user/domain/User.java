@@ -74,13 +74,6 @@ public class User extends BaseTimeEntity {
     @OneToMany(mappedBy = "user")
     private List<MagazineLike> magazineLikes = new ArrayList<>();
 
-
-    // 일일 매칭 제한 관련 필드 추가
-    private int dailyCancellationCount = 0;
-    private int dailyRejectionCount = 0;
-    private LocalDate lastActionResetDate;
-
-    // 신고 관련 데이터 처리
     private int reportCount = 0;
     private LocalDateTime suspensionEndTime;
 
@@ -101,29 +94,6 @@ public class User extends BaseTimeEntity {
         this.currentRole = type;
     }
 
-    // 매칭 관련 메서드 추가
-    public boolean addCancelCount() {
-        checkAndResetLimits();
-
-        if (dailyCancellationCount >= 3) {
-            return false; // 한도 초과
-        }
-
-        dailyCancellationCount++;
-        return true;
-    }
-
-    public boolean addRejectionCount() {
-        checkAndResetLimits();
-
-        if (dailyRejectionCount >= 3) {
-            return false; // 한도 초과
-        }
-
-        dailyRejectionCount++;
-        return true;
-    }
-
     public void incrementReportCount() {
         this.reportCount++;
     }
@@ -142,12 +112,4 @@ public class User extends BaseTimeEntity {
         this.reportCount = reportCount;
     }
 
-    private void checkAndResetLimits() {
-        LocalDate today = LocalDate.now();
-        if (lastActionResetDate == null || !today.equals(lastActionResetDate)) {
-            dailyCancellationCount = 0;
-            dailyRejectionCount = 0;
-            lastActionResetDate = today;
-        }
-    }
 }
