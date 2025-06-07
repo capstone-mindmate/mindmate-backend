@@ -108,7 +108,7 @@ public class MatchingServiceImpl implements MatchingService {
             public void afterCommit() {
                 redisMatchingService.incrementUserActiveMatchingCount(userId);
 
-                sendMatchingAppliedNotification(user, matching, request.isAnonymous());
+                sendMatchingAppliedNotification(user, matching, matching.isAnonymous());
             }
         });
 
@@ -188,7 +188,7 @@ public class MatchingServiceImpl implements MatchingService {
         WaitingUser waitingUser = WaitingUser.builder()
                 .waitingUser(user)
                 .matchingType(MatchingType.AUTO_RANDOM)
-                .anonymous(request.isAnonymous())
+                .anonymous(matching.isAnonymous())
                 .build();
 
         matching.addWaitingUser(waitingUser);
@@ -431,7 +431,7 @@ public class MatchingServiceImpl implements MatchingService {
                 .waitingUser(user)
                 .message(request.getMessage())
                 .matchingType(MatchingType.MANUAL)
-                .anonymous(request.isAnonymous())
+                .anonymous(matching.isAnonymous())
                 .build();
 
         matching.addWaitingUser(waitingUser);
