@@ -13,6 +13,7 @@ import com.mindmate.mindmate_server.global.exception.ProfileErrorCode;
 import com.mindmate.mindmate_server.global.exception.ReviewErrorCode;
 import com.mindmate.mindmate_server.notification.dto.ReviewCreatedNotificationEvent;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
+import com.mindmate.mindmate_server.point.service.PointService;
 import com.mindmate.mindmate_server.review.domain.EvaluationTag;
 import com.mindmate.mindmate_server.review.domain.Review;
 import com.mindmate.mindmate_server.review.domain.Tag;
@@ -60,6 +61,7 @@ class ReviewServiceTest {
     @Mock private UserService userService;
     @Mock private ProfileService profileService;
     @Mock private NotificationService notificationService;
+    @Mock private PointService pointService;
 
     @InjectMocks private ReviewServiceImpl reviewService;
     @InjectMocks private ReviewDataService reviewDataService;
@@ -108,7 +110,6 @@ class ReviewServiceTest {
                 .rating(5)
                 .comment("아주 어메이징한 상담이었습니다")
                 .tags(Arrays.asList("응답이 빨라요", "공감을 잘해줘요"))
-                .anonymous(false)
                 .build();
     }
 
@@ -172,14 +173,15 @@ class ReviewServiceTest {
                     .rating(4)
                     .comment("익명 리뷰입니다")
                     .tags(Arrays.asList("응답이 빨라요"))
-                    .anonymous(true)
                     .build();
 
+            Matching anonymousMatching = createAnonymousMatching(2L, reviewer, reviewedUser, InitiatorType.SPEAKER);
+            ChatRoom anonymousChatRoom = createChatRoom(2L, anonymousMatching, ChatRoomStatus.CLOSED);
             Review anonymousReview = createReview(2L, reviewer, reviewedProfile, chatRoom, 4, "익명 리뷰입니다", true);
 
             given(userService.findUserById(1L)).willReturn(reviewer);
-            given(chatRoomService.findChatRoomById(1L)).willReturn(chatRoom);
-            given(reviewRepository.existsByChatRoomAndReviewer(chatRoom, reviewer)).willReturn(false);
+            given(chatRoomService.findChatRoomById(1L)).willReturn(anonymousChatRoom);
+            given(reviewRepository.existsByChatRoomAndReviewer(anonymousChatRoom, reviewer)).willReturn(false);
             given(reviewRepository.save(any(Review.class))).willReturn(anonymousReview);
 
             // when
@@ -204,7 +206,6 @@ class ReviewServiceTest {
                     .rating(4)
                     .comment("태그 없는 리뷰")
                     .tags(Collections.emptyList())
-                    .anonymous(false)
                     .build();
 
             Review noTagsReview = createReview(3L, reviewer, reviewedProfile, chatRoom, 4, "태그 없는 리뷰", false);
@@ -234,7 +235,6 @@ class ReviewServiceTest {
                     .rating(invalidRating)
                     .comment("테스트")
                     .tags(Collections.emptyList())
-                    .anonymous(false)
                     .build();
 
             // when & then
@@ -302,7 +302,6 @@ class ReviewServiceTest {
                     .rating(5)
                     .comment("테스트")
                     .tags(Arrays.asList("존재하지 않는 태그"))
-                    .anonymous(false)
                     .build();
 
             given(userService.findUserById(1L)).willReturn(reviewer);
@@ -372,6 +371,7 @@ class ReviewServiceTest {
             // then
             assertThat(response).isNotNull();
             assertThat(response.getId()).isEqualTo(1L);
+            then(pointService).should().addPoints(eq(1L), any());
         }
 
         @Test
@@ -903,6 +903,22 @@ class ReviewServiceTest {
                 .category(MatchingCategory.ACADEMIC)
                 .creatorRole(creatorRole)
                 .anonymous(false)
+                .allowRandom(true)
+                .showDepartment(true)
+                .build();
+        ReflectionTestUtils.setField(matching, "id", id);
+        ReflectionTestUtils.setField(matching, "acceptedUser", acceptedUser);
+        return matching;
+    }
+
+    private Matching createAnonymousMatching(Long id, User creator, User acceptedUser, InitiatorType creatorRole) {
+        Matching matching = Matching.builder()
+                .creator(creator)
+                .title("익명 테스트 매칭")
+                .description("익명 테스트 설명")
+                .category(MatchingCategory.ACADEMIC)
+                .creatorRole(creatorRole)
+                .anonymous(true)  // 익명 설정
                 .allowRandom(true)
                 .showDepartment(true)
                 .build();
