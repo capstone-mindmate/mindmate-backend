@@ -14,6 +14,4 @@ import lombok.NoArgsConstructor;
 public class AutoMatchingRequest {
 
     private InitiatorType userRole;
-    private boolean anonymous;
-    private boolean showDepartment;
 }

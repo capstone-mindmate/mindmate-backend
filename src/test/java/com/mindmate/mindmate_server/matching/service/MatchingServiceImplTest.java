@@ -264,7 +264,7 @@ class MatchingServiceImplTest {
         @Test
         @DisplayName("매칭 신청 성공")
         void applyForMatchingSuccess() {
-            WaitingUserRequest request = new WaitingUserRequest("I want to participate", false);
+            WaitingUserRequest request = new WaitingUserRequest("I want to participate");
 
             given(userService.findUserById(2L)).willReturn(applicant);
             given(redisMatchingService.getUserActiveMatchingCount(2L)).willReturn(0);
@@ -289,7 +289,7 @@ class MatchingServiceImplTest {
         @Test
         @DisplayName("자신의 매칭에 신청 시 예외 발생")
         void applyForOwnMatching() {
-            WaitingUserRequest request = new WaitingUserRequest("I want to participate", false);
+            WaitingUserRequest request = new WaitingUserRequest("I want to participate");
 
             given(userService.findUserById(1L)).willReturn(creator);
             given(redisMatchingService.getUserActiveMatchingCount(1L)).willReturn(0);
@@ -307,7 +307,7 @@ class MatchingServiceImplTest {
         @Test
         @DisplayName("활성 매칭 수 초과 시 신청 불가")
         void applyForMatchingExceedLimit() {
-            WaitingUserRequest request = new WaitingUserRequest("I want to participate", false);
+            WaitingUserRequest request = new WaitingUserRequest("I want to participate");
 
             given(userService.findUserById(2L)).willReturn(applicant);
             given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
@@ -379,8 +379,7 @@ class MatchingServiceImplTest {
         @DisplayName("자동 매칭 신청 성공")
         void autoMatchApplySuccess() {
             AutoMatchingRequest request = new AutoMatchingRequest(
-                    InitiatorType.LISTENER,
-                    false, true
+                    InitiatorType.LISTENER
             );
 
             MatchingServiceImpl spyMatchingService = spy(matchingService);
@@ -409,8 +408,7 @@ class MatchingServiceImplTest {
         @DisplayName("자동 매칭 가능한 상대가 없을 때 예외 발생")
         void autoMatchNoMatchingAvailable() {
             AutoMatchingRequest request = new AutoMatchingRequest(
-                    InitiatorType.LISTENER,
-                    false, true
+                    InitiatorType.LISTENER
             );
 
             given(userService.findUserById(2L)).willReturn(applicant);
@@ -967,7 +965,7 @@ class MatchingServiceImplTest {
             given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
             given(redisMatchingService.getUserActiveMatchingCount(2L)).willReturn(3);
 
-            WaitingUserRequest request = new WaitingUserRequest("Want to join", false);
+            WaitingUserRequest request = new WaitingUserRequest("Want to join");
 
             assertThatThrownBy(() -> matchingService.applyForMatching(2L, 1L, request))
                     .isInstanceOf(CustomException.class)
@@ -1031,7 +1029,7 @@ class MatchingServiceImplTest {
         @Test
         @DisplayName("시나리오: 자동 매칭 성공 시 즉시 매칭 완료")
         void scenarioAutoMatchingImmediateCompletion() {
-            AutoMatchingRequest request = new AutoMatchingRequest(InitiatorType.LISTENER, false, true);
+            AutoMatchingRequest request = new AutoMatchingRequest(InitiatorType.LISTENER);
             MatchingServiceImpl spyMatchingService = spy(matchingService);
 
             given(userService.findUserById(2L)).willReturn(applicant);
@@ -1062,7 +1060,7 @@ class MatchingServiceImplTest {
 
             verify(redisMatchingService).decrementUserActiveMatchingCount(2L);
 
-            WaitingUserRequest newRequest = new WaitingUserRequest("Want to join again", false);
+            WaitingUserRequest newRequest = new WaitingUserRequest("Want to join again");
             given(userService.findUserById(2L)).willReturn(applicant);
             given(redisMatchingService.getUserActiveMatchingCount(2L)).willReturn(0);
             given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
