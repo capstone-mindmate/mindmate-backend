@@ -1,8 +1,9 @@
 package com.mindmate.mindmate_server.user.service;
 
-import com.mindmate.mindmate_server.global.exception.AuthErrorCode;
 import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.UserErrorCode;
+import com.mindmate.mindmate_server.user.dto.PushNotificationSettingRequest;
+import com.mindmate.mindmate_server.user.dto.PushNotificationSettingResponse;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.repository.UserRepository;
@@ -55,5 +56,28 @@ public class UserServiceImpl implements UserService {
     @Override
     public Optional<User> findByEmailOptional(String email) {
         return userRepository.findByEmail(email);
+    }
+
+    @Override
+    public PushNotificationSettingResponse getPushNotificationSetting(Long userId) {
+
+        User user = findUserById(userId);
+        return PushNotificationSettingResponse.of(user);
+    }
+
+    @Override
+    @Transactional
+    public PushNotificationSettingResponse updatePushNotificationSetting(Long userId, PushNotificationSettingRequest request) {
+        User user = findUserById(userId);
+        user.updatePushNotificationSetting(request.isPushNotificationEnabled());
+        userRepository.save(user);
+
+        return PushNotificationSettingResponse.of(user);
+    }
+
+    @Override
+    public boolean isPushNotificationEnabled(Long userId) {
+        User user = findUserById(userId);
+        return user.isPushNotificationEnabled();
     }
 }
