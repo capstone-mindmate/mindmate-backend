@@ -32,7 +32,8 @@ public class ChatNotificationConsumer {
                     random = true
             ),
             dltTopicSuffix = "-notification-group-dlt",
-            retryTopicSuffix = "-notification-group-retry"
+            retryTopicSuffix = "-notification-group-retry",
+            autoCreateTopics = "false"
     )
     @KafkaListener(
             topics = "chat-message-topic",

@@ -32,7 +32,8 @@ public class MessageEncryptConsumer {
             attempts = "3",
             backoff = @Backoff(delay = 1000, multiplier = 2.0), // 지수 백오프 적용
             dltTopicSuffix = "-message-encryption-group-dlt",
-            retryTopicSuffix = "-message-encryption-group-retry"
+            retryTopicSuffix = "-message-encryption-group-retry",
+            autoCreateTopics = "false"
     )
     @KafkaListener(
             topics = "chat-message-topic",

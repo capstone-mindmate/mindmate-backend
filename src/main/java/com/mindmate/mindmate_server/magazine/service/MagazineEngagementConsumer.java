@@ -32,7 +32,8 @@ public class MagazineEngagementConsumer {
                     random = true
             ),
             dltTopicSuffix = "-magazine-engagement-group-dlt",
-            retryTopicSuffix = "-magazine-engagement-group-retry"
+            retryTopicSuffix = "-magazine-engagement-group-retry",
+            autoCreateTopics = "false"
     )
     @KafkaListener(
             topics = "magazine-engagement-topic",

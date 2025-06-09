@@ -33,7 +33,8 @@ public class UnreadCountConsumer {
                     random = true
             ),
             dltTopicSuffix = "-unread-count-group-dlt",
-            retryTopicSuffix = "-unread-count-group-retry"
+            retryTopicSuffix = "-unread-count-group-retry",
+            autoCreateTopics = "false"
     )
     @KafkaListener(
             topics = "chat-message-topic",

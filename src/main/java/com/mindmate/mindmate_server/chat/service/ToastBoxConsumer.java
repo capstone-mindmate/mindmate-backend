@@ -34,7 +34,8 @@ public class ToastBoxConsumer {
                     random = true
             ),
             dltTopicSuffix = "-toast-box-group-dlt",
-            retryTopicSuffix = "-toast-box-group-retry"
+            retryTopicSuffix = "-toast-box-group-retry",
+            autoCreateTopics = "false"
     )
     @KafkaListener(
             topics = "chat-message-topic",
