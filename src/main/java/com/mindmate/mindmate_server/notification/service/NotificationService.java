@@ -7,6 +7,7 @@ import com.mindmate.mindmate_server.notification.domain.NotificationType;
 import com.mindmate.mindmate_server.notification.dto.NotificationEvent;
 import com.mindmate.mindmate_server.notification.dto.NotificationResponse;
 import com.mindmate.mindmate_server.notification.repository.NotificationRepository;
+import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final FCMService fcmService;
+    private final UserService userService;
 
     @Transactional
     public void processNotification(NotificationEvent event) {
@@ -39,7 +41,7 @@ public class NotificationService {
             notificationRepository.save(notification);
         }
 
-        if (event.sendFCM()) {
+        if (event.sendFCM() && userService.isPushNotificationEnabled(event.getRecipientId())) {
             fcmService.sendNotification(event.getRecipientId(), event);
         }
     }
