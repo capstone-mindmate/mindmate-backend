@@ -32,8 +32,8 @@ public class WaitingUserResponse {
 
     public static WaitingUserResponse of(WaitingUser waitingUser) {
 
-        String nickname = null;
-        String profileImage = null;
+        String nickname = "익명";
+        String profileImage = "/profileImages/default-profile-image.png";
         String department = null;
 
         if (!waitingUser.isAnonymous()) {
