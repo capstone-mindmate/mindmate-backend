@@ -37,8 +37,8 @@ public class MatchingDetailResponse {
 
         Long creatorId = matching.getCreator().getId();
 
-        String nickname = null;
-        String profileImage = null;
+        String nickname = "익명";
+        String profileImage = "/profileImages/default-profile-image.png";
         String department = null;
         int counselingCount = 0;
         double avgRating = 0.0;
