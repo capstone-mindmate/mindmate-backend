@@ -20,6 +20,7 @@ import java.util.List;
 public class WaitingUserResponse {
     private Long id;
     private Long waitingUserId;
+    private Long waitingUserProfileId;
     private String waitingUserNickname;
     private String waitingUserDepartment;
     private Integer waitingUserEntranceTime;
@@ -48,6 +49,7 @@ public class WaitingUserResponse {
         return WaitingUserResponse.builder()
                 .id(waitingUser.getId())
                 .waitingUserId(waitingUser.getWaitingUser().getId())
+                .waitingUserProfileId(waitingUser.getWaitingUser().getProfile().getId())
                 .waitingUserNickname(nickname)
                 .waitingUserDepartment(department)
                 .waitingUserEntranceTime(waitingUser.getWaitingUser().getProfile().getEntranceTime())
