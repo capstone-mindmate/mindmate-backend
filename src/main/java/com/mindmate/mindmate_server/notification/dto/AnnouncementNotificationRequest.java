@@ -15,6 +15,6 @@ public class AnnouncementNotificationRequest {
     @NotBlank(message = "공지사항 제목은 필수입니다.")
     private String title;
 
-    @NotNull(message = "공지사항 ID는 필수입니다.")
-    private Long announcementId;
+    @NotNull(message = "공지사항 내용은 필수입니다.")
+    private String content;
 }
