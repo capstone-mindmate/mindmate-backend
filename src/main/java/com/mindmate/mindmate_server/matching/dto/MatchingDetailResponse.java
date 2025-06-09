@@ -25,7 +25,7 @@ public class MatchingDetailResponse {
     private boolean showDepartment;
     private InitiatorType creatorRole;
 
-    private Long creatorId;
+    private Long creatorId; // 프로필로 변경
     private String creatorNickname;
     private String creatorProfileImage;
     private String creatorDepartment;
@@ -35,7 +35,7 @@ public class MatchingDetailResponse {
     public static MatchingDetailResponse of(Matching matching) {
         boolean isAnonymous = matching.isAnonymous();
 
-        Long creatorId = matching.getCreator().getId();
+        Long creatorId = matching.getCreator().getProfile().getId();
 
         String nickname = "익명";
         String profileImage = "/profileImages/default-profile-image.png";
