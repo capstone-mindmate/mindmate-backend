@@ -22,6 +22,7 @@ import org.springframework.security.config.annotation.web.configurers.HeadersCon
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.web.OAuth2LoginAuthenticationFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -74,13 +75,14 @@ public class SecurityConfig {
                                 "/magazineImages/**",
                                 "/profileImages/**",
                                 "/ws/**",
-                                "/auth/*",
+                                "/auth/**",
+                                "/oauth2/**",
                                 "/auth/oauth2/redirect",
                                 "/swagger-ui/**",
                                 "/swagger-resources/**",
                                 "/v3/api-docs/**",
                                 "/profiles/image/default/register",
-                                "/oauth2/**"
+                                "/login/oauth2/**"
                         ).permitAll() // 향후 수정 (api 접근, role 별 접근 등)
                         .requestMatchers("/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
                         .requestMatchers("/profile/**").hasAnyAuthority("ROLE_USER", "ROLE_PROFILE", "ROLE_ADMIN")
@@ -95,7 +97,7 @@ public class SecurityConfig {
                 .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class) // 초당 10개 요청 제한
                 .addFilterBefore(new XssFilter(), UsernamePasswordAuthenticationFilter.class) // XSS 공격 방지
                 .addFilterBefore(new RequestLoggingFilter(), UsernamePasswordAuthenticationFilter.class) // 모든 요청 로깅
-                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class); // JWT 토큰 검증
+                .addFilterBefore(jwtAuthenticationFilter(), OAuth2LoginAuthenticationFilter.class); // JWT 토큰 검증
          return http.build();
     }
 

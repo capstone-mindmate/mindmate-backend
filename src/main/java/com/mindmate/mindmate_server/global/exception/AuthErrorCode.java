@@ -40,7 +40,8 @@ public enum AuthErrorCode implements ErrorCode {
     // 인증 여부
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증되지 않은 사용자입니다"), 
     PROFILE_NOT_REGISTER(HttpStatus.FORBIDDEN, "프로필 등록이 완성되지 않았습니다" ),
-    EMAIL_NOT_FOUND(HttpStatus.BAD_REQUEST, "찾을 수 없는 이메일입니다." );
+    EMAIL_NOT_FOUND(HttpStatus.BAD_REQUEST, "찾을 수 없는 이메일입니다." ),
+    AUTHENTICATION_FAILED(HttpStatus.BAD_REQUEST,"구글 로그인 에러" );
 
     private final HttpStatus status;
     private final String message;
