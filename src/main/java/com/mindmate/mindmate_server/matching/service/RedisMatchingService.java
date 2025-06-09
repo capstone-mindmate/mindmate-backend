@@ -76,7 +76,6 @@ public class RedisMatchingService {
         DEPARTMENT_TO_COLLEGE_MAP.put("국제학부", "인문대학");
     }
 
-
     public void addMatchingToAvailableSet(Matching matching) {
         String setKey = getAvailableMatchingSetKey(matching.getCreatorRole());
         redisTemplate.opsForSet().add(setKey, matching.getId().toString());
@@ -114,7 +113,6 @@ public class RedisMatchingService {
     }
 
     public void cleanupMatchingKeys(Matching matching) {
-
         if (!matching.isOpen()) {
             String setKey = getAvailableMatchingSetKey(matching.getCreatorRole());
             redisTemplate.opsForSet().remove(setKey, matching.getId().toString());
@@ -221,6 +219,10 @@ public class RedisMatchingService {
                     continue;
                 }
 
+                if (matching.isCreator(user)) {
+                    continue;
+                }
+
                 double score = calculateMatchingScore(user, matching);
                 scoredMatches.put(matchingId, score);
             } catch (Exception e) {
@@ -256,5 +258,4 @@ public class RedisMatchingService {
     private void setExpiry(String key, int hours) {
         redisTemplate.expire(key, hours, TimeUnit.HOURS);
     }
-
 }

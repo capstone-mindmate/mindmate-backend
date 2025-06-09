@@ -155,17 +155,38 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                 // 상대방 이름
                 new CaseBuilder()
                         .when(matching.creator.id.eq(userId).and(matching.acceptedUser.isNotNull()))
-                        .then(acceptedUserProfile.nickname)
+                        .then(
+                                new CaseBuilder()
+                                        .when(matching.anonymous.eq(true))
+                                        .then("익명")
+                                        .otherwise(acceptedUserProfile.nickname)
+                        )
                         .when(matching.creator.id.eq(userId).and(matching.acceptedUser.isNull()))
                         .then("대기 중")
-                        .otherwise(creatorProfile.nickname).as("oppositeName"),
+                        .otherwise(
+                                new CaseBuilder()
+                                        .when(matching.anonymous.eq(true))
+                                        .then("익명")
+                                        .otherwise(creatorProfile.nickname)
+                        ).as("oppositeName"),
                 // 상대방 이미지
+                // 상대방 이미지 - 익명 처리 추가
                 new CaseBuilder()
                         .when(matching.creator.id.eq(userId).and(matching.acceptedUser.isNotNull()))
-                        .then(acceptedUserProfileImage.imageUrl)
+                        .then(
+                                new CaseBuilder()
+                                        .when(matching.anonymous.eq(true))
+                                        .then(imageUrl) // 익명일 때는 기본 이미지
+                                        .otherwise(acceptedUserProfileImage.imageUrl) // 익명이 아닐 때만 실제 이미지
+                        )
                         .when(matching.creator.id.eq(userId).and(matching.acceptedUser.isNull()))
-                        .then(imageUrl)
-                        .otherwise(creatorProfileImage.imageUrl).as("oppositeImage"),
+                        .then(imageUrl) // 대기 중일 때는 기본 이미지
+                        .otherwise(
+                                new CaseBuilder()
+                                        .when(matching.anonymous.eq(true))
+                                        .then(imageUrl) // 익명일 때는 기본 이미지
+                                        .otherwise(creatorProfileImage.imageUrl) // 익명이 아닐 때만 실제 이미지
+                        ).as("oppositeImage"),
                 // 상대방 ID - 타입 모호성 해결
                 new CaseBuilder()
                         .when(matching.creator.id.eq(userId).and(matching.acceptedUser.isNotNull()))
@@ -183,13 +204,6 @@ public class ChatRoomRepositoryImpl implements ChatRoomRepositoryCustom {
                         )
                         .then(chatRoom.listenerUnreadCount)
                         .otherwise(chatRoom.speakerUnreadCount).as("unreadCount"),
-//                new CaseBuilder()
-//                        // 사용자가 리스너인 경우
-//                        .when(matching.creatorRole.eq(InitiatorType.LISTENER).and(matching.creator.id.eq(userId))
-//                                .or(matching.creatorRole.eq(InitiatorType.SPEAKER).and(matching.acceptedUser.id.eq(userId))))
-//                        .then(chatRoom.listenerUnreadCount)
-//                        // 사용자가 스피커인 경우
-//                        .otherwise(chatRoom.speakerUnreadCount).as("unreadCount"),
                 // 사용자 역할
                 new CaseBuilder()
                         .when(matching.creatorRole.eq(InitiatorType.LISTENER).and(matching.creator.id.eq(userId))
