@@ -39,7 +39,8 @@ public class FilteringEventConsumer {
                     random = true
             ),
             dltTopicSuffix = "-filtering-event-group-dlt",
-            retryTopicSuffix = "-filtering-event-group-retry"
+            retryTopicSuffix = "-filtering-event-group-retry",
+            autoCreateTopics = "false"
     )
     @KafkaListener(
             topics = "chat-message-topic",

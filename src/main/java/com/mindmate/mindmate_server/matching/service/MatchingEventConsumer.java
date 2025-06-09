@@ -29,7 +29,8 @@ public class MatchingEventConsumer {
                     random = true
             ),
             dltTopicSuffix = "-matching-group-dlt",
-            retryTopicSuffix = "-matching-group-retry"
+            retryTopicSuffix = "-matching-group-retry",
+            autoCreateTopics = "false"
     )
     @KafkaListener(topics = "matching-accepted", groupId = "matching-group")
     @Transactional

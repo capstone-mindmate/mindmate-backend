@@ -40,7 +40,8 @@ public class ResponseTimeCalculationConsumer {
                     random = true
             ),
             dltTopicSuffix = "-response-time-calculation-group-dlt",
-            retryTopicSuffix = "-response-time-calculation-group-retry"
+            retryTopicSuffix = "-response-time-calculation-group-retry",
+            autoCreateTopics = "false"
     )
     @KafkaListener(
             topics = "chat-room-close-topic",
