@@ -13,6 +13,7 @@ import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import com.mindmate.mindmate_server.matching.domain.Matching;
 import com.mindmate.mindmate_server.matching.service.RedisMatchingService;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
+import com.mindmate.mindmate_server.review.repository.ReviewRepository;
 import com.mindmate.mindmate_server.user.domain.User;
 import com.mindmate.mindmate_server.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ChatRoomServiceImpl implements ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
+    private final ReviewRepository reviewRepository;
 
     private final ChatMessageService chatMessageService;
     private final UserService userService;
@@ -83,7 +85,9 @@ public class ChatRoomServiceImpl implements ChatRoomService {
             chatRoomRepository.save(chatRoom);
         }
 
-        return ChatRoomDetailResponse.from(chatRoom, messages, user);
+        boolean isWriteReview = reviewRepository.existsByChatRoomAndReviewer(chatRoom, user);
+
+        return ChatRoomDetailResponse.from(chatRoom, messages, user, isWriteReview);
     }
 
     @Override
