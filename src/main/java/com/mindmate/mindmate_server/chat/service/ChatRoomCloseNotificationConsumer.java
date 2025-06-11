@@ -29,7 +29,8 @@ public class ChatRoomCloseNotificationConsumer {
                     random = true
             ),
             dltTopicSuffix = "-chat-notification-group-dlt",
-            retryTopicSuffix = "-chat-notification-group-retry"
+            retryTopicSuffix = "-chat-notification-group-retry",
+            autoCreateTopics = "false"
     )
     @KafkaListener(
             topics = "chat-room-close-topic",
