@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 public enum MatchingStatus {
     OPEN("시작됨"),
     MATCHED("매칭됨"),
+    REJECTED("제한됨"),
     CANCELED("취소됨");
 
     private final String title;

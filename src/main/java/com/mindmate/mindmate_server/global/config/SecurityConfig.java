@@ -55,11 +55,12 @@ public class SecurityConfig {
                         .contentSecurityPolicy(csp ->
                                 csp.policyDirectives(
                                         "default-src 'self'; " +
-                                                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+                                                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com; " + // Firebase SDK 로딩 허용
                                                 "style-src 'self' 'unsafe-inline'; " +
                                                 "img-src 'self' data: blob: http: https:; " +
-                                                "font-src 'self' data:;" +
-                                                "connect-src 'self' ws: wss:;" // WebSocket 연결 허용
+                                                "font-src 'self' data:; " +
+                                                "connect-src 'self' ws: wss: https://fcm.googleapis.com https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com; " + // Firebase API 허용
+                                                "worker-src 'self' blob:;" // 서비스 워커 허용
                                 )
                         )
                         .httpStrictTransportSecurity(hsts -> // HTTPS 강제
