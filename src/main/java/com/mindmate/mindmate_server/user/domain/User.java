@@ -77,6 +77,9 @@ public class User extends BaseTimeEntity {
     private int reportCount = 0;
     private LocalDateTime suspensionEndTime;
 
+    @Column(name = "push_notification_enabled", nullable = false)
+    private boolean pushNotificationEnabled = true;
+
     @Builder
     public User(String email, AuthProvider provider, String providerId, RoleType role) {
         this.email = email;
@@ -110,6 +113,10 @@ public class User extends BaseTimeEntity {
 
     public void setReportCount(int reportCount) {
         this.reportCount = reportCount;
+    }
+
+    public void updatePushNotificationSetting(boolean enabled) {
+        this.pushNotificationEnabled = enabled;
     }
 
 }

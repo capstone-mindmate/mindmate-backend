@@ -8,17 +8,17 @@ import lombok.Getter;
 @Builder
 public class AnnouncementNotificationEvent implements NotificationEvent {
     private final Long recipientId;
-    private final Long announcementId;
     private final String announcementTitle;
+    private final String announcementContent;
 
     @Override
     public String getTitle() {
-        return "새 공지사항";
+        return announcementTitle;
     }
 
     @Override
     public String getContent() {
-        return String.format("새 공지사항: %s", announcementTitle);
+        return announcementContent;
     }
 
     @Override
@@ -28,6 +28,6 @@ public class AnnouncementNotificationEvent implements NotificationEvent {
 
     @Override
     public Long getRelatedEntityId() {
-        return announcementId;
+        return 0L;
     }
 }
