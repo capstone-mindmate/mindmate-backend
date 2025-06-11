@@ -176,4 +176,11 @@ public class MatchingController {
         MatchingStatusResponse status = matchingService.getMatchingStatus(userPrincipal.getUserId());
         return ResponseEntity.ok(status);
     }
+
+    @Operation(summary = "인기 매칭 카테고리 조회", description = "가장 인기있는 카테고리를 조회합니다.")
+    @GetMapping("/popular")
+    public ResponseEntity<PopularMatchingCategoryResponse> getPopularMatchingCategory() {
+        PopularMatchingCategoryResponse response = matchingService.getPopularMatchingCategoty();
+        return ResponseEntity.ok(response);
+    }
 }

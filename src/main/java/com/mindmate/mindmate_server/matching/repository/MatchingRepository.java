@@ -24,4 +24,11 @@ public interface MatchingRepository extends JpaRepository<Matching, Long>, Match
             "AND m.status = 'MATCHED' " +
             "GROUP BY m.category")
     List<Object[]> countMatchingsByUserAndCategory(@Param("userId") Long userId);
+
+    @Query("SELECT m.category FROM Matching m " +
+            "WHERE m.status = 'MATCHED' " +
+            "GROUP BY m.category " +
+            "ORDER BY COUNT(m) DESC " +
+            "LIMIT 1")
+    MatchingCategory findMostPopularMatchingCategory();
 }

@@ -401,6 +401,13 @@ public class MatchingServiceImpl implements MatchingService {
                                 .build();
     }
 
+    @Override
+    public PopularMatchingCategoryResponse getPopularMatchingCategoty() {
+        MatchingCategory matchingCategory = matchingRepository.findMostPopularMatchingCategory();
+
+        return PopularMatchingCategoryResponse.builder().matchingCategory(matchingCategory).build();
+    }
+
     private WaitingUser findWaitingUserById(Long waitingUserId) {
         return waitingUserRepository.findById(waitingUserId)
                 .orElseThrow(() -> new CustomException(MatchingErrorCode.WAITING_NOT_FOUND));
@@ -414,12 +421,13 @@ public class MatchingServiceImpl implements MatchingService {
     }
 
     private void validateMatchingApplication(User user, Matching matching) {
-        if (matching.isCreator(user)) {
-            throw new CustomException(MatchingErrorCode.CANNOT_APPLY_TO_OWN_MATCHING);
-        }
 
         if (!matching.isOpen()) {
             throw new CustomException(MatchingErrorCode.MATCHING_ALREADY_CLOSED);
+        }
+
+        if (matching.isCreator(user)) {
+            throw new CustomException(MatchingErrorCode.CANNOT_APPLY_TO_OWN_MATCHING);
         }
 
         if (waitingUserRepository.findByMatchingAndWaitingUser(matching, user).isPresent()) {
