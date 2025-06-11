@@ -28,7 +28,9 @@ public class ChatRoomDetailResponse {
     private String myImageUrl;
     private String oppositeImageUrl;
 
-    public static ChatRoomDetailResponse from(ChatRoom chatRoom, List<ChatMessage> messages, User user) {
+    private boolean isWriteReview;
+
+    public static ChatRoomDetailResponse from(ChatRoom chatRoom, List<ChatMessage> messages, User user, boolean isWriteReview) {
         boolean isListener = chatRoom.isListener(user);
         String myImageUrl = chatRoom.getMatching().isAnonymous() ? null : (isListener ? chatRoom.getListener().getProfile().getProfileImage().getImageUrl() : chatRoom.getSpeaker().getProfile().getProfileImage().getImageUrl());
         String oppositeImageUrl = chatRoom.getMatching().isAnonymous() ? null : (isListener ? chatRoom.getSpeaker().getProfile().getProfileImage().getImageUrl() : chatRoom.getListener().getProfile().getProfileImage().getImageUrl());
@@ -47,6 +49,7 @@ public class ChatRoomDetailResponse {
                         .collect(Collectors.toList()))
                 .myImageUrl(myImageUrl)
                 .oppositeImageUrl(oppositeImageUrl)
+                .isWriteReview(isWriteReview)
                 .build();
     }
 }
