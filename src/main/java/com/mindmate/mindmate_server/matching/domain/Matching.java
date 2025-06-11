@@ -84,6 +84,11 @@ public class Matching extends BaseTimeEntity {
         this.chatRoom = null;
     }
 
+    public void rejectMatching() {
+        this.status = MatchingStatus.REJECTED;
+        this.chatRoom = null;
+    }
+
     public void acceptMatching(User acceptedUser) {
         this.acceptedUser = acceptedUser;
         this.matchedAt = LocalDateTime.now();
