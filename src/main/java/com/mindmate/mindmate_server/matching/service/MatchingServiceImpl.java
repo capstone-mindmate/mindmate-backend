@@ -245,6 +245,7 @@ public class MatchingServiceImpl implements MatchingService {
     @Override
     public Page<MatchingResponse> getMatchings(Long userId, Pageable pageable, MatchingCategory category,
                                                String department, InitiatorType requiredRole) {
+
         List<Long> appliedMatchingIds = waitingUserRepository.findMatchingIdsByWaitingUserId(userId);
 
         if (appliedMatchingIds.isEmpty()) {
