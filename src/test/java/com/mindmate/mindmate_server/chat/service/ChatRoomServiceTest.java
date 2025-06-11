@@ -13,6 +13,7 @@ import com.mindmate.mindmate_server.matching.domain.InitiatorType;
 import com.mindmate.mindmate_server.matching.domain.Matching;
 import com.mindmate.mindmate_server.matching.service.RedisMatchingService;
 import com.mindmate.mindmate_server.notification.service.NotificationService;
+import com.mindmate.mindmate_server.review.repository.ReviewRepository;
 import com.mindmate.mindmate_server.user.domain.Profile;
 import com.mindmate.mindmate_server.user.domain.ProfileImage;
 import com.mindmate.mindmate_server.user.domain.User;
@@ -58,6 +59,7 @@ class ChatRoomServiceTest {
     @Mock private NotificationService notificationService;
     @Mock private RedisMatchingService redisMatchingService;
     @Mock private ResilientEventPublisher eventPublisher;
+    @Mock private ReviewRepository reviewRepository;
 
     @InjectMocks
     private ChatRoomServiceImpl chatRoomService;
@@ -137,6 +139,7 @@ class ChatRoomServiceTest {
         when(userService.findUserById(USER_ID)).thenReturn(mockUser);
         when(userService.findUserById(SPEAKER_ID)).thenReturn(mockSpeaker);
         when(userService.findUserById(LISTENER_ID)).thenReturn(mockListener);
+        when(reviewRepository.existsByChatRoomAndReviewer(any(), any())).thenReturn(false);
     }
 
     private ChatMessage createMockChatMessage(Long id) {
@@ -273,7 +276,7 @@ class ChatRoomServiceTest {
         }
 
         @ParameterizedTest
-        @DisplayName("메시지 로드 시나리오")
+        @DisplayName("메시지 로드 및 리뷰 작성 상태 확인")
         @MethodSource("messageLoadScenarios")
         void getInitialMessages_Scenarios(
                 String description,
@@ -281,6 +284,7 @@ class ChatRoomServiceTest {
                 long lastReadMessageId,
                 long totalMessages,
                 boolean hasLatestMessage,
+                boolean hasWrittenReview,
                 int expectedMessageCount) {
             // given
             when(mockChatRoom.isListener(mockUser)).thenReturn(isListener);
@@ -300,6 +304,9 @@ class ChatRoomServiceTest {
                 when(chatMessageService.findLatestMessageByChatRoomId(ROOM_ID)).thenReturn(Optional.of(latestMessage));
             }
 
+            when(reviewRepository.existsByChatRoomAndReviewer(mockChatRoom, mockUser))
+                    .thenReturn(hasWrittenReview);
+
             setupMessageMocking(lastReadMessageId, totalMessages);
 
             // when
@@ -308,19 +315,26 @@ class ChatRoomServiceTest {
             // then
             assertThat(result).isNotNull();
             assertThat(result.getMessages()).hasSize(expectedMessageCount);
+            assertThat(result.isWriteReview()).isEqualTo(hasWrittenReview);
 
             if (totalMessages > 0 && expectedMessageCount > 0) {
                 verify(mockChatRoom).markAsRead(mockUser, totalMessages);
                 verify(chatRoomRepository).save(mockChatRoom);
             }
+
+            verify(reviewRepository).existsByChatRoomAndReviewer(mockChatRoom, mockUser);
         }
 
         static Stream<Arguments> messageLoadScenarios() {
             return Stream.of(
-                    Arguments.of("메시지가 없는 경우", true, 0L, 0L, false, 0),
-                    Arguments.of("첫 입장 - 모든 메시지 로드", true, 0L, 5L, false, 5),
-                    Arguments.of("재접속 - 읽지 않은 메시지 존재", true, 5L, 10L, true, 10),
-                    Arguments.of("재접속 - 모든 메시지 읽음", false, 10L, 10L, true, 10)
+                    Arguments.of("메시지가 없는 경우 - 리뷰 미작성", true, 0L, 0L, false, false, 0),
+                    Arguments.of("메시지가 없는 경우 - 리뷰 작성됨", true, 0L, 0L, false, true, 0),
+                    Arguments.of("첫 입장 - 모든 메시지 로드 - 리뷰 미작성", true, 0L, 5L, false, false, 5),
+                    Arguments.of("첫 입장 - 모든 메시지 로드 - 리뷰 작성됨", true, 0L, 5L, false, true, 5),
+                    Arguments.of("재접속 - 읽지 않은 메시지 존재 - 리뷰 미작성", true, 5L, 10L, true, false, 10),
+                    Arguments.of("재접속 - 읽지 않은 메시지 존재 - 리뷰 작성됨", true, 5L, 10L, true, true, 10),
+                    Arguments.of("재접속 - 모든 메시지 읽음 - 리뷰 미작성", false, 10L, 10L, true, false, 10),
+                    Arguments.of("재접속 - 모든 메시지 읽음 - 리뷰 작성됨", false, 10L, 10L, true, true, 10)
             );
         }
 

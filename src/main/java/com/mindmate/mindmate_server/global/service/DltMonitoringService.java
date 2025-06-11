@@ -32,12 +32,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DltMonitoringService {
     private final AdminClient adminClient;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    //    private final KafkaTemplate<String, Object> kafkaTemplate;
     private final KafkaConsumerFactory consumerFactory;
     private final KafkaTopicUtils topicUtils;
     private final SlackNotifier slackNotifier;
 
-    private static final int ALERT_THRESHOLD = 1;
+    private static final int ALERT_THRESHOLD = 5;
     private static final Duration ALERT_INTERVAL = Duration.ofHours(1);
 
     private final Map<String, Instant> lastAlertTimeMap = new ConcurrentHashMap<>();
@@ -134,7 +134,7 @@ public class DltMonitoringService {
                     consumer.seek(partition, endOffset - 1);
 
                     ConsumerRecords<String, Object> records = consumer.poll(Duration.ofMillis(500));
-                    if (!records.isEmpty()) {
+                    if (records != null && !records.isEmpty()) {
                         ConsumerRecord<String, Object> lastRecord = records.iterator().next();
                         return Instant.ofEpochMilli(lastRecord.timestamp()).toString();
                     }

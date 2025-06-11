@@ -2,6 +2,9 @@ package com.mindmate.mindmate_server.user.service;
 
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
+import com.mindmate.mindmate_server.user.dto.PushNotificationSettingRequest;
+import com.mindmate.mindmate_server.user.dto.PushNotificationSettingResponse;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,4 +24,10 @@ public interface UserService {
     List<Long> findAllUserIds();
 
     Optional<User> findByEmailOptional(String email);
+
+    PushNotificationSettingResponse getPushNotificationSetting(Long userId);
+
+    PushNotificationSettingResponse updatePushNotificationSetting(Long userId, PushNotificationSettingRequest request);
+
+    boolean isPushNotificationEnabled(Long userId);
 }

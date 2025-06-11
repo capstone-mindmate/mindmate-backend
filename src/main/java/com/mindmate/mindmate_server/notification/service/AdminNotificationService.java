@@ -24,8 +24,8 @@ public class AdminNotificationService {
         try {
             AnnouncementNotificationEvent templateEvent = AnnouncementNotificationEvent.builder()
                     .recipientId(null)
-                    .announcementId(request.getAnnouncementId())
                     .announcementTitle(request.getTitle())
+                    .announcementContent(request.getContent())
                     .build();
 
             List<Long> allUserIds = userService.findAllUserIds();
