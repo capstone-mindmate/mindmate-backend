@@ -41,8 +41,8 @@ class AdminNotificationServiceTest {
     @BeforeEach
     void setUp() {
         request = AnnouncementNotificationRequest.builder()
-                .announcementId(1L)
                 .title("공지사항 제목")
+                .content("공지 내용")
                 .build();
 
         userIds = Arrays.asList(1L, 2L, 3L);
@@ -99,7 +99,7 @@ class AdminNotificationServiceTest {
 
         AnnouncementNotificationEvent capturedEvent = eventCaptor.getValue();
         assertEquals(null, capturedEvent.getRecipientId());
-        assertEquals(1L, capturedEvent.getAnnouncementId());
+        assertEquals("공지 내용", capturedEvent.getContent());
         assertEquals("공지사항 제목", capturedEvent.getAnnouncementTitle());
     }
 }

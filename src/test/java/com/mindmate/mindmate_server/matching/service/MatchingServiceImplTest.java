@@ -321,6 +321,48 @@ class MatchingServiceImplTest {
             verify(matchingRepository).findById(1L);
             verify(redisMatchingService).getUserActiveMatchingCount(2L);
         }
+
+        @Test
+        @DisplayName("이미 신청한 매칭에 재신청 시 예외 발생")
+        void cannotApplyToAlreadyAppliedMatching() {
+            // given
+            WaitingUserRequest request = new WaitingUserRequest("I want to participate again");
+
+            given(userService.findUserById(2L)).willReturn(applicant);
+            given(redisMatchingService.getUserActiveMatchingCount(2L)).willReturn(0);
+            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+            given(waitingUserRepository.findByMatchingAndWaitingUser(matching, applicant))
+                    .willReturn(Optional.of(waitingUser)); // 이미 신청함
+
+            // when & then
+            assertThatThrownBy(() -> matchingService.applyForMatching(2L, 1L, request))
+                    .isInstanceOf(CustomException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.ALREADY_APPLIED_TO_MATCHING);
+
+            verify(waitingUserRepository, never()).save(any(WaitingUser.class));
+            verify(redisMatchingService, never()).incrementUserActiveMatchingCount(anyLong());
+        }
+
+        @Test
+        @DisplayName("닫힌 매칭에 신청 시 예외 발생")
+        void cannotApplyToClosedMatching() {
+            // given
+            when(matching.isOpen()).thenReturn(false);
+            when(matching.getStatus()).thenReturn(MatchingStatus.MATCHED);
+            WaitingUserRequest request = new WaitingUserRequest("I want to participate");
+
+            given(userService.findUserById(2L)).willReturn(applicant);
+            given(redisMatchingService.getUserActiveMatchingCount(2L)).willReturn(0);
+            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+            // when & then
+            assertThatThrownBy(() -> matchingService.applyForMatching(2L, 1L, request))
+                    .isInstanceOf(CustomException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.MATCHING_ALREADY_CLOSED);
+
+            verify(waitingUserRepository, never()).save(any(WaitingUser.class));
+            verify(redisMatchingService, never()).incrementUserActiveMatchingCount(anyLong());
+        }
     }
 
     @Nested
@@ -420,6 +462,32 @@ class MatchingServiceImplTest {
                     .isInstanceOf(CustomException.class)
                     .hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.NO_MATCHING_AVAILABLE);
         }
+
+        @Test
+        @DisplayName("자동 매칭 수락 실패 시 커스텀 예외 발생")
+        void autoMatchApplyFailsOnAcceptance() {
+            // given
+            AutoMatchingRequest request = new AutoMatchingRequest(InitiatorType.LISTENER);
+            MatchingServiceImpl spyMatchingService = spy(matchingService);
+
+            given(userService.findUserById(2L)).willReturn(applicant);
+            given(redisMatchingService.getUserActiveMatchingCount(2L)).willReturn(0);
+            given(redisMatchingService.getRandomMatching(eq(applicant), eq(InitiatorType.LISTENER)))
+                    .willReturn(1L);
+            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+            WaitingUser autoWaitingUser = mock(WaitingUser.class);
+            when(autoWaitingUser.getId()).thenReturn(1L);
+            given(waitingUserRepository.save(any(WaitingUser.class))).willReturn(autoWaitingUser);
+
+            doThrow(new CustomException(MatchingErrorCode.INSUFFICIENT_POINTS_FOR_MATCHING))
+                    .when(spyMatchingService).acceptMatching(1L, 1L, 1L);
+
+            // when & then
+            assertThatThrownBy(() -> spyMatchingService.autoMatchApply(2L, request))
+                    .isInstanceOf(CustomException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", MatchingErrorCode.AUTO_MATCHING_FAILED);
+        }
     }
 
     @Nested
@@ -516,7 +584,101 @@ class MatchingServiceImplTest {
                     eq("Computer Science"), eq(InitiatorType.SPEAKER), eq(2L),
                     anyList(), eq(pageable));
         }
-    }
+
+        @Test
+        @DisplayName("매칭 검색 - 키워드만으로 검색")
+        void searchMatchingsWithKeywordOnly() {
+            // given
+            Pageable pageable = PageRequest.of(0, 10);
+            List<Matching> matchingList = List.of(matching);
+            Page<Matching> matchingPage = new PageImpl<>(matchingList, pageable, 1);
+
+            MatchingSearchRequest request = new MatchingSearchRequest(
+                    "Test",
+                    null,
+                    null,
+                    null
+            );
+
+            given(waitingUserRepository.findMatchingIdsByWaitingUserId(2L))
+                    .willReturn(Collections.emptyList());
+            given(matchingRepository.searchMatchingsWithFilters(
+                    eq(MatchingStatus.OPEN), eq("Test"), eq(null), eq(null), eq(null),
+                    eq(2L), anyList(), eq(pageable)))
+                    .willReturn(matchingPage);
+
+            // when
+            Page<MatchingResponse> responses = matchingService.searchMatchings(2L, pageable, request);
+
+            // then
+            assertThat(responses.getTotalElements()).isEqualTo(1);
+            verify(matchingRepository).searchMatchingsWithFilters(
+                    eq(MatchingStatus.OPEN), eq("Test"), eq(null), eq(null), eq(null),
+                    eq(2L), anyList(), eq(pageable));
+        }
+
+        @Test
+        @DisplayName("매칭 검색 - 모든 필터 조건 적용")
+        void searchMatchingsWithAllFilters() {
+            // given
+            Pageable pageable = PageRequest.of(0, 10);
+            List<Matching> matchingList = List.of(matching);
+            Page<Matching> matchingPage = new PageImpl<>(matchingList, pageable, 1);
+
+            MatchingSearchRequest request = new MatchingSearchRequest(
+                    "Career",
+                    MatchingCategory.CAREER,
+                    "Computer Science",
+                    InitiatorType.LISTENER
+            );
+
+            given(waitingUserRepository.findMatchingIdsByWaitingUserId(2L))
+                    .willReturn(Arrays.asList(3L, 4L));
+            given(matchingRepository.searchMatchingsWithFilters(
+                    eq(MatchingStatus.OPEN), eq("Career"), eq(MatchingCategory.CAREER),
+                    eq("Computer Science"), eq(InitiatorType.SPEAKER), eq(2L),
+                    eq(Arrays.asList(3L, 4L)), eq(pageable)))
+                    .willReturn(matchingPage);
+
+            // when
+            Page<MatchingResponse> responses = matchingService.searchMatchings(2L, pageable, request);
+
+            // then
+            assertThat(responses.getTotalElements()).isEqualTo(1);
+            verify(matchingRepository).searchMatchingsWithFilters(
+                    MatchingStatus.OPEN, "Career", MatchingCategory.CAREER, "Computer Science",
+                    InitiatorType.SPEAKER, 2L, Arrays.asList(3L, 4L), pageable);
+        }
+
+        @Test
+        @DisplayName("매칭 검색 - 빈 검색 결과")
+        void searchMatchingsEmptyResult() {
+            // given
+            Pageable pageable = PageRequest.of(0, 10);
+            Page<Matching> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
+
+            MatchingSearchRequest request = new MatchingSearchRequest(
+                    "NonExistent",
+                    null,
+                    null,
+                    null
+            );
+
+            given(waitingUserRepository.findMatchingIdsByWaitingUserId(2L))
+                    .willReturn(Collections.emptyList());
+            given(matchingRepository.searchMatchingsWithFilters(
+                    eq(MatchingStatus.OPEN), eq("NonExistent"), eq(null), eq(null), eq(null),
+                    eq(2L), anyList(), eq(pageable)))
+                    .willReturn(emptyPage);
+
+            // when
+            Page<MatchingResponse> responses = matchingService.searchMatchings(2L, pageable, request);
+
+            // then
+            assertThat(responses.getTotalElements()).isEqualTo(0);
+            assertThat(responses.getContent()).isEmpty();
+        }
+}
 
     @Nested
     @DisplayName("생성한 매칭 조회 테스트")
@@ -563,6 +725,55 @@ class MatchingServiceImplTest {
 
             verify(waitingUserRepository).findByWaitingUserIdAndMatchingStatusOrderByCreatedAtDesc(
                     2L, MatchingStatus.OPEN, pageable);
+        }
+        @Test
+        @DisplayName("매칭 조회 - 사용자가 신청한 매칭들 제외")
+        void getMatchingsExcludeAppliedMatchings() {
+            // given
+            Pageable pageable = PageRequest.of(0, 10);
+            List<Matching> matchingList = List.of(matching);
+            Page<Matching> matchingPage = new PageImpl<>(matchingList, pageable, 1);
+
+            given(waitingUserRepository.findMatchingIdsByWaitingUserId(2L))
+                    .willReturn(Arrays.asList(2L, 3L, 4L));
+            given(matchingRepository.getMatchingsWithFilters(
+                    eq(MatchingStatus.OPEN), eq(null), eq(null), eq(null),
+                    eq(2L), eq(Arrays.asList(2L, 3L, 4L)), eq(pageable)))
+                    .willReturn(matchingPage);
+
+            // when
+            Page<MatchingResponse> responses = matchingService.getMatchings(2L, pageable, null, null, null);
+
+            // then
+            assertThat(responses.getTotalElements()).isEqualTo(1);
+            verify(matchingRepository).getMatchingsWithFilters(
+                    MatchingStatus.OPEN, null, null, null, 2L, Arrays.asList(2L, 3L, 4L), pageable);
+        }
+
+        @Test
+        @DisplayName("매칭 조회 - 특정 역할과 학과 필터링")
+        void getMatchingsWithRoleAndDepartmentFilter() {
+            // given
+            Pageable pageable = PageRequest.of(0, 10);
+            List<Matching> matchingList = List.of(matching);
+            Page<Matching> matchingPage = new PageImpl<>(matchingList, pageable, 1);
+
+            given(waitingUserRepository.findMatchingIdsByWaitingUserId(2L))
+                    .willReturn(Collections.emptyList());
+            given(matchingRepository.getMatchingsWithFilters(
+                    eq(MatchingStatus.OPEN), eq(MatchingCategory.CAREER), eq("Computer Science"),
+                    eq(InitiatorType.LISTENER), eq(2L), anyList(), eq(pageable)))
+                    .willReturn(matchingPage);
+
+            // when
+            Page<MatchingResponse> responses = matchingService.getMatchings(
+                    2L, pageable, MatchingCategory.CAREER, "Computer Science", InitiatorType.SPEAKER);
+
+            // then
+            assertThat(responses.getTotalElements()).isEqualTo(1);
+            verify(matchingRepository).getMatchingsWithFilters(
+                    eq(MatchingStatus.OPEN), eq(MatchingCategory.CAREER), eq("Computer Science"),
+                    eq(InitiatorType.LISTENER), eq(2L), anyList(), eq(pageable));
         }
     }
 
@@ -1072,6 +1283,123 @@ class MatchingServiceImplTest {
 
             assertThat(newWaitingUserId).isEqualTo(1L);
             verify(redisMatchingService).incrementUserActiveMatchingCount(2L);
+        }
+    }
+
+    @Nested
+    @DisplayName("대기 사용자 조회 추가 시나리오 테스트")
+    class GetWaitingUsersAdditionalTest {
+
+        @Test
+        @DisplayName("대기 사용자 조회 - 빈 결과")
+        void getWaitingUsersEmptyResult() {
+            // given
+            Pageable pageable = PageRequest.of(0, 10);
+            Page<WaitingUser> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
+
+            given(userService.findUserById(1L)).willReturn(creator);
+            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+            given(waitingUserRepository.findByMatchingWithWaitingUserProfile(any(Matching.class), any(Pageable.class)))
+                    .willReturn(emptyPage);
+
+            // when
+            Page<WaitingUserResponse> responses = matchingService.getWaitingUsers(1L, 1L, pageable);
+
+            // then
+            assertThat(responses).isNotNull();
+            assertThat(responses.getTotalElements()).isEqualTo(0);
+            assertThat(responses.getContent()).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("알림 처리 추가 시나리오 테스트")
+    class NotificationAdditionalTest {
+
+        @Test
+        @DisplayName("매칭 신청 시 익명 모드 알림")
+        void applyForMatchingAnonymousNotification() {
+            // given
+            when(matching.isAnonymous()).thenReturn(true);
+            WaitingUserRequest request = new WaitingUserRequest("I want to participate");
+
+            given(userService.findUserById(2L)).willReturn(applicant);
+            given(redisMatchingService.getUserActiveMatchingCount(2L)).willReturn(0);
+            given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+            given(waitingUserRepository.findByMatchingAndWaitingUser(matching, applicant))
+                    .willReturn(Optional.empty());
+            given(waitingUserRepository.save(any(WaitingUser.class))).willReturn(waitingUser);
+
+            // when
+            matchingService.applyForMatching(2L, 1L, request);
+
+            // then
+            verify(notificationService).processNotification(argThat(event -> {
+                MatchingAppliedNotificationEvent notificationEvent = (MatchingAppliedNotificationEvent) event;
+                return notificationEvent.getApplicantNickname().equals("익명");
+            }));
+        }
+    }
+
+    @Nested
+    @DisplayName("매칭 상태 조회 추가 시나리오 테스트")
+    class MatchingStatusAdditionalTest {
+
+        @Test
+        @DisplayName("인기 매칭 카테고리 조회 성공")
+        void getPopularMatchingCategorySuccess() {
+            // given
+            given(matchingRepository.findMostPopularMatchingCategory())
+                    .willReturn(MatchingCategory.CAREER);
+
+            // when
+            PopularMatchingCategoryResponse response = matchingService.getPopularMatchingCategoty();
+
+            // then
+            assertThat(response).isNotNull();
+            assertThat(response.getMatchingCategory()).isEqualTo(MatchingCategory.CAREER);
+            verify(matchingRepository).findMostPopularMatchingCategory();
+        }
+
+        @Test
+        @DisplayName("카테고리별 매칭 수 조회 - 일부 카테고리만 데이터 있음")
+        void getCategoryCountsPartialData() {
+            // given
+            List<Object[]> mockResults = Arrays.asList(
+                    new Object[]{MatchingCategory.CAREER, 5L},
+                    new Object[]{MatchingCategory.ACADEMIC, 2L}
+            );
+
+            given(matchingRepository.countMatchingsByUserAndCategory(1L)).willReturn(mockResults);
+
+            // when
+            Map<String, Integer> result = matchingService.getCategoryCountsByUserId(1L);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result).hasSize(6);
+            assertThat(result.get("CAREER")).isEqualTo(5);
+            assertThat(result.get("ACADEMIC")).isEqualTo(2);
+            assertThat(result.get("RELATIONSHIP")).isEqualTo(0);
+            assertThat(result.get("FINANCIAL")).isEqualTo(0);
+            assertThat(result.get("EMPLOYMENT")).isEqualTo(0);
+            assertThat(result.get("OTHER")).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("카테고리별 매칭 수 조회 - 데이터 없음")
+        void getCategoryCountsNoData() {
+            // given
+            given(matchingRepository.countMatchingsByUserAndCategory(1L))
+                    .willReturn(Collections.emptyList());
+
+            // when
+            Map<String, Integer> result = matchingService.getCategoryCountsByUserId(1L);
+
+            // then
+            assertThat(result).isNotNull();
+            assertThat(result).hasSize(6);
+            result.values().forEach(count -> assertThat(count).isEqualTo(0));
         }
     }
 }

@@ -5,6 +5,8 @@ import com.mindmate.mindmate_server.global.exception.CustomException;
 import com.mindmate.mindmate_server.global.exception.UserErrorCode;
 import com.mindmate.mindmate_server.user.domain.RoleType;
 import com.mindmate.mindmate_server.user.domain.User;
+import com.mindmate.mindmate_server.user.dto.PushNotificationSettingRequest;
+import com.mindmate.mindmate_server.user.dto.PushNotificationSettingResponse;
 import com.mindmate.mindmate_server.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,7 +37,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-class UserServiceImplTest {
+class UserServiceTest {
 
     @Mock private UserRepository userRepository;
 
@@ -54,6 +56,14 @@ class UserServiceImplTest {
                 .providerId("google123")
                 .role(RoleType.ROLE_USER)
                 .build();
+
+        try {
+            java.lang.reflect.Field idField = User.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(mockUser, TEST_USER_ID);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to set user ID for test", e);
+        }
     }
 
     @Nested
@@ -321,4 +331,86 @@ class UserServiceImplTest {
         }
     }
 
+    @Nested
+    @DisplayName("getPushNotificationSetting 테스트")
+    class GetPushNotificationSettingTest {
+
+        @Test
+        @DisplayName("푸시 알림 설정 조회 성공")
+        void getPushNotificationSetting_Success() {
+            // given
+            when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(mockUser));
+
+            // when
+            PushNotificationSettingResponse result = userService.getPushNotificationSetting(TEST_USER_ID);
+
+            // then
+            assertThat(result).isNotNull();
+            verify(userRepository).findById(TEST_USER_ID);
+        }
+
+    }
+
+    @Nested
+    @DisplayName("updatePushNotificationSetting 테스트")
+    class UpdatePushNotificationSettingTest {
+
+        @Test
+        @DisplayName("푸시 알림 설정 업데이트 성공 - 활성화")
+        void updatePushNotificationSetting_EnableSuccess() {
+            // given
+            PushNotificationSettingRequest request = PushNotificationSettingRequest.builder()
+                    .pushNotificationEnabled(true)
+                    .build();
+            when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(mockUser));
+            when(userRepository.save(mockUser)).thenReturn(mockUser);
+
+            // when
+            PushNotificationSettingResponse result = userService.updatePushNotificationSetting(TEST_USER_ID, request);
+
+            // then
+            assertThat(result).isNotNull();
+            verify(userRepository).findById(TEST_USER_ID);
+            verify(userRepository).save(mockUser);
+        }
+
+        @Test
+        @DisplayName("푸시 알림 설정 업데이트 성공 - 비활성화")
+        void updatePushNotificationSetting_DisableSuccess() {
+            // given
+            PushNotificationSettingRequest request = PushNotificationSettingRequest.builder()
+                    .pushNotificationEnabled(false)
+                    .build();
+            when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(mockUser));
+            when(userRepository.save(mockUser)).thenReturn(mockUser);
+
+            // when
+            PushNotificationSettingResponse result = userService.updatePushNotificationSetting(TEST_USER_ID, request);
+
+            // then
+            assertThat(result).isNotNull();
+            verify(userRepository).findById(TEST_USER_ID);
+            verify(userRepository).save(mockUser);
+        }
+
+    }
+
+    @Nested
+    @DisplayName("isPushNotificationEnabled 테스트")
+    class IsPushNotificationEnabledTest {
+
+        @Test
+        @DisplayName("푸시 알림이 활성화된 사용자의 상태 확인")
+        void isPushNotificationEnabled_EnabledUser() {
+            // given
+            when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(mockUser));
+
+            // when
+            boolean result = userService.isPushNotificationEnabled(TEST_USER_ID);
+
+            // then
+            assertThat(result).isTrue();
+            verify(userRepository).findById(TEST_USER_ID);
+        }
+    }
 }

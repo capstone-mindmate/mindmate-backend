@@ -60,7 +60,6 @@ class RedisMatchingServiceTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(redisTemplate.opsForSet()).thenReturn(setOperations);
 
-        // 사용자 및 프로필
         when(creator.getId()).thenReturn(1L);
         when(applicant.getId()).thenReturn(2L);
 
@@ -72,7 +71,6 @@ class RedisMatchingServiceTest {
         when(applicantProfile.getEntranceTime()).thenReturn(2021);
         when(applicant.getProfile()).thenReturn(applicantProfile);
 
-        // 매칭
         when(matching.getId()).thenReturn(1L);
         when(matching.getCreator()).thenReturn(creator);
         when(matching.getCreatorRole()).thenReturn(InitiatorType.SPEAKER);
@@ -429,7 +427,6 @@ class RedisMatchingServiceTest {
         assertThat(result).isBetween(1L, 150L);
 
         verify(redisTemplate.opsForSet()).members("matching:available:SPEAKER");
-        // 매칭 후보가 많을 경우 100개로 제한해서 처리하는지 확인
         verify(matchingRepository, atMost(100)).findById(anyLong());
     }
 
@@ -450,7 +447,176 @@ class RedisMatchingServiceTest {
         Long result = redisMatchingService.getRandomMatching(applicant, InitiatorType.LISTENER);
 
         // then
-        assertThat(result).isEqualTo(1L); // 같은 단과대(경영대학)이므로 높은 점수 받아야 함
+        assertThat(result).isEqualTo(1L);
         verify(matchingRepository).findById(1L);
+    }
+    @Test
+    @DisplayName("부분 학과명 매칭")
+    void partialDepartmentNameMatching() {
+        // given
+        when(creatorProfile.getDepartment()).thenReturn("컴퓨터공학과 데이터사이언스전공");
+        when(applicantProfile.getDepartment()).thenReturn("화학공학과");
+
+        Set<String> matchingIds = new HashSet<>();
+        matchingIds.add("1");
+
+        given(redisTemplate.opsForSet().members("matching:available:SPEAKER")).willReturn(matchingIds);
+        given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+        // when
+        Long result = redisMatchingService.getRandomMatching(applicant, InitiatorType.LISTENER);
+
+        // then
+        assertThat(result).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("동일 학과 점수 계산")
+    void calculateSameDepartmentScore() {
+        // given
+        when(creatorProfile.getDepartment()).thenReturn("컴퓨터공학과");
+        when(applicantProfile.getDepartment()).thenReturn("컴퓨터공학과");
+        Set<String> matchingIds = new HashSet<>();
+        matchingIds.add("1");
+
+        given(redisTemplate.opsForSet().members("matching:available:SPEAKER")).willReturn(matchingIds);
+        given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+        // when
+        Long result = redisMatchingService.getRandomMatching(applicant, InitiatorType.LISTENER);
+
+        // then
+        assertThat(result).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("동일 단과대학 점수 계산")
+    void calculateSameCollegeScore() {
+        // given
+        when(creatorProfile.getDepartment()).thenReturn("기계공학과");
+        when(applicantProfile.getDepartment()).thenReturn("화학공학과");
+        Set<String> matchingIds = new HashSet<>();
+        matchingIds.add("1");
+
+        given(redisTemplate.opsForSet().members("matching:available:SPEAKER")).willReturn(matchingIds);
+        given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+        // when
+        Long result = redisMatchingService.getRandomMatching(applicant, InitiatorType.LISTENER);
+
+        // then
+        assertThat(result).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("다른 단과대학 점수 계산")
+    void calculateDifferentCollegeScore() {
+        // given
+        when(creatorProfile.getDepartment()).thenReturn("경영학과");
+        when(applicantProfile.getDepartment()).thenReturn("물리학과");
+        Set<String> matchingIds = new HashSet<>();
+        matchingIds.add("1");
+
+        given(redisTemplate.opsForSet().members("matching:available:SPEAKER")).willReturn(matchingIds);
+        given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+        // when
+        Long result = redisMatchingService.getRandomMatching(applicant, InitiatorType.LISTENER);
+
+        // then
+        assertThat(result).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("입학년도 점수 계산 - 동일 년도")
+    void calculateSameEntranceYearScore() {
+        // given
+        when(creatorProfile.getEntranceTime()).thenReturn(2020);
+        when(applicantProfile.getEntranceTime()).thenReturn(2020);
+        Set<String> matchingIds = new HashSet<>();
+        matchingIds.add("1");
+
+        given(redisTemplate.opsForSet().members("matching:available:SPEAKER")).willReturn(matchingIds);
+        given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+        // when
+        Long result = redisMatchingService.getRandomMatching(applicant, InitiatorType.LISTENER);
+
+        // then
+        assertThat(result).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("입학년도 점수 계산 - 큰 차이")
+    void calculateLargeEntranceYearDifferenceScore() {
+        // given
+        when(creatorProfile.getEntranceTime()).thenReturn(2015);
+        when(applicantProfile.getEntranceTime()).thenReturn(2025); // 10년 차이
+        Set<String> matchingIds = new HashSet<>();
+        matchingIds.add("1");
+
+        given(redisTemplate.opsForSet().members("matching:available:SPEAKER")).willReturn(matchingIds);
+        given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+        // when
+        Long result = redisMatchingService.getRandomMatching(applicant, InitiatorType.LISTENER);
+
+        // then
+        assertThat(result).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("매칭 점수 계산 - 생성자가 null인 경우")
+    void getRandomMatchingWithNullCreator() {
+        // given
+        when(matching.getCreator()).thenReturn(null);
+        Set<String> matchingIds = new HashSet<>();
+        matchingIds.add("1");
+
+        given(redisTemplate.opsForSet().members("matching:available:SPEAKER")).willReturn(matchingIds);
+        given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+        // when
+        Long result = redisMatchingService.getRandomMatching(applicant, InitiatorType.LISTENER);
+
+        // then
+        assertThat(result).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("매칭 점수 계산 - 생성자 프로필이 null인 경우")
+    void getRandomMatchingWithCreatorNullProfile() {
+        // given
+        when(creator.getProfile()).thenReturn(null);
+        Set<String> matchingIds = new HashSet<>();
+        matchingIds.add("1");
+
+        given(redisTemplate.opsForSet().members("matching:available:SPEAKER")).willReturn(matchingIds);
+        given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+        // when
+        Long result = redisMatchingService.getRandomMatching(applicant, InitiatorType.LISTENER);
+
+        // then
+        assertThat(result).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("학과 점수 계산 - 빈 학과명")
+    void calculateDepartmentScoreWithEmptyDepartment() {
+        // given
+        when(creatorProfile.getDepartment()).thenReturn("");
+        when(applicantProfile.getDepartment()).thenReturn("컴퓨터공학과");
+        Set<String> matchingIds = new HashSet<>();
+        matchingIds.add("1");
+
+        given(redisTemplate.opsForSet().members("matching:available:SPEAKER")).willReturn(matchingIds);
+        given(matchingRepository.findById(1L)).willReturn(Optional.of(matching));
+
+        // when
+        Long result = redisMatchingService.getRandomMatching(applicant, InitiatorType.LISTENER);
+
+        // then
+        assertThat(result).isEqualTo(1L);
     }
 }
